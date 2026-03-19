@@ -153,6 +153,15 @@ let orbitalGroups = [];
 let particleSystems = [];
 let coreGlow;
 
+// User camera controls
+let userOrbitAngle = 0;       // radians — horizontal orbit offset from swipe/drag
+let targetOrbitAngle = 0;
+let userZoom = 1;             // 1 = default, <1 = zoomed in, >1 = zoomed out
+let targetZoom = 1;
+const ZOOM_MIN = 0.55;
+const ZOOM_MAX = 1.6;
+const BASE_ORBIT_RADIUS = 2;  // the gentle auto-orbit amplitude
+
 // ─── DOM ───
 const canvas = document.getElementById('canvas');
 const layerTitle = document.getElementById('layerTitle');
@@ -716,11 +725,16 @@ sliderTrack.addEventListener('click', (e) => {
   goToLayer(sliderYToLayer(e.clientY));
 });
 
-// ─── INPUT HANDLING ───
+// ─── INPUT HANDLING — Unified Gesture System ───
+//
+// Desktop:  scroll-Y = layer nav,  click-drag = orbit,  ctrl/meta+scroll = zoom
+// Mobile:   1-finger swipe-Y = layer nav,  1-finger swipe-X = orbit,
+//           2-finger pinch = zoom,  slider = layer nav
+
 let scrollAccum = 0;
 const SCROLL_THRESHOLD = 80;
 
-function handleScroll(delta) {
+function handleLayerScroll(delta) {
   if (!entered || isTransitioning) return;
   scrollAccum += delta;
   if (Math.abs(scrollAccum) >= SCROLL_THRESHOLD) {
@@ -730,43 +744,139 @@ function handleScroll(delta) {
   }
 }
 
+// ── Desktop: mouse wheel ──
 canvas.addEventListener('wheel', (e) => {
   e.preventDefault();
-  handleScroll(e.deltaY);
+  if (!entered) return;
+  if (e.ctrlKey || e.metaKey) {
+    // Ctrl/Cmd + scroll = zoom
+    targetZoom = Math.max(ZOOM_MIN, Math.min(ZOOM_MAX, targetZoom + e.deltaY * 0.002));
+  } else {
+    handleLayerScroll(e.deltaY);
+  }
 }, { passive: false });
 
-// Touch support — single-finger swipe only, ignore multi-touch (pinch)
-let touchStartY = 0;
-let touchFingers = 0;
+// ── Desktop: mouse drag = orbit ──
+let isMouseDragging = false;
+let mouseLastX = 0;
+
+canvas.addEventListener('mousedown', (e) => {
+  if (!entered) return;
+  isMouseDragging = true;
+  mouseLastX = e.clientX;
+  canvas.style.cursor = 'grabbing';
+});
+
+document.addEventListener('mousemove', (e) => {
+  if (!isMouseDragging || isDragging) return; // isDragging = slider drag
+  const dx = e.clientX - mouseLastX;
+  mouseLastX = e.clientX;
+  targetOrbitAngle += dx * 0.005;
+});
+
+document.addEventListener('mouseup', () => {
+  isMouseDragging = false;
+  canvas.style.cursor = '';
+});
+
+// ── Touch: unified 1-finger + 2-finger gesture handling ──
+let touch = {
+  startX: 0, startY: 0,
+  lastX: 0, lastY: 0,
+  startDist: 0,        // pinch starting distance
+  startZoom: 1,        // zoom value when pinch started
+  fingers: 0,
+  intent: null,        // 'orbit' | 'layer' | 'pinch' | null
+  locked: false,       // once intent is set, lock it for this gesture
+};
+
+const INTENT_THRESHOLD = 8; // px before we decide swipe direction
+
+function pinchDist(e) {
+  const dx = e.touches[0].clientX - e.touches[1].clientX;
+  const dy = e.touches[0].clientY - e.touches[1].clientY;
+  return Math.sqrt(dx * dx + dy * dy);
+}
 
 canvas.addEventListener('touchstart', (e) => {
-  touchFingers = e.touches.length;
-  if (touchFingers === 1) {
-    touchStartY = e.touches[0].clientY;
+  if (!entered) return;
+  touch.fingers = e.touches.length;
+  touch.intent = null;
+  touch.locked = false;
+
+  if (e.touches.length === 1) {
+    touch.startX = touch.lastX = e.touches[0].clientX;
+    touch.startY = touch.lastY = e.touches[0].clientY;
+  } else if (e.touches.length === 2) {
+    touch.intent = 'pinch';
+    touch.locked = true;
+    touch.startDist = pinchDist(e);
+    touch.startZoom = targetZoom;
   }
 }, { passive: true });
 
 canvas.addEventListener('touchmove', (e) => {
   if (!entered) return;
-  // Only navigate with single finger—ignore pinch/multi-touch
-  if (e.touches.length !== 1 || touchFingers !== 1) return;
-  e.preventDefault(); // prevent browser scroll/zoom
-  const dy = touchStartY - e.touches[0].clientY;
-  touchStartY = e.touches[0].clientY;
-  handleScroll(dy * 1.5);
+  e.preventDefault();
+
+  // ── Pinch zoom (2 fingers) ──
+  if (e.touches.length === 2 && touch.intent === 'pinch') {
+    const dist = pinchDist(e);
+    const scale = touch.startDist / dist; // pinch-in = scale > 1 = zoom out
+    targetZoom = Math.max(ZOOM_MIN, Math.min(ZOOM_MAX, touch.startZoom * scale));
+    return;
+  }
+
+  // ── Single-finger gestures ──
+  if (e.touches.length !== 1) return;
+
+  const cx = e.touches[0].clientX;
+  const cy = e.touches[0].clientY;
+  const dx = cx - touch.lastX;
+  const dy = cy - touch.lastY;
+
+  // Determine intent on first significant move
+  if (!touch.locked) {
+    const totalDX = Math.abs(cx - touch.startX);
+    const totalDY = Math.abs(cy - touch.startY);
+    if (totalDX < INTENT_THRESHOLD && totalDY < INTENT_THRESHOLD) {
+      return; // not enough movement yet
+    }
+    touch.intent = totalDX > totalDY ? 'orbit' : 'layer';
+    touch.locked = true;
+  }
+
+  if (touch.intent === 'orbit') {
+    targetOrbitAngle += dx * 0.006;
+  } else if (touch.intent === 'layer') {
+    handleLayerScroll(-dy * 1.5);
+  }
+
+  touch.lastX = cx;
+  touch.lastY = cy;
 }, { passive: false });
 
 canvas.addEventListener('touchend', () => {
-  touchFingers = 0;
+  touch.fingers = 0;
+  touch.intent = null;
+  touch.locked = false;
 });
 
-// Keyboard
+// ── Keyboard ──
 document.addEventListener('keydown', (e) => {
   if (!entered) return;
-  if (e.key === 'ArrowDown' || e.key === 'ArrowRight' || e.key === 'j') {
+  if (e.key === 'ArrowDown' || e.key === 'j') {
     goToLayer(Math.min(LAYER_COUNT - 1, currentLayer + 1));
-  } else if (e.key === 'ArrowUp' || e.key === 'ArrowLeft' || e.key === 'k') {
+  } else if (e.key === 'ArrowUp' || e.key === 'k') {
     goToLayer(Math.max(0, currentLayer - 1));
+  } else if (e.key === 'ArrowLeft') {
+    targetOrbitAngle -= 0.3;
+  } else if (e.key === 'ArrowRight') {
+    targetOrbitAngle += 0.3;
+  } else if (e.key === '+' || e.key === '=') {
+    targetZoom = Math.max(ZOOM_MIN, targetZoom - 0.1);
+  } else if (e.key === '-' || e.key === '_') {
+    targetZoom = Math.min(ZOOM_MAX, targetZoom + 0.1);
   } else {
     const num = parseInt(e.key);
     if (num >= 1 && num <= LAYER_COUNT) {
@@ -795,16 +905,28 @@ function animate() {
   const dt = clock.getDelta();
   const elapsed = clock.getElapsedTime();
 
-  // Camera interpolation
+  // ── Lerp user controls ──
+  const ctrlLerp = 1 - Math.exp(-8 * dt);          // smooth ~8 Hz exponential ease
+  userOrbitAngle += (targetOrbitAngle - userOrbitAngle) * ctrlLerp;
+  userZoom       += (targetZoom       - userZoom)       * ctrlLerp;
+
+  // Camera Z interpolation (layer navigation)
   const lerpSpeed = isTransitioning ? 1.8 : 2.5;
   cameraZ += (targetCameraZ - cameraZ) * dt * lerpSpeed;
-  camera.position.z = cameraZ;
 
-  // Gentle orbit
-  const orbitRadius = 2;
-  camera.position.x = Math.sin(elapsed * 0.08) * orbitRadius;
-  camera.position.y = Math.cos(elapsed * 0.12) * orbitRadius * 0.5;
-  camera.lookAt(0, 0, cameraZ - 12);
+  // ── Combined orbit: gentle auto-drift + user orbit ──
+  const autoAngle = elapsed * 0.08;
+  const totalAngle = autoAngle + userOrbitAngle;
+
+  camera.position.x = Math.sin(totalAngle) * BASE_ORBIT_RADIUS;
+  camera.position.y = Math.cos(elapsed * 0.12) * BASE_ORBIT_RADIUS * 0.5;
+
+  // ── Zoom: offset camera Z relative to target layer ──
+  //   userZoom 1.0 = default (+6 above layer)   <1 = closer   >1 = farther
+  //   maps zoom range [0.55..1.6] to Z-offset [-4..+18]
+  const zoomOffset = 6 + (userZoom - 1) * 20;     // default 6, zoom-in → −2, zoom-out → +18
+  camera.position.z = cameraZ + (zoomOffset - 6);  // cameraZ already targets layer+6
+  camera.lookAt(0, 0, camera.position.z - 12);
 
   // Check transition completion
   if (isTransitioning) {
@@ -848,8 +970,8 @@ function animate() {
       positions.needsUpdate = true;
     }
 
-    // Proximity-based opacity
-    const distFromCamera = Math.abs(group.position.z - cameraZ + 6);
+    // Proximity-based opacity (use actual camera Z, not lerp target)
+    const distFromCamera = Math.abs(group.position.z - camera.position.z + 6);
     const fadeStart = LAYER_SPACING * 1.5;
     const fadeEnd = LAYER_SPACING * 4;
     let opacity;
