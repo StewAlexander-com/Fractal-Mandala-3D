@@ -66,19 +66,16 @@
     <div class="teaching-inner" id="teachingInner"></div>
   </div>
 
-  <!-- Navigation -->
-  <div class="nav-controls">
-    <button class="nav-btn" id="btnPrev" aria-label="Previous layer">
-      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M18 15l-6-6-6 6"/></svg>
-      <span class="nav-label">inward</span>
-    </button>
-    <div class="layer-indicator" id="layerIndicator">
-      <div class="layer-dots" id="layerDots"></div>
+  <!-- Navigation slider -->
+  <div class="nav-controls" id="navControls">
+    <span class="nav-endpoint">inward</span>
+    <div class="slider-track" id="sliderTrack">
+      <div class="slider-fill" id="sliderFill"></div>
+      <div class="slider-thumb" id="sliderThumb"></div>
+      <div class="slider-stops" id="sliderStops"></div>
     </div>
-    <button class="nav-btn" id="btnNext" aria-label="Next layer">
-      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M6 9l6 6 6-6"/></svg>
-      <span class="nav-label">outward</span>
-    </button>
+    <span class="nav-endpoint">outward</span>
+    <div class="slider-tooltip" id="sliderTooltip"></div>
   </div>
 
   <!-- Breath indicator -->

@@ -41,6 +41,7 @@ canvas {
   position: fixed;
   top: 0;
   left: 0;
+  touch-action: none; /* prevent browser zoom/pan on canvas */
 }
 
 /* ═══ HUD ═══ */
@@ -267,69 +268,124 @@ canvas {
   opacity: 0.6;
 }
 
-/* ═══ NAV CONTROLS ═══ */
+/* ═══ NAV SLIDER ═══ */
 .nav-controls {
   position: absolute;
-  right: clamp(12px, 2vw, 32px);
+  right: clamp(16px, 2.5vw, 36px);
   top: 50%;
   transform: translateY(-50%);
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 8px;
+  gap: 10px;
   z-index: 25;
+  user-select: none;
+  -webkit-user-select: none;
 }
 
-.nav-btn {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 2px;
-  color: var(--text-faint);
-  cursor: pointer;
-  padding: 6px;
-  border-radius: 4px;
-  transition: color 0.2s var(--ease-out), background 0.2s var(--ease-out), opacity 0.2s var(--ease-out);
-  opacity: 0.5;
-}
-
-.nav-btn:hover {
-  color: var(--gold);
-  background: rgba(155, 138, 184, 0.08);
-  opacity: 1;
-}
-
-.nav-label {
-  font-size: 0.6rem;
-  letter-spacing: 0.15em;
+.nav-endpoint {
+  font-family: var(--font-display);
+  font-size: 0.55rem;
+  letter-spacing: 0.2em;
   text-transform: uppercase;
+  color: var(--text-faint);
+  opacity: 0.5;
+  transition: opacity 0.3s var(--ease-out);
+}
+.nav-controls:hover .nav-endpoint { opacity: 0.75; }
+
+.slider-track {
+  position: relative;
+  width: 3px;
+  height: clamp(140px, 28vh, 240px);
+  background: rgba(78, 70, 64, 0.35);
+  border-radius: 2px;
+  cursor: pointer;
+  touch-action: none;
 }
 
-.layer-indicator {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  padding: 8px 0;
+.slider-fill {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  border-radius: 2px;
+  background: linear-gradient(to bottom, var(--gold), var(--lavender));
+  opacity: 0.5;
+  transition: height 0.4s var(--ease-out);
+  pointer-events: none;
 }
 
-.layer-pip {
-  width: 8px;
-  height: 8px;
+.slider-thumb {
+  position: absolute;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: var(--gold);
+  border: 2px solid var(--bg);
+  box-shadow: 0 0 10px rgba(212, 165, 116, 0.5), 0 0 3px rgba(212, 165, 116, 0.3);
+  cursor: grab;
+  touch-action: none;
+  transition: top 0.4s var(--ease-out), transform 0.15s var(--ease-out), box-shadow 0.2s var(--ease-out);
+  z-index: 3;
+}
+.slider-thumb:hover,
+.slider-thumb.dragging {
+  transform: translate(-50%, -50%) scale(1.25);
+  box-shadow: 0 0 16px rgba(212, 165, 116, 0.7), 0 0 4px rgba(155, 138, 184, 0.4);
+}
+.slider-thumb.dragging {
+  cursor: grabbing;
+  transition: transform 0.1s var(--ease-out), box-shadow 0.1s var(--ease-out);
+}
+
+.slider-stops {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+.slider-stop {
+  position: absolute;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 7px;
+  height: 7px;
   border-radius: 50%;
   border: 1px solid var(--text-faint);
+  background: transparent;
+  transition: background 0.3s var(--ease-out), border-color 0.3s var(--ease-out), box-shadow 0.3s var(--ease-out);
+  pointer-events: auto;
   cursor: pointer;
-  transition: background 0.3s var(--ease-out), border-color 0.3s var(--ease-out), box-shadow 0.3s var(--ease-out), transform 0.2s var(--ease-out);
 }
-
-.layer-pip:hover {
-  transform: scale(1.4);
-  border-color: var(--lavender);
+.slider-stop.visited {
+  background: rgba(212, 165, 116, 0.25);
+  border-color: var(--gold-dim);
 }
-
-.layer-pip.active {
+.slider-stop.active {
   background: var(--gold);
   border-color: var(--gold);
-  box-shadow: 0 0 8px rgba(212, 165, 116, 0.4);
+  box-shadow: 0 0 6px rgba(212, 165, 116, 0.4);
+}
+
+.slider-tooltip {
+  position: absolute;
+  right: 100%;
+  margin-right: 14px;
+  white-space: nowrap;
+  font-family: var(--font-display);
+  font-size: clamp(0.7rem, 1.2vmin, 0.85rem);
+  color: var(--gold);
+  opacity: 0;
+  transform: translateX(6px);
+  transition: opacity 0.3s var(--ease-out), transform 0.3s var(--ease-out);
+  pointer-events: none;
+  text-shadow: 0 1px 8px rgba(6, 5, 10, 0.9);
+}
+.slider-tooltip.visible {
+  opacity: 1;
+  transform: translateX(0);
 }
 
 /* ═══ BREATH ═══ */
@@ -391,10 +447,21 @@ canvas {
     font-size: clamp(0.88rem, 3.6vw, 1.05rem);
   }
   .nav-controls {
-    right: 6px;
+    right: 8px;
   }
-  .nav-label {
+  .nav-endpoint {
     display: none;
+  }
+  .slider-track {
+    height: clamp(120px, 24vh, 180px);
+  }
+  .slider-thumb {
+    width: 20px;
+    height: 20px;
+  }
+  .slider-stop {
+    width: 8px;
+    height: 8px;
   }
 }
 

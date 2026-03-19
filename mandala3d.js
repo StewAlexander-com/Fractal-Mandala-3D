@@ -161,11 +161,14 @@ const layerName = document.getElementById('layerName');
 const layerSubtitle = document.getElementById('layerSubtitle');
 const teachingPanel = document.getElementById('teachingPanel');
 const teachingInner = document.getElementById('teachingInner');
-const layerDots = document.getElementById('layerDots');
 const welcome = document.getElementById('welcome');
 const enterBtn = document.getElementById('enterBtn');
-const btnPrev = document.getElementById('btnPrev');
-const btnNext = document.getElementById('btnNext');
+const sliderTrack = document.getElementById('sliderTrack');
+const sliderFill = document.getElementById('sliderFill');
+const sliderThumb = document.getElementById('sliderThumb');
+const sliderStops = document.getElementById('sliderStops');
+const sliderTooltip = document.getElementById('sliderTooltip');
+let visitedLayers = new Set();
 
 // ─── NEBULA BACKGROUND DATA ───
 let nebulaStars;        // distant star-points
@@ -301,8 +304,8 @@ function buildLayers() {
 
 // ─── NEBULA BACKGROUND — Star Field + Volumetric Clouds ───
 function buildNebulaBackground() {
-  // 1. Distant star-point field
-  const starCount = 1200;
+  // 1. Distant star-point field — with per-star brightness variation
+  const starCount = 1400;
   const starPositions = new Float32Array(starCount * 3);
   const starColors    = new Float32Array(starCount * 3);
   const starSizes     = new Float32Array(starCount);
@@ -315,8 +318,10 @@ function buildNebulaBackground() {
     new THREE.Color(0xaad4ef), // ice blue
   ];
 
+  // ~5% of stars are bright accents ("blue giant" / "white dwarf" effect)
+  const ACCENT_RATIO = 0.05;
+
   for (let i = 0; i < starCount; i++) {
-    // Spread stars in a large cylinder around the mandala axis
     const angle  = Math.random() * TAU;
     const radius = 50 + Math.random() * 120;
     const z      = (Math.random() - 0.3) * (LAYER_COUNT * LAYER_SPACING + 80);
@@ -325,12 +330,22 @@ function buildNebulaBackground() {
     starPositions[i * 3 + 1] = Math.sin(angle) * radius;
     starPositions[i * 3 + 2] = z;
 
+    const isAccent = Math.random() < ACCENT_RATIO;
     const col = starPalette[Math.floor(Math.random() * starPalette.length)];
-    starColors[i * 3]     = col.r;
-    starColors[i * 3 + 1] = col.g;
-    starColors[i * 3 + 2] = col.b;
 
-    starSizes[i] = 0.15 + Math.random() * 0.45;
+    // Per-star brightness multiplier: most are dim, a few pop
+    const brightness = isAccent
+      ? 1.4 + Math.random() * 0.6    // accent stars: 1.4–2.0x
+      : 0.3 + Math.random() * 0.7;   // normal stars: 0.3–1.0x
+
+    starColors[i * 3]     = Math.min(1, col.r * brightness);
+    starColors[i * 3 + 1] = Math.min(1, col.g * brightness);
+    starColors[i * 3 + 2] = Math.min(1, col.b * brightness);
+
+    // Accent stars are slightly larger
+    starSizes[i] = isAccent
+      ? 0.4 + Math.random() * 0.5
+      : 0.1 + Math.random() * 0.35;
   }
 
   const starGeo = new THREE.BufferGeometry();
@@ -577,14 +592,47 @@ function buildSpirals() {
 
 // ─── NAVIGATION ───
 function buildNavDots() {
-  layerDots.innerHTML = '';
-  LAYERS.forEach((_, i) => {
-    const pip = document.createElement('div');
-    pip.className = 'layer-pip' + (i === 0 ? ' active' : '');
-    pip.dataset.layer = i;
-    pip.addEventListener('click', () => goToLayer(i));
-    layerDots.appendChild(pip);
+  sliderStops.innerHTML = '';
+  LAYERS.forEach((layer, i) => {
+    const stop = document.createElement('div');
+    stop.className = 'slider-stop' + (i === 0 ? ' active' : '');
+    stop.style.top = `${(i / (LAYER_COUNT - 1)) * 100}%`;
+    stop.dataset.layer = i;
+    stop.addEventListener('click', () => goToLayer(i));
+    // Show tooltip on hover
+    stop.addEventListener('mouseenter', () => showSliderTooltip(i, stop));
+    stop.addEventListener('mouseleave', hideSliderTooltip);
+    sliderStops.appendChild(stop);
   });
+  updateSliderPosition(0);
+}
+
+function updateSliderPosition(index) {
+  const pct = (index / (LAYER_COUNT - 1)) * 100;
+  sliderThumb.style.top = `${pct}%`;
+  sliderFill.style.height = `${pct}%`;
+  // Mark visited
+  visitedLayers.add(index);
+  // Update stop dots
+  sliderStops.querySelectorAll('.slider-stop').forEach((stop, i) => {
+    stop.classList.toggle('active', i === index);
+    stop.classList.toggle('visited', visitedLayers.has(i) && i !== index);
+  });
+}
+
+function showSliderTooltip(index, refEl) {
+  const layer = LAYERS[index];
+  sliderTooltip.textContent = `${LAYER_COUNT - index}. ${layer.name}`;
+  // Position tooltip vertically aligned with the stop
+  const trackRect = sliderTrack.getBoundingClientRect();
+  const stopRect = refEl.getBoundingClientRect();
+  const navRect = document.getElementById('navControls').getBoundingClientRect();
+  sliderTooltip.style.top = `${stopRect.top - navRect.top + stopRect.height / 2}px`;
+  sliderTooltip.classList.add('visible');
+}
+
+function hideSliderTooltip() {
+  sliderTooltip.classList.remove('visible');
 }
 
 function goToLayer(index) {
@@ -595,13 +643,8 @@ function goToLayer(index) {
   isTransitioning = true;
   transitionTimer = 0;
 
-  // Show layer title
   showLayerTitle(index);
-
-  // Update nav dots
-  document.querySelectorAll('.layer-pip').forEach((pip, i) => {
-    pip.classList.toggle('active', i === index);
-  });
+  updateSliderPosition(index);
 }
 
 function showLayerTitle(index) {
@@ -612,7 +655,6 @@ function showLayerTitle(index) {
   layerTitle.classList.add('visible');
   teachingPanel.classList.remove('visible');
 
-  // After delay, show teaching
   clearTimeout(showLayerTitle._timer);
   showLayerTitle._timer = setTimeout(() => {
     layerTitle.classList.remove('visible');
@@ -620,6 +662,59 @@ function showLayerTitle(index) {
     teachingPanel.classList.add('visible');
   }, 2400);
 }
+
+// ─── SLIDER DRAG ───
+let isDragging = false;
+
+function sliderYToLayer(clientY) {
+  const rect = sliderTrack.getBoundingClientRect();
+  const pct = Math.max(0, Math.min(1, (clientY - rect.top) / rect.height));
+  return Math.round(pct * (LAYER_COUNT - 1));
+}
+
+function onDragStart(e) {
+  if (!entered) return;
+  isDragging = true;
+  sliderThumb.classList.add('dragging');
+  // Disable smooth transition while dragging for instant feedback
+  sliderThumb.style.transition = 'transform 0.1s, box-shadow 0.1s';
+  sliderFill.style.transition = 'none';
+  const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+  const layer = sliderYToLayer(clientY);
+  goToLayer(layer);
+}
+
+function onDragMove(e) {
+  if (!isDragging) return;
+  e.preventDefault();
+  const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+  const layer = sliderYToLayer(clientY);
+  if (layer !== targetLayer) goToLayer(layer);
+}
+
+function onDragEnd() {
+  if (!isDragging) return;
+  isDragging = false;
+  sliderThumb.classList.remove('dragging');
+  sliderThumb.style.transition = '';
+  sliderFill.style.transition = '';
+}
+
+// Mouse drag on thumb
+sliderThumb.addEventListener('mousedown', onDragStart);
+document.addEventListener('mousemove', onDragMove);
+document.addEventListener('mouseup', onDragEnd);
+
+// Touch drag on thumb
+sliderThumb.addEventListener('touchstart', onDragStart, { passive: true });
+document.addEventListener('touchmove', (e) => { if (isDragging) onDragMove(e); }, { passive: false });
+document.addEventListener('touchend', onDragEnd);
+
+// Click on track = jump to closest layer
+sliderTrack.addEventListener('click', (e) => {
+  if (!entered) return;
+  goToLayer(sliderYToLayer(e.clientY));
+});
 
 // ─── INPUT HANDLING ───
 let scrollAccum = 0;
@@ -640,18 +735,30 @@ canvas.addEventListener('wheel', (e) => {
   handleScroll(e.deltaY);
 }, { passive: false });
 
-// Touch support
+// Touch support — single-finger swipe only, ignore multi-touch (pinch)
 let touchStartY = 0;
+let touchFingers = 0;
+
 canvas.addEventListener('touchstart', (e) => {
-  touchStartY = e.touches[0].clientY;
+  touchFingers = e.touches.length;
+  if (touchFingers === 1) {
+    touchStartY = e.touches[0].clientY;
+  }
 }, { passive: true });
 
 canvas.addEventListener('touchmove', (e) => {
   if (!entered) return;
+  // Only navigate with single finger—ignore pinch/multi-touch
+  if (e.touches.length !== 1 || touchFingers !== 1) return;
+  e.preventDefault(); // prevent browser scroll/zoom
   const dy = touchStartY - e.touches[0].clientY;
   touchStartY = e.touches[0].clientY;
   handleScroll(dy * 1.5);
-}, { passive: true });
+}, { passive: false });
+
+canvas.addEventListener('touchend', () => {
+  touchFingers = 0;
+});
 
 // Keyboard
 document.addEventListener('keydown', (e) => {
@@ -667,10 +774,6 @@ document.addEventListener('keydown', (e) => {
     }
   }
 });
-
-// Nav buttons
-btnPrev.addEventListener('click', () => goToLayer(Math.max(0, currentLayer - 1)));
-btnNext.addEventListener('click', () => goToLayer(Math.min(LAYER_COUNT - 1, currentLayer + 1)));
 
 // Enter button
 enterBtn.addEventListener('click', () => {
@@ -775,10 +878,12 @@ function animate() {
     coreGlow.scale.set(s, s, s);
   }
 
-  // Nebula star twinkle — gentle per-star flicker via global opacity wave
+  // Nebula star twinkle — gentle global opacity pulse + glacial rotation
   if (nebulaStars) {
-    nebulaStars.material.opacity = 0.55 + Math.sin(elapsed * 0.7) * 0.15;
-    nebulaStars.rotation.z += dt * 0.002; // glacial rotation
+    nebulaStars.material.opacity = 0.6 + Math.sin(elapsed * 0.6) * 0.12;
+    nebulaStars.rotation.z += dt * 0.002;
+    // Subtle secondary rotation to add parallax depth
+    nebulaStars.rotation.y += dt * 0.0008;
   }
 
   // Nebula cloud drift — slow parallax wander
