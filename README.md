@@ -4,7 +4,7 @@
 
 [![Live Demo](og-image.png)](https://stewalexander-com.github.io/Fractal-Mandala-3D/)
 
-### [Enter the Mandala](https://stewalexander-com.github.io/Fractal-Mandala-3D/)
+## [Enter the Mandala → stewalexander-com.github.io/Fractal-Mandala-3D](https://stewalexander-com.github.io/Fractal-Mandala-3D/)
 
 A 3D interactive sacred geometry mandala of presence and liberation. Seven concentric layers of metacognitive awareness rendered as quantum orbital shells — fly through them in your browser. Built with Three.js, set in a nebula star field.
 
