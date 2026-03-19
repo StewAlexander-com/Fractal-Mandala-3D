@@ -6,7 +6,7 @@
 
 ## [Enter the Mandala → stewalexander-com.github.io/Fractal-Mandala-3D](https://stewalexander-com.github.io/Fractal-Mandala-3D/)
 
-A 3D interactive sacred geometry mandala of presence and liberation. Seven concentric layers of metacognitive awareness rendered as quantum orbital shells — fly through them in your browser. Built with Three.js, set in a nebula star field.
+A 3D interactive sacred geometry mandala of presence and liberation. Seven concentric layers of metacognitive awareness rendered as quantum orbital shells — fly through them in your browser. Built with Three.js, set in a living nebula star field with ambient meditation audio.
 
 ---
 
@@ -22,13 +22,29 @@ A 3D interactive sacred geometry mandala of presence and liberation. Seven conce
 | 2 — The Second Arrow | Star of David (6-fold) | First arrow / second arrow |
 | 1 — Core Awareness | Seed of Life | dx/dt — this moment |
 
-## How to Navigate
+## Controls
 
-- **Scroll** or **swipe** to move between layers
-- **Arrow keys** (↑↓) to fly inward / outward
-- **Number keys** (1–7) to jump directly to a layer
-- **Nav dots** on the right side for direct access
-- Each layer reveals its teaching as you arrive
+| Input | Desktop | Mobile |
+|-------|---------|--------|
+| **Navigate layers** | Scroll wheel / ↑↓ arrows / slider | Vertical swipe / slider |
+| **Orbit camera** | Click-drag / ←→ arrows | Horizontal swipe |
+| **Zoom** | Ctrl+scroll / +/- keys | Two-finger pinch |
+| **Jump to layer** | Number keys 1–7 / click slider stops | Tap slider stops |
+| **Toggle audio** | Click speaker icon (bottom-left) | Tap speaker icon |
+
+## Background Effects
+
+The nebula environment is designed to feel alive without pulling attention from the foreground geometry:
+
+- **1400 stars** with per-star brightness variation — 5% are "blue giant" accent stars
+- **Individual star twinkle** — each star shimmers at its own frequency (0.3–1.8 Hz) with composite harmonics
+- **Shooting stars** — occasional meteor streaks across the field (pool of 4, ~1 every 5 seconds)
+- **28 volumetric nebula clouds** — soft sprite billboards with additive blending and opacity breathing
+- **Cosmic dust ring** — 600-particle toroidal band at the scene midpoint, glacial rotation
+- **Nebula accent lights** — rose, lavender, and blue point lights for subtle coloured fill
+- **Ambient meditation audio** — "Angelic Meditation" (Pixabay License), looping at 33% volume with fade-in
+
+All background enhancements are wrapped in try/catch fault tolerance — if any subsystem fails, the rest continues.
 
 ## The Core Teaching
 
@@ -38,12 +54,27 @@ A 3D interactive sacred geometry mandala of presence and liberation. Seven conce
 
 The practice is fractal: Meditate → Let revelation emerge → Ask questions → Release second arrows → Return. Each cycle breathes: *Inspiration → Relaxation → Awareness*.
 
-## Tech
+## Technical Architecture
 
-- Three.js (WebGL) for 3D rendering — nebula star field, volumetric cloud sprites, sacred geometry wireframes
-- No build step — pure ES modules via CDN import maps
-- Nebula palette: indigo-black, dusty rose, lavender, blue-star, amber dust
-- Hosted on GitHub Pages
+- **Three.js** (WebGL) via CDN import maps — no build step, pure ES modules
+- **Gesture system** — unified input handling: mouse drag, scroll, touch swipe (intent-locked axis), pinch zoom, keyboard
+- **Camera** — auto-orbit baseline + user orbit angle + zoom Z-offset, all lerped with exponential ease
+- **iOS hardened** — `visualViewport` API for sizing, `100dvh` fallback, `viewport-fit=cover`, safe-area insets
+- **Audio** — HTML5 Audio with autoplay-gate (user gesture required), graceful fallback, fade-in, loop, mute toggle
+- **Performance** — star twinkle updates in rolling batches (~350/frame), additive blending, depth-write disabled on particles
+- **Fault tolerance** — all background subsystems in try/catch, shooting stars use object pooling
+
+## Palette
+
+| Role | Hex | Name |
+|------|-----|------|
+| Background | `#06050a` | Indigo-black |
+| Core glow | `#f0d9b5` | Warm white |
+| Gold accent | `#d4a574` | Amber gold |
+| Rose light | `#c7889a` | Dusty rose |
+| Lavender | `#9b8ab8` | Soft violet |
+| Blue star | `#7eb4d4` | Ice blue |
+| Muted text | `#9a8e7a` | Warm grey |
 
 ## Run Locally
 
@@ -52,6 +83,10 @@ The practice is fractal: Meditate → Let revelation emerge → Ask questions �
 python -m http.server 8000
 # Then open http://localhost:8000
 ```
+
+## Audio Credits
+
+Ambient meditation track: "Angelic Meditation" from [Pixabay](https://pixabay.com/music/meditationspiritual-angelic-meditation-172334/) — Pixabay Content License (free for all use, no attribution required).
 
 ---
 

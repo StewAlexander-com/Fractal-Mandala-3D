@@ -183,6 +183,11 @@ const audioToggle = document.getElementById('audioToggle');
 // ─── NEBULA BACKGROUND DATA ───
 let nebulaStars;        // distant star-points
 let nebulaClouds = [];  // translucent cloud sprites
+let shootingStars = []; // occasional meteor streaks
+let cosmicDust;         // faint toroidal dust ring
+let starTwinklePhases;  // per-star twinkle phase offsets
+let starTwinkleSpeeds;  // per-star twinkle rates
+let starBaseOpacities;  // per-star base brightness
 
 // ─── INIT THREE.JS ───
 function init() {
@@ -363,6 +368,16 @@ function buildNebulaBackground() {
   starGeo.setAttribute('color',    new THREE.Float32BufferAttribute(starColors, 3));
   starGeo.setAttribute('size',     new THREE.Float32BufferAttribute(starSizes, 1));
 
+  // Per-star twinkle data — each star shimmers at its own rate
+  starTwinklePhases  = new Float32Array(starCount);
+  starTwinkleSpeeds  = new Float32Array(starCount);
+  starBaseOpacities  = new Float32Array(starCount); // stores base sizes
+  for (let i = 0; i < starCount; i++) {
+    starTwinklePhases[i] = Math.random() * TAU;
+    starTwinkleSpeeds[i] = 0.3 + Math.random() * 1.5;   // 0.3 – 1.8 Hz
+    starBaseOpacities[i] = starSizes[i];                 // snapshot original size
+  }
+
   const starMat = new THREE.PointsMaterial({
     size: 0.35,
     vertexColors: true,
@@ -429,6 +444,77 @@ function buildNebulaBackground() {
     scene.add(sprite);
     nebulaClouds.push(sprite);
   }
+
+  // 3. Shooting stars — small pool of reusable meteor streaks
+  try {
+    const SHOOTING_STAR_POOL = 4;
+    for (let i = 0; i < SHOOTING_STAR_POOL; i++) {
+      const trailGeo = new THREE.BufferGeometry();
+      const trailPositions = new Float32Array(6); // 2 vertices × 3
+      trailGeo.setAttribute('position', new THREE.Float32BufferAttribute(trailPositions, 3));
+      const trailMat = new THREE.LineBasicMaterial({
+        color: 0xf0d9b5,
+        transparent: true,
+        opacity: 0,
+        blending: THREE.AdditiveBlending,
+        depthWrite: false,
+      });
+      const trail = new THREE.Line(trailGeo, trailMat);
+      trail.frustumCulled = false;
+      trail.userData = {
+        active: false,
+        life: 0,
+        maxLife: 0,
+        startPos: new THREE.Vector3(),
+        velocity: new THREE.Vector3(),
+        tailLength: 0,
+      };
+      scene.add(trail);
+      shootingStars.push(trail);
+    }
+  } catch (e) { console.warn('Shooting stars init skipped:', e.message); }
+
+  // 4. Cosmic dust ring — faint toroidal particle band at the midpoint
+  try {
+    const dustCount = 600;
+    const dustPositions = new Float32Array(dustCount * 3);
+    const dustColors = new Float32Array(dustCount * 3);
+    const midZ = (LAYER_COUNT - 1) * LAYER_SPACING * 0.5;
+    const dustPalette = [
+      new THREE.Color(0x3e2a55),  // deep indigo
+      new THREE.Color(0x2a1f3d),  // dark violet
+      new THREE.Color(0x4a3552),  // muted purple
+      new THREE.Color(0x5c4a3a),  // warm brown
+    ];
+    for (let i = 0; i < dustCount; i++) {
+      const theta = Math.random() * TAU;
+      const phi = (Math.random() - 0.5) * 0.8; // flatten to disc
+      const r = 20 + Math.random() * 70;
+      dustPositions[i * 3]     = Math.cos(theta) * r;
+      dustPositions[i * 3 + 1] = Math.sin(phi) * r * 0.15;
+      dustPositions[i * 3 + 2] = midZ + Math.sin(theta) * r * 0.3;
+
+      const c = dustPalette[Math.floor(Math.random() * dustPalette.length)];
+      const b = 0.3 + Math.random() * 0.5;
+      dustColors[i * 3]     = c.r * b;
+      dustColors[i * 3 + 1] = c.g * b;
+      dustColors[i * 3 + 2] = c.b * b;
+    }
+    const dustGeo = new THREE.BufferGeometry();
+    dustGeo.setAttribute('position', new THREE.Float32BufferAttribute(dustPositions, 3));
+    dustGeo.setAttribute('color', new THREE.Float32BufferAttribute(dustColors, 3));
+    const dustMat = new THREE.PointsMaterial({
+      size: 0.18,
+      vertexColors: true,
+      transparent: true,
+      opacity: 0.12,
+      blending: THREE.AdditiveBlending,
+      depthWrite: false,
+      sizeAttenuation: true,
+    });
+    cosmicDust = new THREE.Points(dustGeo, dustMat);
+    scene.add(cosmicDust);
+  } catch (e) { console.warn('Cosmic dust init skipped:', e.message); }
 }
 
 // ─── SACRED GEOMETRY GENERATORS ───
@@ -1061,20 +1147,113 @@ function animate() {
     coreGlow.scale.set(s, s, s);
   }
 
-  // Nebula star twinkle — gentle global opacity pulse + glacial rotation
-  if (nebulaStars) {
-    nebulaStars.material.opacity = 0.6 + Math.sin(elapsed * 0.6) * 0.12;
-    nebulaStars.rotation.z += dt * 0.002;
-    // Subtle secondary rotation to add parallax depth
-    nebulaStars.rotation.y += dt * 0.0008;
+  // ── Per-star twinkle — individual shimmer at different rates ──
+  if (nebulaStars && starTwinklePhases) {
+    try {
+      const sizes  = nebulaStars.geometry.attributes.size;
+      const count  = sizes.count;
+      // Update a rolling batch per frame (~350) to keep CPU light
+      const batchSize = Math.min(350, count);
+      const offset = Math.floor(elapsed * 20) * batchSize % count;
+      for (let i = 0; i < batchSize; i++) {
+        const idx = (offset + i) % count;
+        const phase = starTwinklePhases[idx] + elapsed * starTwinkleSpeeds[idx];
+        // Composite flicker: primary sine + secondary harmonic
+        const flicker = 0.7 + Math.sin(phase) * 0.25 + Math.sin(phase * 2.7) * 0.05;
+        sizes.setX(idx, starBaseOpacities[idx] * flicker);
+      }
+      sizes.needsUpdate = true;
+
+      // Global rotation + opacity drift (keep existing behaviour)
+      nebulaStars.material.opacity = 0.6 + Math.sin(elapsed * 0.6) * 0.12;
+      nebulaStars.rotation.z += dt * 0.002;
+      nebulaStars.rotation.y += dt * 0.0008;
+    } catch (e) { /* per-star twinkle graceful fallback */ }
   }
 
-  // Nebula cloud drift — slow parallax wander
-  nebulaClouds.forEach(sprite => {
+  // ── Shooting stars — occasional meteor streaks ──
+  try {
+    // Spawn check: ~one every 4–8 seconds
+    if (shootingStars.length > 0 && Math.random() < dt * 0.18) {
+      const inactive = shootingStars.find(s => !s.userData.active);
+      if (inactive) {
+        const d = inactive.userData;
+        d.active = true;
+        d.life = 0;
+        d.maxLife = 1.0 + Math.random() * 1.5;  // 1–2.5 seconds
+        d.tailLength = 3 + Math.random() * 6;
+        // Spawn on a random arc around the camera's current view
+        const spawnAngle = Math.random() * TAU;
+        const spawnR = 40 + Math.random() * 60;
+        const spawnZ = camera.position.z + (Math.random() - 0.5) * 60;
+        d.startPos.set(
+          Math.cos(spawnAngle) * spawnR,
+          Math.sin(spawnAngle) * spawnR,
+          spawnZ
+        );
+        // Velocity: inward and slightly downward
+        d.velocity.set(
+          -Math.cos(spawnAngle) * (15 + Math.random() * 20),
+          -Math.sin(spawnAngle) * (15 + Math.random() * 20) - 3,
+          (Math.random() - 0.5) * 10
+        );
+      }
+    }
+
+    shootingStars.forEach(trail => {
+      const d = trail.userData;
+      if (!d.active) return;
+      d.life += dt;
+      const t = d.life / d.maxLife;   // 0→1
+      if (t >= 1) {
+        d.active = false;
+        trail.material.opacity = 0;
+        return;
+      }
+      // Position: head moves along velocity
+      const headX = d.startPos.x + d.velocity.x * d.life;
+      const headY = d.startPos.y + d.velocity.y * d.life;
+      const headZ = d.startPos.z + d.velocity.z * d.life;
+      // Tail trails behind
+      const tailFrac = Math.min(1, d.life * 3); // tail grows in
+      const tailX = headX - d.velocity.x * 0.08 * d.tailLength * tailFrac;
+      const tailY = headY - d.velocity.y * 0.08 * d.tailLength * tailFrac;
+      const tailZ = headZ - d.velocity.z * 0.08 * d.tailLength * tailFrac;
+
+      const pos = trail.geometry.attributes.position;
+      pos.setXYZ(0, tailX, tailY, tailZ);
+      pos.setXYZ(1, headX, headY, headZ);
+      pos.needsUpdate = true;
+
+      // Fade: bright in the middle, fade in and out
+      const fade = t < 0.15 ? t / 0.15 : t > 0.6 ? (1 - t) / 0.4 : 1;
+      trail.material.opacity = fade * 0.45;
+    });
+  } catch (e) { /* shooting stars graceful fallback */ }
+
+  // ── Cosmic dust ring — glacial rotation ──
+  if (cosmicDust) {
+    try {
+      cosmicDust.rotation.y += dt * 0.003;
+      cosmicDust.rotation.x += dt * 0.0005;
+      // Subtle opacity pulse
+      cosmicDust.material.opacity = 0.10 + Math.sin(elapsed * 0.25) * 0.03;
+    } catch (e) { /* cosmic dust fallback */ }
+  }
+
+  // ── Nebula cloud drift + colour breathing ──
+  nebulaClouds.forEach((sprite, ci) => {
     const spd = sprite.userData.driftSpeed;
     sprite.userData.driftAngle += dt * spd;
     sprite.position.x += Math.sin(sprite.userData.driftAngle) * dt * 0.15;
     sprite.position.y += Math.cos(sprite.userData.driftAngle * 1.3) * dt * 0.1;
+    // Colour breathing: very slow hue shift per cloud
+    try {
+      const hueShift = Math.sin(elapsed * 0.08 + ci * 1.3) * 0.04;
+      sprite.material.opacity = sprite.material.opacity * (1.0 + Math.sin(elapsed * 0.15 + ci) * 0.08);
+      // Keep opacity bounded
+      sprite.material.opacity = Math.max(0.005, Math.min(0.045, sprite.material.opacity));
+    } catch (e) { /* cloud breathing fallback */ }
   });
 
   renderer.render(scene, camera);
