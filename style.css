@@ -431,8 +431,8 @@ canvas {
   position: absolute;
   bottom: clamp(12px, 2vh, 24px);
   left: clamp(12px, 2vw, 24px);
-  width: 36px;
-  height: 36px;
+  width: 44px;
+  height: 44px;
   border: 1px solid var(--text-faint);
   border-radius: 50%;
   background: rgba(6, 5, 10, 0.5);

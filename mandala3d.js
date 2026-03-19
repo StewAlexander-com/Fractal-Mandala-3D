@@ -976,6 +976,7 @@ document.addEventListener('keydown', (e) => {
 const AUDIO_VOLUME = 0.33;          // max 33% as requested
 let ambientAudio = null;
 let audioMuted = false;
+let fadeInterval = null;            // track fade-in so mute can kill it
 
 function initAudio() {
   if (ambientAudio) return;         // already initialised
@@ -985,11 +986,14 @@ function initAudio() {
   ambientAudio.play().then(() => {
     // Smooth fade-in over ~3 seconds
     let fadeStep = 0;
-    const fadeIn = setInterval(() => {
+    fadeInterval = setInterval(() => {
+      // If user muted during fade-in, stop immediately
+      if (audioMuted) { clearInterval(fadeInterval); fadeInterval = null; return; }
       fadeStep += 0.01;
       if (fadeStep >= 1) {
         fadeStep = 1;
-        clearInterval(fadeIn);
+        clearInterval(fadeInterval);
+        fadeInterval = null;
       }
       ambientAudio.volume = AUDIO_VOLUME * fadeStep;
     }, 30);   // 30ms × 100 steps ≈ 3 s
@@ -1008,9 +1012,13 @@ audioToggle.addEventListener('click', () => {
   audioMuted = !audioMuted;
   audioToggle.classList.toggle('muted', audioMuted);
   if (audioMuted) {
+    // Kill any in-progress fade-in so it can't override us
+    if (fadeInterval) { clearInterval(fadeInterval); fadeInterval = null; }
     ambientAudio.volume = 0;
+    ambientAudio.pause();           // actually stop playback on mobile
   } else {
     ambientAudio.volume = AUDIO_VOLUME;
+    ambientAudio.play().catch(() => {}); // resume; catch autoplay rejection
   }
 });
 
