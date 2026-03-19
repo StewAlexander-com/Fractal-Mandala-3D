@@ -178,6 +178,7 @@ const sliderThumb = document.getElementById('sliderThumb');
 const sliderStops = document.getElementById('sliderStops');
 const sliderTooltip = document.getElementById('sliderTooltip');
 let visitedLayers = new Set();
+const audioToggle = document.getElementById('audioToggle');
 
 // ─── NEBULA BACKGROUND DATA ───
 let nebulaStars;        // distant star-points
@@ -885,11 +886,54 @@ document.addEventListener('keydown', (e) => {
   }
 });
 
+// ─── AMBIENT AUDIO ───
+const AUDIO_VOLUME = 0.33;          // max 33% as requested
+let ambientAudio = null;
+let audioMuted = false;
+
+function initAudio() {
+  if (ambientAudio) return;         // already initialised
+  ambientAudio = new Audio('ambient-meditation.mp3');
+  ambientAudio.loop = true;
+  ambientAudio.volume = 0;          // start silent, fade in
+  ambientAudio.play().then(() => {
+    // Smooth fade-in over ~3 seconds
+    let fadeStep = 0;
+    const fadeIn = setInterval(() => {
+      fadeStep += 0.01;
+      if (fadeStep >= 1) {
+        fadeStep = 1;
+        clearInterval(fadeIn);
+      }
+      ambientAudio.volume = AUDIO_VOLUME * fadeStep;
+    }, 30);   // 30ms × 100 steps ≈ 3 s
+  }).catch(() => {
+    // Autoplay blocked — user will need to tap audio button
+    console.log('Audio autoplay blocked — tap sound icon to enable');
+  });
+  audioToggle.classList.add('visible');
+}
+
+audioToggle.addEventListener('click', () => {
+  if (!ambientAudio) {
+    initAudio();      // first tap after autoplay was blocked
+    return;
+  }
+  audioMuted = !audioMuted;
+  audioToggle.classList.toggle('muted', audioMuted);
+  if (audioMuted) {
+    ambientAudio.volume = 0;
+  } else {
+    ambientAudio.volume = AUDIO_VOLUME;
+  }
+});
+
 // Enter button
 enterBtn.addEventListener('click', () => {
   entered = true;
   welcome.classList.add('hidden');
   goToLayer(0);
+  initAudio();  // user gesture — safe to start audio
 });
 
 // ─── ROBUST RESIZE — works with iOS safe-area, dynamic toolbar, notch ───
