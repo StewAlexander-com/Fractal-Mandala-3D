@@ -250,7 +250,7 @@ function init() {
   renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
   handleResize();   // initial size — uses actual element dimensions
   renderer.toneMapping = THREE.ACESFilmicToneMapping;
-  renderer.toneMappingExposure = 1.2;
+  renderer.toneMappingExposure = 1.6;
 
   // Shared radial glow texture for all point materials
   const glowCanvas = document.createElement('canvas');
@@ -377,8 +377,8 @@ function buildLayers() {
 
 // ─── NEBULA BACKGROUND — Star Field + Volumetric Clouds ───
 function buildNebulaBackground() {
-  // 1. Distant star-point field — with per-star brightness variation
-  const starCount = 1400;
+  // 1. Distant star-point field — layered depth: dim dust → normal → bright → giant
+  const starCount = 1800;
   const starPositions = new Float32Array(starCount * 3);
   const starColors    = new Float32Array(starCount * 3);
   const starSizes     = new Float32Array(starCount);
@@ -389,36 +389,45 @@ function buildNebulaBackground() {
     new THREE.Color(0xc7889a), // dusty rose
     new THREE.Color(0x9b8ab8), // lavender
     new THREE.Color(0xaad4ef), // ice blue
+    new THREE.Color(0xfff8e8), // hot white
   ];
-
-  // ~5% of stars are bright accents ("blue giant" / "white dwarf" effect)
-  const ACCENT_RATIO = 0.05;
 
   for (let i = 0; i < starCount; i++) {
     const angle  = Math.random() * TAU;
-    const radius = 50 + Math.random() * 120;
-    const z      = (Math.random() - 0.3) * (LAYER_COUNT * LAYER_SPACING + 80);
+    const radius = 45 + Math.random() * 130;
+    const z      = (Math.random() - 0.3) * (LAYER_COUNT * LAYER_SPACING + 90);
 
     starPositions[i * 3]     = Math.cos(angle) * radius;
     starPositions[i * 3 + 1] = Math.sin(angle) * radius;
     starPositions[i * 3 + 2] = z;
 
-    const isAccent = Math.random() < ACCENT_RATIO;
     const col = starPalette[Math.floor(Math.random() * starPalette.length)];
+    const roll = Math.random();
 
-    // Per-star brightness multiplier: most are dim, a few pop
-    const brightness = isAccent
-      ? 1.4 + Math.random() * 0.6    // accent stars: 1.4–2.0x
-      : 0.3 + Math.random() * 0.7;   // normal stars: 0.3–1.0x
+    // Tiered star classes for depth
+    let brightness, size;
+    if (roll < 0.02) {
+      // Giant stars (2%) — rare beacons
+      brightness = 2.0 + Math.random() * 0.8;
+      size = 1.4 + Math.random() * 1.2;
+    } else if (roll < 0.14) {
+      // Bright accents (12%) — prominent
+      brightness = 1.3 + Math.random() * 0.7;
+      size = 0.5 + Math.random() * 0.8;
+    } else if (roll < 0.45) {
+      // Medium stars (31%) — visible mid-field
+      brightness = 0.6 + Math.random() * 0.5;
+      size = 0.2 + Math.random() * 0.4;
+    } else {
+      // Dim dust (55%) — background texture
+      brightness = 0.25 + Math.random() * 0.4;
+      size = 0.08 + Math.random() * 0.2;
+    }
 
     starColors[i * 3]     = Math.min(1, col.r * brightness);
     starColors[i * 3 + 1] = Math.min(1, col.g * brightness);
     starColors[i * 3 + 2] = Math.min(1, col.b * brightness);
-
-    // Accent stars are slightly larger
-    starSizes[i] = isAccent
-      ? 0.6 + Math.random() * 0.7
-      : 0.15 + Math.random() * 0.45;
+    starSizes[i] = size;
   }
 
   const starGeo = new THREE.BufferGeometry();
@@ -437,11 +446,11 @@ function buildNebulaBackground() {
   }
 
   const starMat = new THREE.PointsMaterial({
-    size: 0.6,
+    size: 0.8,
     map: starGlowTexture,
     vertexColors: true,
     transparent: true,
-    opacity: 0.85,
+    opacity: 0.92,
     blending: THREE.AdditiveBlending,
     depthWrite: false,
     sizeAttenuation: true,
@@ -452,11 +461,12 @@ function buildNebulaBackground() {
 
   // 2. Volumetric nebula clouds — procedural sprite billboards
   const cloudColors = [
-    { color: 0xc7889a, opacity: 0.025 },  // dusty rose
-    { color: 0x9b8ab8, opacity: 0.020 },  // lavender
-    { color: 0x3e2a55, opacity: 0.030 },  // deep indigo
-    { color: 0x7eb4d4, opacity: 0.015 },  // blue mist
-    { color: 0x8b5e3c, opacity: 0.018 },  // amber dust
+    { color: 0xc7889a, opacity: 0.04 },   // dusty rose
+    { color: 0x9b8ab8, opacity: 0.03 },   // lavender
+    { color: 0x3e2a55, opacity: 0.045 },  // deep indigo
+    { color: 0x7eb4d4, opacity: 0.025 },  // blue mist
+    { color: 0x8b5e3c, opacity: 0.03 },   // amber dust
+    { color: 0xd4a574, opacity: 0.02 },   // warm gold haze
   ];
 
   // Generate a soft radial-gradient canvas for cloud sprites
