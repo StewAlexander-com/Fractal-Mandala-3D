@@ -17,15 +17,16 @@
 
 :root {
   --bg:         #06050a;
-  --text-warm:  #d8cbb2;
-  --text-muted: #9a8e7a;
-  --text-faint: #4e4640;
-  --gold:       #d4a574;
-  --gold-dim:   #8b6f47;
-  --amber:      #c4956a;
-  --rose:       #c7889a;
-  --lavender:   #9b8ab8;
-  --blue-star:  #7eb4d4;
+  --text-warm:  #e8e2d0;
+  --text-muted: #b8ad96;
+  --text-faint: #5a5248;
+  --gold:       #f0c850;
+  --gold-dim:   #a8883a;
+  --amber:      #e8a830;
+  --rose:       #d4889a;
+  --lavender:   #a088c0;
+  --blue-star:  #a0d4f0;
+  --teal-glow:  #7ec8a0;
   --panel-bg:   rgba(8, 6, 14, 0.88);
   --panel-border: rgba(155, 138, 184, 0.12);
   --font-display: 'Cormorant Garamond', Georgia, serif;
@@ -246,20 +247,20 @@ canvas {
   font-family: var(--font-display);
   font-style: italic;
   font-weight: 300;
-  font-size: 1em;
+  font-size: 1.02em;
   line-height: 1.65;
-  color: rgba(200, 195, 220, 0.88);
-  margin: 0.2rem 0 0.8rem 0;
+  color: #e0dcd0;
+  margin: 0.25rem 0 0.85rem 0;
   padding-left: 0.3em;
   background: linear-gradient(
     105deg,
-    rgba(200, 195, 220, 0.88) 0%,
-    rgba(225, 185, 135, 0.78) 18%,
-    rgba(200, 195, 220, 0.88) 36%,
-    rgba(175, 158, 204, 0.78) 54%,
-    rgba(200, 195, 220, 0.88) 72%,
-    rgba(215, 155, 175, 0.72) 90%,
-    rgba(200, 195, 220, 0.88) 100%
+    #ddd8c8 0%,
+    #f0c850 16%,
+    #e0daca 32%,
+    #7ec8a0 48%,
+    #e0daca 64%,
+    #d4889a 80%,
+    #ddd8c8 100%
   );
   background-size: 300% 100%;
   -webkit-background-clip: text;
@@ -528,14 +529,14 @@ canvas {
     padding: clamp(14px, 3vmin, 22px);
   }
   .teaching-inner {
-    font-size: clamp(0.88rem, 3.6vw, 1.05rem);
+    font-size: clamp(0.92rem, 3.8vw, 1.1rem);
   }
   .teaching-inner .key-phrase {
     font-size: 1.08em;
   }
   .teaching-inner .explain {
-    font-size: 1.05em;
-    line-height: 1.7;
+    font-size: 1.1em;
+    line-height: 1.75;
     font-weight: 400;
   }
   .teaching-inner ul li {
