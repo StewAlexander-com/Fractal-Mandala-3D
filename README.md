@@ -1,8 +1,14 @@
 # The Fractal Mandala — Quantum Orbital Edition
 
-A 3D interactive sacred geometry mandala of presence and liberation. Seven concentric layers of metacognitive awareness, rendered as quantum orbital shells you fly through.
+> *Seven layers of sacred geometry. One interactive journey inward.*
 
-## [View the Live Mandala](https://stewalexander-com.github.io/Fractal-Mandala-3D/)
+[![Live Demo](og-image.png)](https://stewalexander-com.github.io/Fractal-Mandala-3D/)
+
+### [Enter the Mandala](https://stewalexander-com.github.io/Fractal-Mandala-3D/)
+
+A 3D interactive sacred geometry mandala of presence and liberation. Seven concentric layers of metacognitive awareness rendered as quantum orbital shells — fly through them in your browser. Built with Three.js, set in a nebula star field.
+
+---
 
 ## The Seven Layers (outside → core)
 
@@ -20,7 +26,7 @@ A 3D interactive sacred geometry mandala of presence and liberation. Seven conce
 
 - **Scroll** or **swipe** to move between layers
 - **Arrow keys** (↑↓) to fly inward / outward
-- **Number keys** (1-7) to jump directly to a layer
+- **Number keys** (1–7) to jump directly to a layer
 - **Nav dots** on the right side for direct access
 - Each layer reveals its teaching as you arrive
 
@@ -34,8 +40,9 @@ The practice is fractal: Meditate → Let revelation emerge → Ask questions �
 
 ## Tech
 
-- Three.js (WebGL) for 3D rendering
+- Three.js (WebGL) for 3D rendering — nebula star field, volumetric cloud sprites, sacred geometry wireframes
 - No build step — pure ES modules via CDN import maps
+- Nebula palette: indigo-black, dusty rose, lavender, blue-star, amber dust
 - Hosted on GitHub Pages
 
 ## Run Locally
