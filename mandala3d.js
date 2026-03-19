@@ -199,7 +199,7 @@ function init() {
     alpha: false
   });
   renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-  renderer.setSize(window.innerWidth, window.innerHeight);
+  handleResize();   // initial size — uses actual element dimensions
   renderer.toneMapping = THREE.ACESFilmicToneMapping;
   renderer.toneMappingExposure = 1.2;
 
@@ -892,11 +892,28 @@ enterBtn.addEventListener('click', () => {
   goToLayer(0);
 });
 
-// Resize
-window.addEventListener('resize', () => {
-  camera.aspect = window.innerWidth / window.innerHeight;
+// ─── ROBUST RESIZE — works with iOS safe-area, dynamic toolbar, notch ───
+function handleResize() {
+  // Use visualViewport when available (iOS Safari, Android Chrome)
+  const vv = window.visualViewport;
+  const w = vv ? vv.width  : window.innerWidth;
+  const h = vv ? vv.height : window.innerHeight;
+
+  // Set the WebGL drawing-buffer size but do NOT touch CSS inline styles
+  // (third arg `false`) — our CSS already handles layout via 100vw/100dvh
+  renderer.setSize(w, h, false);
+  camera.aspect = w / h;
   camera.updateProjectionMatrix();
-  renderer.setSize(window.innerWidth, window.innerHeight);
+}
+
+window.addEventListener('resize', handleResize);
+// iOS Safari fires this on address-bar show/hide
+if (window.visualViewport) {
+  window.visualViewport.addEventListener('resize', handleResize);
+}
+// Also re-check on orientation change (Android + iOS fallback)
+window.addEventListener('orientationchange', () => {
+  setTimeout(handleResize, 150);  // slight delay for layout to settle
 });
 
 // ─── ANIMATION LOOP ───

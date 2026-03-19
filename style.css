@@ -5,6 +5,16 @@
 
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
+/* iOS safe-area padding for viewport-fit=cover */
+@supports (padding: env(safe-area-inset-top)) {
+  :root {
+    --sat: env(safe-area-inset-top);
+    --sab: env(safe-area-inset-bottom);
+    --sal: env(safe-area-inset-left);
+    --sar: env(safe-area-inset-right);
+  }
+}
+
 :root {
   --bg:         #06050a;
   --text-warm:  #d8cbb2;
@@ -32,15 +42,19 @@ html, body {
   font-family: var(--font-body);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  /* iOS: prevent rubber-band scroll and ensure full coverage */
+  position: fixed;
+  inset: 0;
 }
 
 canvas {
   display: block;
-  width: 100%;
-  height: 100%;
   position: fixed;
-  top: 0;
-  left: 0;
+  inset: 0;
+  width: 100vw !important;
+  height: 100vh !important;
+  /* iOS dynamic viewport fallback */
+  height: 100dvh !important;
   touch-action: none; /* prevent browser zoom/pan on canvas */
 }
 
