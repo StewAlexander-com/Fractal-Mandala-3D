@@ -241,7 +241,9 @@ canvas {
   color: var(--text-muted);
 }
 
-/* Elegant one-sentence explanations — italic with subtle shimmer */
+/* Elegant one-sentence explanations — italic with subtle shimmer
+   Like a fall leaf catching sunlight in the wind:
+   one warm gold glint drifting slowly through quiet text */
 .teaching-inner .explain {
   display: block;
   font-family: var(--font-display);
@@ -254,19 +256,17 @@ canvas {
   padding-left: 0.3em;
   background: linear-gradient(
     105deg,
-    #ddd8c8 0%,
-    #f0c850 16%,
-    #e0daca 32%,
-    #7ec8a0 48%,
-    #e0daca 64%,
-    #d4889a 80%,
-    #ddd8c8 100%
+    #e0dcd0 0%,
+    #e0dcd0 38%,
+    #f0c850 50%,
+    #e0dcd0 62%,
+    #e0dcd0 100%
   );
-  background-size: 300% 100%;
+  background-size: 400% 100%;
   -webkit-background-clip: text;
   background-clip: text;
   -webkit-text-fill-color: transparent;
-  animation: explainShimmer 8s ease-in-out infinite;
+  animation: explainShimmer 14s ease-in-out infinite;
 }
 
 @keyframes explainShimmer {
