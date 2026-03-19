@@ -206,7 +206,10 @@ const sliderTooltip = document.getElementById('sliderTooltip');
 let visitedLayers = new Set();
 const audioToggle = document.getElementById('audioToggle');
 
-// ─── SCROLL FADE INDICATORS ───
+// ─── SCROLL FADE INDICATORS + HINT ARROWS ───
+const scrollHintUp = document.getElementById('scrollHintUp');
+const scrollHintDown = document.getElementById('scrollHintDown');
+
 function updateScrollFades() {
   const el = teachingPanel;
   const threshold = 8;
@@ -214,6 +217,8 @@ function updateScrollFades() {
   const canDown = el.scrollHeight - el.scrollTop - el.clientHeight > threshold;
   el.classList.toggle('fade-top', canUp);
   el.classList.toggle('fade-bottom', canDown);
+  scrollHintUp.classList.toggle('visible', canUp);
+  scrollHintDown.classList.toggle('visible', canDown);
 }
 teachingPanel.addEventListener('scroll', updateScrollFades, { passive: true });
 
