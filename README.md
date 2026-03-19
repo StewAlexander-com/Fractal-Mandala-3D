@@ -8,6 +8,8 @@
 
 A 3D interactive sacred geometry mandala of presence and liberation. Seven concentric layers of metacognitive awareness rendered as quantum orbital shells — fly through them in your browser. Built with Three.js, set in a living nebula star field with ambient meditation audio.
 
+The teachings are a distillation of converging ideas from Buddhism, Hinduism, Stoicism, Sufism, Taoism, and Christian mysticism, interwoven with modern physics, neuroscience, cognitive-behavioral research, process philosophy, and the mathematics of fractals and calculus — drawn from cultures across Asia, Africa, Europe, and the Americas. Where traditions separated by thousands of miles and thousands of years arrive at the same insight, that convergence is the signal.
+
 ---
 
 ## The Seven Layers (outside → core)
@@ -60,7 +62,7 @@ The practice is fractal: Meditate → Let revelation emerge → Ask questions �
 - **Gesture system** — unified input handling: mouse drag, scroll, touch swipe (intent-locked axis), pinch zoom, keyboard
 - **Camera** — auto-orbit baseline + user orbit angle + zoom Z-offset, all lerped with exponential ease
 - **iOS hardened** — `visualViewport` API for sizing, `100dvh` fallback, `viewport-fit=cover`, safe-area insets
-- **Audio** — HTML5 Audio with autoplay-gate (user gesture required), graceful fallback, fade-in, loop, mute toggle
+- **Audio** — Web Audio API pipeline (AudioContext → GainNode → destination) for reliable mute/unmute in all environments including iOS standalone; HTML5 Audio fallback; autoplay-gate; fade-in; loop
 - **Performance** — star twinkle updates in rolling batches (~350/frame), additive blending, depth-write disabled on particles
 - **Fault tolerance** — all background subsystems in try/catch, shooting stars use object pooling
 
