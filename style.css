@@ -17,8 +17,8 @@
 
 :root {
   --bg:         #06050a;
-  --text-warm:  #e8e2d0;
-  --text-muted: #b8ad96;
+  --text-warm:  #f0ead8;
+  --text-muted: #c8bca6;
   --text-faint: #5a5248;
   --gold:       #f0c850;
   --gold-dim:   #a8883a;
@@ -222,7 +222,7 @@ canvas {
 .teaching-panel::-webkit-scrollbar-thumb { background: var(--text-faint); border-radius: 2px; }
 
 .teaching-inner {
-  font-size: clamp(0.92rem, 1.6vmin, 1.08rem);
+  font-size: clamp(1rem, 1.8vmin, 1.18rem);
   line-height: 1.75;
 }
 
@@ -234,7 +234,7 @@ canvas {
 .teaching-inner .key-phrase {
   color: var(--gold);
   font-weight: 500;
-  font-size: 1.05em;
+  font-size: 1.1em;
 }
 
 .teaching-inner .dim {
@@ -247,9 +247,9 @@ canvas {
   font-family: 'Lora', Georgia, serif;
   font-style: italic;
   font-weight: 400;
-  font-size: 1.02em;
+  font-size: 1.12em;
   line-height: 1.65;
-  color: var(--text-warm);
+  color: #f5f2e8;
   margin: 0.25rem 0 0.85rem 0;
   padding: 0.3em 0.5em;
   position: relative;
@@ -291,14 +291,14 @@ canvas {
 .teaching-inner .math {
   font-family: 'Courier New', monospace;
   color: var(--blue-star);
-  font-size: 1em;
+  font-size: 1.05em;
 }
 
 .teaching-inner .latin {
   font-family: var(--font-display);
   font-style: italic;
   color: var(--rose);
-  font-size: 1.05em;
+  font-size: 1.1em;
 }
 
 .teaching-inner .symbol {
@@ -543,19 +543,19 @@ canvas {
     padding: clamp(14px, 3vmin, 22px);
   }
   .teaching-inner {
-    font-size: clamp(0.92rem, 3.8vw, 1.1rem);
+    font-size: clamp(1rem, 4.2vw, 1.2rem);
   }
   .teaching-inner .key-phrase {
-    font-size: 1.08em;
+    font-size: 1.12em;
   }
   .teaching-inner .explain {
-    font-size: 1.1em;
+    font-size: 1.18em;
     line-height: 1.75;
     font-weight: 400;
     padding: 0.35em 0.5em;
   }
   .teaching-inner ul li {
-    font-size: clamp(0.88rem, 3.6vw, 1.05rem);
+    font-size: clamp(0.95rem, 4vw, 1.15rem);
   }
   .nav-controls {
     right: 8px;
