@@ -448,6 +448,10 @@ canvas {
   opacity: 0;
   pointer-events: none;
   z-index: 25;
+  touch-action: manipulation;    /* no 300ms delay on iOS */
+  -webkit-tap-highlight-color: transparent;
+  user-select: none;
+  -webkit-user-select: none;
 }
 .audio-toggle.visible {
   opacity: 1;

@@ -972,63 +972,140 @@ document.addEventListener('keydown', (e) => {
   }
 });
 
-// ─── AMBIENT AUDIO ───
-const AUDIO_VOLUME = 0.33;          // max 33% as requested
-let ambientAudio = null;
+// ─── AMBIENT AUDIO (Web Audio API — works in all environments inc. iOS standalone) ───
+const AUDIO_VOLUME = 0.33;
+let audioCtx = null;          // AudioContext — created on first user gesture
+let gainNode = null;          // GainNode for volume control
+let audioSource = null;       // MediaElementAudioSourceNode
+let audioElement = null;      // underlying <audio> for media loading
 let audioMuted = false;
-let fadeInterval = null;            // track fade-in so mute can kill it
+let audioReady = false;       // true once pipeline is connected & playing
+let fadeRAF = null;           // requestAnimationFrame id for fade-in
 
 function initAudio() {
-  if (ambientAudio) return;         // already initialised
-  ambientAudio = new Audio('ambient-meditation.mp3');
-  ambientAudio.loop = true;
-  ambientAudio.volume = 0;          // start silent, fade in
-  ambientAudio.play().then(() => {
-    // Smooth fade-in over ~3 seconds
-    let fadeStep = 0;
-    fadeInterval = setInterval(() => {
-      // If user muted during fade-in, stop immediately
-      if (audioMuted) { clearInterval(fadeInterval); fadeInterval = null; return; }
-      fadeStep += 0.01;
-      if (fadeStep >= 1) {
-        fadeStep = 1;
-        clearInterval(fadeInterval);
-        fadeInterval = null;
+  if (audioReady) return;
+  try {
+    // 1. Create AudioContext inside user gesture (required by iOS)
+    const AC = window.AudioContext || window.webkitAudioContext;
+    if (!AC) return;   // browser has no Web Audio support
+    audioCtx = new AC();
+
+    // 2. Create gain node for volume control
+    gainNode = audioCtx.createGain();
+    gainNode.gain.value = 0;   // start silent for fade-in
+    gainNode.connect(audioCtx.destination);
+
+    // 3. Create <audio> element and route through Web Audio
+    audioElement = new Audio('ambient-meditation.mp3');
+    audioElement.loop = true;
+    audioElement.playsInline = true;
+    // Keep HTML element volume at 1 — gain node controls actual volume
+    audioElement.volume = 1;
+
+    // Route through Web Audio API for reliable iOS gain control.
+    // createMediaElementSource needs same-origin or CORS headers;
+    // our audio is same-origin so this works without crossOrigin attr.
+    // Wrap in try/catch: if CORS somehow fails, fall back to direct HTML audio.
+    try {
+      audioSource = audioCtx.createMediaElementSource(audioElement);
+      audioSource.connect(gainNode);
+    } catch (corsErr) {
+      // Fallback: connect nothing through Web Audio, control via HTML volume
+      console.warn('MediaElementSource failed, using HTML audio fallback:', corsErr);
+      gainNode = null;  // signal to use audioElement.volume instead
+    }
+
+    // 4. Resume context if suspended (iOS starts contexts suspended)
+    if (audioCtx.state === 'suspended') {
+      audioCtx.resume().catch(() => {});
+    }
+
+    // 5. Start playback
+    audioElement.play().then(() => {
+      audioReady = true;
+      // Smooth fade-in over ~3s
+      const fadeStart = performance.now();
+      const FADE_MS = 3000;
+      function fadeStep(now) {
+        if (audioMuted) {
+          // Muted during fade — zero out and stop
+          if (gainNode) gainNode.gain.value = 0;
+          else audioElement.volume = 0;
+          return;
+        }
+        const t = Math.min((now - fadeStart) / FADE_MS, 1);
+        if (gainNode) gainNode.gain.value = AUDIO_VOLUME * t;
+        else audioElement.volume = AUDIO_VOLUME * t;
+        if (t < 1) fadeRAF = requestAnimationFrame(fadeStep);
       }
-      ambientAudio.volume = AUDIO_VOLUME * fadeStep;
-    }, 30);   // 30ms × 100 steps ≈ 3 s
-  }).catch(() => {
-    // Autoplay blocked — user will need to tap audio button
-    console.log('Audio autoplay blocked — tap sound icon to enable');
-  });
-  audioToggle.classList.add('visible');
+      fadeRAF = requestAnimationFrame(fadeStep);
+    }).catch(() => {
+      console.log('Audio autoplay blocked — tap sound icon to enable');
+    });
+
+    audioToggle.classList.add('visible');
+  } catch (err) {
+    console.warn('Audio init failed:', err);
+  }
 }
 
-audioToggle.addEventListener('click', () => {
-  if (!ambientAudio) {
-    initAudio();      // first tap after autoplay was blocked
+// Debounce guard: iOS standalone can fire both touchend and click
+let lastToggleTime = 0;
+function handleAudioToggle(e) {
+  if (e) e.preventDefault();
+  const now = Date.now();
+  if (now - lastToggleTime < 300) return;   // ignore duplicate within 300ms
+  lastToggleTime = now;
+
+  // First tap: bootstrap the whole audio pipeline
+  if (!audioReady && !audioCtx) {
+    initAudio();
     return;
   }
+
   audioMuted = !audioMuted;
   audioToggle.classList.toggle('muted', audioMuted);
+
   if (audioMuted) {
-    // Kill any in-progress fade-in so it can't override us
-    if (fadeInterval) { clearInterval(fadeInterval); fadeInterval = null; }
-    ambientAudio.volume = 0;
-    ambientAudio.pause();           // actually stop playback on mobile
+    // Cancel any in-progress fade
+    if (fadeRAF) { cancelAnimationFrame(fadeRAF); fadeRAF = null; }
+    // Silence via gain node or HTML volume
+    if (gainNode) gainNode.gain.value = 0;
+    if (audioElement) audioElement.volume = gainNode ? 1 : 0;
+    // Suspend the AudioContext — iOS standalone respects this
+    if (audioCtx && audioCtx.state === 'running') {
+      audioCtx.suspend().catch(() => {});
+    }
+    // Also pause the media element as belt-and-suspenders
+    if (audioElement) audioElement.pause();
   } else {
-    ambientAudio.volume = AUDIO_VOLUME;
-    ambientAudio.play().catch(() => {}); // resume; catch autoplay rejection
+    // Resume AudioContext first (must happen in user gesture on iOS)
+    if (audioCtx && audioCtx.state === 'suspended') {
+      audioCtx.resume().catch(() => {});
+    }
+    // Resume media element
+    if (audioElement) {
+      audioElement.volume = gainNode ? 1 : AUDIO_VOLUME;
+      audioElement.play().catch(() => {});
+    }
+    // Restore gain
+    if (gainNode) gainNode.gain.value = AUDIO_VOLUME;
   }
-});
+}
+// Listen on both click (desktop) and touchend (iOS standalone fallback)
+audioToggle.addEventListener('click', handleAudioToggle);
+audioToggle.addEventListener('touchend', handleAudioToggle);
 
 // Enter button
-enterBtn.addEventListener('click', () => {
+function handleEnter(e) {
+  if (e) e.preventDefault();
   entered = true;
   welcome.classList.add('hidden');
   goToLayer(0);
   initAudio();  // user gesture — safe to start audio
-});
+}
+enterBtn.addEventListener('click', handleEnter);
+enterBtn.addEventListener('touchend', handleEnter);
 
 // ─── ROBUST RESIZE — works with iOS safe-area, dynamic toolbar, notch ───
 function handleResize() {
