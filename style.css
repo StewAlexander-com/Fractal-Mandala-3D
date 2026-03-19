@@ -241,37 +241,51 @@ canvas {
   color: var(--text-muted);
 }
 
-/* Elegant one-sentence explanations — italic with subtle shimmer
-   Like a fall leaf catching sunlight in the wind:
-   one warm gold glint drifting slowly through quiet text */
+/* Elegant one-sentence explanations — clean italic with radiating glow */
 .teaching-inner .explain {
   display: block;
-  font-family: var(--font-display);
+  font-family: 'Lora', Georgia, serif;
   font-style: italic;
-  font-weight: 300;
+  font-weight: 400;
   font-size: 1.02em;
   line-height: 1.65;
-  color: #e0dcd0;
+  color: var(--text-warm);
   margin: 0.25rem 0 0.85rem 0;
-  padding-left: 0.3em;
-  background: linear-gradient(
-    105deg,
-    #e0dcd0 0%,
-    #e0dcd0 38%,
-    #f0c850 50%,
-    #e0dcd0 62%,
-    #e0dcd0 100%
-  );
-  background-size: 400% 100%;
-  -webkit-background-clip: text;
-  background-clip: text;
-  -webkit-text-fill-color: transparent;
-  animation: explainShimmer 14s ease-in-out infinite;
+  padding: 0.3em 0.5em;
+  position: relative;
+  border-radius: 3px;
 }
 
-@keyframes explainShimmer {
-  0%, 100% { background-position: 100% 50%; }
-  50%      { background-position: 0% 50%; }
+/* Radiating background glow — multi-color, breathes outward */
+.teaching-inner .explain::before {
+  content: '';
+  position: absolute;
+  inset: -4px -10px;
+  border-radius: 6px;
+  background: radial-gradient(
+    ellipse at 30% 50%,
+    rgba(240, 200, 80, 0.14) 0%,
+    rgba(126, 200, 160, 0.08) 40%,
+    rgba(212, 136, 154, 0.06) 70%,
+    transparent 100%
+  );
+  opacity: 0.3;
+  animation: explainGlow 12s ease-in-out infinite;
+  z-index: -1;
+  pointer-events: none;
+}
+
+@keyframes explainGlow {
+  0%, 100% {
+    opacity: 0.3;
+    transform: scale(0.97);
+    filter: blur(4px);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.04);
+    filter: blur(8px);
+  }
 }
 
 .teaching-inner .math {
@@ -538,6 +552,7 @@ canvas {
     font-size: 1.1em;
     line-height: 1.75;
     font-weight: 400;
+    padding: 0.35em 0.5em;
   }
   .teaching-inner ul li {
     font-size: clamp(0.88rem, 3.6vw, 1.05rem);
