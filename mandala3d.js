@@ -206,6 +206,17 @@ const sliderTooltip = document.getElementById('sliderTooltip');
 let visitedLayers = new Set();
 const audioToggle = document.getElementById('audioToggle');
 
+// ─── SCROLL FADE INDICATORS ───
+function updateScrollFades() {
+  const el = teachingPanel;
+  const threshold = 8;
+  const canUp = el.scrollTop > threshold;
+  const canDown = el.scrollHeight - el.scrollTop - el.clientHeight > threshold;
+  el.classList.toggle('fade-top', canUp);
+  el.classList.toggle('fade-bottom', canDown);
+}
+teachingPanel.addEventListener('scroll', updateScrollFades, { passive: true });
+
 // ─── NEBULA BACKGROUND DATA ───
 let nebulaStars;        // distant star-points
 let nebulaClouds = [];  // translucent cloud sprites
@@ -781,7 +792,9 @@ function showLayerTitle(index) {
   showLayerTitle._timer = setTimeout(() => {
     layerTitle.classList.remove('visible');
     teachingInner.innerHTML = layer.content;
+    teachingPanel.scrollTop = 0;
     teachingPanel.classList.add('visible');
+    updateScrollFades();
   }, 2400);
 }
 

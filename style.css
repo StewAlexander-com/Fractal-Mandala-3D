@@ -219,6 +219,24 @@ canvas {
   transform: translateX(-50%) translateY(0);
 }
 
+/* Subtle scroll-fade indicators — inset shadows */
+.teaching-panel.fade-top {
+  box-shadow:
+    inset 0 18px 16px -12px rgba(6, 5, 10, 0.7),
+    0 0 40px rgba(155, 138, 184, 0.04), 0 0 80px rgba(199, 136, 154, 0.03);
+}
+.teaching-panel.fade-bottom {
+  box-shadow:
+    inset 0 -18px 16px -12px rgba(6, 5, 10, 0.7),
+    0 0 40px rgba(155, 138, 184, 0.04), 0 0 80px rgba(199, 136, 154, 0.03);
+}
+.teaching-panel.fade-top.fade-bottom {
+  box-shadow:
+    inset 0 18px 16px -12px rgba(6, 5, 10, 0.7),
+    inset 0 -18px 16px -12px rgba(6, 5, 10, 0.7),
+    0 0 40px rgba(155, 138, 184, 0.04), 0 0 80px rgba(199, 136, 154, 0.03);
+}
+
 .teaching-panel::-webkit-scrollbar { width: 4px; }
 .teaching-panel::-webkit-scrollbar-track { background: transparent; }
 .teaching-panel::-webkit-scrollbar-thumb { background: var(--text-faint); border-radius: 2px; }
