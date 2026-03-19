@@ -178,6 +178,7 @@ let clock, scene, camera, renderer;
 let orbitalGroups = [];
 let particleSystems = [];
 let coreGlow;
+let starGlowTexture; // shared radial glow for all point materials
 
 // User camera controls
 let userOrbitAngle = 0;       // radians — horizontal orbit offset from swipe/drag
@@ -250,6 +251,21 @@ function init() {
   handleResize();   // initial size — uses actual element dimensions
   renderer.toneMapping = THREE.ACESFilmicToneMapping;
   renderer.toneMappingExposure = 1.2;
+
+  // Shared radial glow texture for all point materials
+  const glowCanvas = document.createElement('canvas');
+  glowCanvas.width = 64;
+  glowCanvas.height = 64;
+  const glowCtx = glowCanvas.getContext('2d');
+  const grad = glowCtx.createRadialGradient(32, 32, 0, 32, 32, 32);
+  grad.addColorStop(0,    'rgba(255,255,255,1)');
+  grad.addColorStop(0.12, 'rgba(255,255,255,0.75)');
+  grad.addColorStop(0.35, 'rgba(255,255,255,0.22)');
+  grad.addColorStop(0.65, 'rgba(255,255,255,0.05)');
+  grad.addColorStop(1,    'rgba(255,255,255,0)');
+  glowCtx.fillStyle = grad;
+  glowCtx.fillRect(0, 0, 64, 64);
+  starGlowTexture = new THREE.CanvasTexture(glowCanvas);
 
   // Lighting — warm core + nebula accent lights
   const ambient = new THREE.AmbientLight(0x1a1528, 0.6);
@@ -401,8 +417,8 @@ function buildNebulaBackground() {
 
     // Accent stars are slightly larger
     starSizes[i] = isAccent
-      ? 0.4 + Math.random() * 0.5
-      : 0.1 + Math.random() * 0.35;
+      ? 0.6 + Math.random() * 0.7
+      : 0.15 + Math.random() * 0.45;
   }
 
   const starGeo = new THREE.BufferGeometry();
@@ -421,10 +437,11 @@ function buildNebulaBackground() {
   }
 
   const starMat = new THREE.PointsMaterial({
-    size: 0.35,
+    size: 0.6,
+    map: starGlowTexture,
     vertexColors: true,
     transparent: true,
-    opacity: 0.7,
+    opacity: 0.85,
     blending: THREE.AdditiveBlending,
     depthWrite: false,
     sizeAttenuation: true,
@@ -546,7 +563,8 @@ function buildNebulaBackground() {
     dustGeo.setAttribute('position', new THREE.Float32BufferAttribute(dustPositions, 3));
     dustGeo.setAttribute('color', new THREE.Float32BufferAttribute(dustColors, 3));
     const dustMat = new THREE.PointsMaterial({
-      size: 0.18,
+      size: 0.25,
+      map: starGlowTexture,
       vertexColors: true,
       transparent: true,
       opacity: 0.12,
@@ -688,7 +706,8 @@ function createParticleCloud(layer, torusR) {
 
   const mat = new THREE.PointsMaterial({
     color: layer.particleColor,
-    size: 0.12,
+    size: 0.18,
+    map: starGlowTexture,
     transparent: true,
     opacity: 0.5,
     blending: THREE.AdditiveBlending,
