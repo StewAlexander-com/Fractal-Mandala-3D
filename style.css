@@ -811,6 +811,15 @@ canvas {
   color: var(--text-faint) !important;
   font-style: italic;
 }
+.mic-headphone-hint {
+  color: var(--text-secondary) !important;
+  font-style: normal;
+  margin-top: 0.6rem !important;
+  padding: 0.5rem 0.7rem;
+  border-radius: 6px;
+  background: rgba(212, 175, 55, 0.06);
+  border-left: 2px solid var(--gold-dim);
+}
 .mic-modal-actions {
   display: flex;
   gap: 0.75rem;
