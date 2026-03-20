@@ -721,11 +721,133 @@ canvas {
 .audio-toggle.muted .audio-on  { display: none; }
 .audio-toggle.muted .audio-off { display: block; }
 
+/* ═══ MICROPHONE REACTIVE TOGGLE ═══ */
+.mic-toggle {
+  position: absolute;
+  bottom: clamp(12px, 2vh, 24px);
+  left: calc(clamp(12px, 2vw, 24px) + 108px);  /* right of fullscreen toggle */
+  width: 44px;
+  height: 44px;
+  border: 1px solid var(--text-faint);
+  border-radius: 50%;
+  background: rgba(6, 5, 10, 0.5);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  color: var(--text-muted);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  transition: color 0.3s var(--ease-out), border-color 0.3s var(--ease-out), box-shadow 0.6s var(--ease-out);
+  z-index: 25;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+  user-select: none;
+  -webkit-user-select: none;
+}
+.mic-toggle:hover {
+  color: var(--gold);
+  border-color: var(--gold-dim);
+}
+.mic-toggle .mic-icon {
+  width: 18px;
+  height: 18px;
+}
+.mic-toggle .mic-on-icon { display: none; }
+.mic-toggle.active {
+  color: var(--gold);
+  border-color: var(--gold-dim);
+  box-shadow: 0 0 12px rgba(212, 175, 55, 0.2);
+}
+.mic-toggle.active .mic-off-icon { display: none; }
+.mic-toggle.active .mic-on-icon  { display: block; }
+
+/* ── Mic permission modal ── */
+.mic-modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.7);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.4s var(--ease-out);
+}
+.mic-modal-overlay.visible {
+  opacity: 1;
+  pointer-events: auto;
+}
+.mic-modal {
+  background: rgba(12, 10, 18, 0.95);
+  border: 1px solid var(--gold-dim);
+  border-radius: 12px;
+  padding: 2rem 2.2rem;
+  max-width: 380px;
+  text-align: center;
+  box-shadow: 0 0 40px rgba(212, 175, 55, 0.08);
+}
+.mic-modal h3 {
+  font-family: 'Cormorant Garamond', Georgia, serif;
+  font-size: 1.35rem;
+  font-weight: 400;
+  letter-spacing: 0.06em;
+  color: var(--gold);
+  margin: 0 0 1rem;
+}
+.mic-modal p {
+  font-family: 'Lora', Georgia, serif;
+  font-size: 0.92rem;
+  line-height: 1.65;
+  color: var(--text-secondary);
+  margin: 0 0 0.8rem;
+}
+.mic-modal-detail {
+  font-size: 0.8rem !important;
+  color: var(--text-faint) !important;
+  font-style: italic;
+}
+.mic-modal-actions {
+  display: flex;
+  gap: 0.75rem;
+  margin-top: 1.4rem;
+  justify-content: center;
+}
+.mic-modal-btn {
+  font-family: 'Cormorant Garamond', Georgia, serif;
+  font-size: 0.95rem;
+  letter-spacing: 0.08em;
+  padding: 0.55rem 1.2rem;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.3s var(--ease-out);
+  border: 1px solid var(--gold-dim);
+}
+.mic-modal-allow {
+  background: rgba(212, 175, 55, 0.12);
+  color: var(--gold);
+}
+.mic-modal-allow:hover {
+  background: rgba(212, 175, 55, 0.22);
+}
+.mic-modal-deny {
+  background: transparent;
+  color: var(--text-muted);
+  border-color: var(--text-faint);
+}
+.mic-modal-deny:hover {
+  color: var(--text-secondary);
+}
+
 /* ═══ FULLSCREEN TOGGLE ═══ */
 .fs-toggle {
   position: absolute;
   bottom: clamp(12px, 2vh, 24px);
-  left: calc(clamp(12px, 2vw, 24px) + 54px);   /* sits right of audio toggle */
+  left: calc(clamp(12px, 2vw, 24px) + 54px);   /* sits right of audio toggle, left of mic */
   width: 44px;
   height: 44px;
   border: 1px solid var(--text-faint);

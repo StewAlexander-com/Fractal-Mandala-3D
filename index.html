@@ -118,6 +118,35 @@
     </svg>
   </button>
 
+  <!-- Mic reactive toggle -->
+  <button class="mic-toggle" id="micToggle" title="Enable breath-reactive mode">
+    <svg class="mic-icon mic-off-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+      <rect x="9" y="1" width="6" height="12" rx="3"/>
+      <path d="M5 10a7 7 0 0014 0"/>
+      <line x1="12" y1="17" x2="12" y2="21"/>
+      <line x1="8" y1="21" x2="16" y2="21"/>
+    </svg>
+    <svg class="mic-icon mic-on-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+      <rect x="9" y="1" width="6" height="12" rx="3" fill="currentColor" fill-opacity="0.25"/>
+      <path d="M5 10a7 7 0 0014 0"/>
+      <line x1="12" y1="17" x2="12" y2="21"/>
+      <line x1="8" y1="21" x2="16" y2="21"/>
+    </svg>
+  </button>
+
+  <!-- Mic permission modal -->
+  <div class="mic-modal-overlay" id="micModal">
+    <div class="mic-modal">
+      <h3>Breath-Reactive Mode</h3>
+      <p>The mandala can respond to your breathing and ambient sound through your microphone, creating a living connection between your presence and the geometry.</p>
+      <p class="mic-modal-detail">Audio is analyzed locally in your browser and never recorded or transmitted.</p>
+      <div class="mic-modal-actions">
+        <button class="mic-modal-btn mic-modal-allow" id="micAllow">Enable Microphone</button>
+        <button class="mic-modal-btn mic-modal-deny" id="micDeny">Not Now</button>
+      </div>
+    </div>
+  </div>
+
   <!-- Fullscreen toggle -->
   <button class="fs-toggle" id="fsToggle" title="Toggle fullscreen">
     <svg class="fs-icon fs-enter" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">

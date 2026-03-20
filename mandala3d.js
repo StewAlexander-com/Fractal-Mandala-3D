@@ -213,6 +213,10 @@ const sliderStops    = $('sliderStops');
 const sliderTooltip  = $('sliderTooltip');
 let visitedLayers = new Set();
 const audioToggle    = $('audioToggle');
+const micToggle      = $('micToggle');
+const micModal       = $('micModal');
+const micAllow       = $('micAllow');
+const micDeny        = $('micDeny');
 
 // ─── SCROLL FADE INDICATORS + HINT ARROWS ───
 const scrollHintUp   = $('scrollHintUp');
@@ -1385,6 +1389,165 @@ if (audioToggle) {
   audioToggle.addEventListener('touchend', handleAudioToggle);
 }
 
+// ─── AUDIO-REACTIVE GEOMETRY — breath-responsive mandala ───
+// Two inputs: ambient track (always on when playing) + mic (optional).
+// Both feed AnalyserNodes → frequency data → smoothed RMS energy → single
+// normalized "breath" value (0..1) on a wide, heavily-smoothed distribution.
+// This drives: (1) emissive warmth/intensity, (2) subtle movement modulation.
+
+// Pre-allocated color objects for per-frame audio-reactive modulation (avoid GC)
+const _warmGold = new THREE.Color(0xd4a840);
+const _fogWarm  = new THREE.Color(0x0d0a06);
+const _fogBase  = new THREE.Color(0x06050a);
+
+let ambientAnalyser = null;     // AnalyserNode for the ambient music track
+let micAnalyser = null;         // AnalyserNode for microphone input
+let micStream = null;           // MediaStream from getUserMedia
+let micSource = null;           // MediaStreamAudioSourceNode
+let micActive = false;          // is mic currently feeding data?
+let audioBreath = 0;            // the final smoothed 0..1 breath signal
+let audioBreathTarget = 0;      // raw target before smoothing
+
+// Frequency data buffers (reused each frame)
+let ambientFreqData = null;
+let micFreqData = null;
+
+// Attach analyser to the ambient track (called after audio pipeline is ready)
+function attachAmbientAnalyser() {
+  if (ambientAnalyser || !audioCtx || !audioSource) return;
+  try {
+    ambientAnalyser = audioCtx.createAnalyser();
+    ambientAnalyser.fftSize = 256;            // 128 frequency bins — enough for energy
+    ambientAnalyser.smoothingTimeConstant = 0.85;
+    audioSource.connect(ambientAnalyser);     // tap the existing source → analyser
+    // audioSource still connects to gainNode (multiple connects are fine in Web Audio)
+    ambientFreqData = new Uint8Array(ambientAnalyser.frequencyBinCount);
+  } catch (e) {
+    console.warn('Ambient analyser attach failed:', e.message);
+  }
+}
+
+// Compute RMS energy from an AnalyserNode's frequency data, normalized 0..1
+function getAnalyserEnergy(analyser, freqData) {
+  if (!analyser || !freqData) return 0;
+  analyser.getByteFrequencyData(freqData);
+  let sum = 0;
+  const len = freqData.length;
+  // Weight low-mid frequencies more (where breath and ambient drones live)
+  for (let i = 0; i < len; i++) {
+    const weight = i < len * 0.4 ? 1.5 : 1.0;  // boost low-mids
+    const v = freqData[i] / 255;
+    sum += v * v * weight;
+  }
+  return Math.sqrt(sum / len);
+}
+
+// Per-frame: blend both sources into a single breath value
+function updateAudioBreath() {
+  // Ensure ambient analyser is connected once audio is playing
+  if (!ambientAnalyser && audioReady) attachAmbientAnalyser();
+
+  const ambientEnergy = getAnalyserEnergy(ambientAnalyser, ambientFreqData);
+  const micEnergy = micActive ? getAnalyserEnergy(micAnalyser, micFreqData) : 0;
+
+  // Blend: mic takes priority when active (70/30 mic/ambient), else 100% ambient
+  const rawEnergy = micActive
+    ? micEnergy * 0.7 + ambientEnergy * 0.3
+    : ambientEnergy;
+
+  // Map to 0..1 with a floor and ceiling — wide flat distribution
+  // Floor at 0.08 so silent moments still produce a gentle baseline
+  // Ceiling at 0.6 raw energy → 1.0 breath (don't need shouting to max out)
+  const mapped = Math.max(0, Math.min(1, (rawEnergy - 0.02) / 0.5));
+  audioBreathTarget = mapped;
+
+  // Heavy exponential smoothing — this is what makes it feel like breathing
+  // Rise slowly (filling lungs), fall even slower (exhale)
+  const rise = 0.015;   // ~4-5 seconds to reach peak
+  const fall = 0.008;   // ~8 seconds to fully exhale
+  const rate = audioBreathTarget > audioBreath ? rise : fall;
+  audioBreath += (audioBreathTarget - audioBreath) * rate;
+}
+
+// ── Mic permission flow ──
+function showMicModal() {
+  if (micModal) micModal.classList.add('visible');
+}
+function hideMicModal() {
+  if (micModal) micModal.classList.remove('visible');
+}
+
+async function enableMic() {
+  hideMicModal();
+  try {
+    // Ensure AudioContext exists (user may tap mic before audio plays)
+    if (!audioCtx) {
+      const AC = window.AudioContext || window.webkitAudioContext;
+      if (!AC) return;
+      audioCtx = new AC();
+    }
+    if (audioCtx.state === 'suspended') await audioCtx.resume();
+
+    micStream = await navigator.mediaDevices.getUserMedia({
+      audio: {
+        echoCancellation: true,
+        noiseSuppression: false,    // we want breath noise
+        autoGainControl: true
+      }
+    });
+    micSource = audioCtx.createMediaStreamSource(micStream);
+    micAnalyser = audioCtx.createAnalyser();
+    micAnalyser.fftSize = 256;
+    micAnalyser.smoothingTimeConstant = 0.88;
+    micSource.connect(micAnalyser);
+    // Do NOT connect micSource to destination — we don't want to hear the mic
+    micFreqData = new Uint8Array(micAnalyser.frequencyBinCount);
+    micActive = true;
+    if (micToggle) micToggle.classList.add('active');
+  } catch (err) {
+    console.warn('Mic access denied or failed:', err.message);
+    micActive = false;
+    if (micToggle) micToggle.classList.remove('active');
+  }
+}
+
+function disableMic() {
+  micActive = false;
+  if (micToggle) micToggle.classList.remove('active');
+  if (micStream) {
+    micStream.getTracks().forEach(t => t.stop());
+    micStream = null;
+  }
+  if (micSource) {
+    try { micSource.disconnect(); } catch (e) {}
+    micSource = null;
+  }
+  micAnalyser = null;
+  micFreqData = null;
+}
+
+function handleMicToggle(e) {
+  if (e) e.preventDefault();
+  if (micActive) {
+    disableMic();
+  } else {
+    showMicModal();
+  }
+}
+
+if (micToggle) {
+  micToggle.addEventListener('click', handleMicToggle);
+  micToggle.addEventListener('touchend', handleMicToggle);
+}
+if (micAllow) {
+  micAllow.addEventListener('click', (e) => { e.preventDefault(); enableMic(); });
+  micAllow.addEventListener('touchend', (e) => { e.preventDefault(); enableMic(); });
+}
+if (micDeny) {
+  micDeny.addEventListener('click', (e) => { e.preventDefault(); hideMicModal(); });
+  micDeny.addEventListener('touchend', (e) => { e.preventDefault(); hideMicModal(); });
+}
+
 // ─── FULLSCREEN TOGGLE ───
 // Uses the Fullscreen API (desktop) and falls back gracefully.
 // iOS Safari doesn't support Fullscreen API on the document, but
@@ -1475,6 +1638,12 @@ function animate() {
   const dt = Math.min(rawDt, MAX_DT);          // clamp: prevent physics explosions on tab-resume
   const elapsed = clock.getElapsedTime();
 
+  // ── Audio-reactive breath signal ──
+  updateAudioBreath();
+  // audioBreath is 0..1, heavily smoothed, wide distribution
+  // b = breath intensity for use throughout the loop
+  const b = audioBreath;
+
   // ── Lerp user controls ──
   const ctrlLerp = 1 - Math.exp(-8 * dt);          // smooth ~8 Hz exponential ease
   userOrbitAngle += (targetOrbitAngle - userOrbitAngle) * ctrlLerp;
@@ -1490,9 +1659,11 @@ function animate() {
 
   // Depth cue 3: parallax micro-bob — two overlapping frequencies create
   // differential parallax between near and far objects
-  const bobX = Math.sin(totalAngle) * BASE_ORBIT_RADIUS
+  // Audio-reactive: breath gently amplifies the bob (1.0—1.15x)
+  const bobBreathMul = 1.0 + b * 0.15;
+  const bobX = Math.sin(totalAngle) * BASE_ORBIT_RADIUS * bobBreathMul
              + Math.sin(elapsed * 0.23) * 0.6;    // slow lateral drift
-  const bobY = Math.cos(elapsed * 0.12) * BASE_ORBIT_RADIUS * 0.5
+  const bobY = Math.cos(elapsed * 0.12) * BASE_ORBIT_RADIUS * 0.5 * bobBreathMul
              + Math.cos(elapsed * 0.17) * 0.4;    // secondary vertical drift
 
   camera.position.x = bobX;
@@ -1515,13 +1686,19 @@ function animate() {
   }
 
   // Fog color for atmospheric perspective (cue 6)
-  const fogColor = new THREE.Color(0x06050a);
+  // Audio-reactive: breath warms the fog ever so slightly toward deep amber
+  const fogColor = _fogBase.clone();
+  if (b > 0.01) {
+    fogColor.lerp(_fogWarm, b * 0.3);
+  }
 
   // Animate orbital groups
   try {
   orbitalGroups.forEach((group, i) => {
     const layer = LAYERS[i];
-    const speed = 0.15 + i * 0.03;
+    const baseSpeed = 0.15 + i * 0.03;
+    // Audio-reactive: breath subtly modulates rotation speed (1.0—1.12x)
+    const speed = baseSpeed * (1.0 + b * 0.12);
     const dir = i % 2 === 0 ? 1 : -1;
 
     // ── Depth cue 1: slow gyroscopic precession ──
@@ -1558,8 +1735,8 @@ function animate() {
         positions.setX(p, SAFE_NUM(Math.cos(angle) * r));
         positions.setY(p, SAFE_NUM(Math.sin(angle) * r));
         // Cue 4: sinusoidal Z drift — each particle floats forward/back
-        // Use particle index + elapsed for per-particle phase
-        const zDrift = Math.sin(elapsed * 0.4 + p * 0.37) * 0.03;
+        // Audio-reactive: breath amplifies Z drift (1.0—1.3x)
+        const zDrift = Math.sin(elapsed * 0.4 + p * 0.37) * 0.03 * (1.0 + b * 0.3);
         positions.setZ(p, SAFE_NUM(z + zDrift));
       }
       positions.needsUpdate = true;
@@ -1580,7 +1757,8 @@ function animate() {
 
     // ── Depth cue 2: emissive intensity scales with proximity ──
     // Near layers glow brighter; far layers dim to near-zero emissive
-    const emissiveScale = opacity * opacity;  // quadratic falloff feels more physical
+    // Audio-reactive: breath boosts emissive warmth (quadratic + breath lift)
+    const emissiveScale = opacity * opacity + b * 0.18;  // breath adds up to 18% emissive lift
 
     // ── Depth cue 6: atmospheric desaturation for distant layers ──
     // Lerp material color toward fog color as distance increases
@@ -1597,9 +1775,10 @@ function animate() {
             : opacity * 0.7;
         }
 
-        // Depth-dependent emissive (cue 2)
+        // Depth-dependent emissive (cue 2) + audio-reactive warmth
         if (child.material.emissiveIntensity !== undefined && child.isMesh) {
-          child.material.emissiveIntensity = 0.55 * emissiveScale + 0.05;  // floor so fully dark layers still have faint glow
+          // Base emissive + breath lift: breath raises the floor and adds warmth
+          child.material.emissiveIntensity = 0.55 * emissiveScale + 0.05 + b * 0.12;
         }
 
         // Atmospheric color shift (cue 6) — only on mesh materials
@@ -1608,6 +1787,10 @@ function animate() {
         }
         if (child.material.emissive && child.isMesh && group.userData.baseEmissive) {
           child.material.emissive.copy(group.userData.baseEmissive).lerp(fogColor, atmosFactor * 0.3);
+          // Audio-reactive: breath shifts emissive toward warm gold
+          if (b > 0.01) {
+            child.material.emissive.lerp(_warmGold, b * 0.08);
+          }
         }
       }
     });
@@ -1617,9 +1800,10 @@ function animate() {
   // Core breathing — pulsing heart of the mandala
   try {
   if (coreGlow && coreGlow.material) {
-    const breathe = 0.2 + Math.sin(elapsed * 0.5) * 0.1;
+    // Audio-reactive: breath lifts core glow opacity and scale
+    const breathe = 0.2 + Math.sin(elapsed * 0.5) * 0.1 + b * 0.08;
     coreGlow.material.opacity = breathe;
-    const s = 1 + Math.sin(elapsed * 0.5) * 0.15;
+    const s = 1 + Math.sin(elapsed * 0.5) * 0.15 + b * 0.06;
     coreGlow.scale.set(s, s, s);
     // Outer halo breathes in counter-phase
     if (coreGlow.userData.halo && coreGlow.userData.halo.material) {
@@ -1648,7 +1832,8 @@ function animate() {
       sizes.needsUpdate = true;
 
       // Global rotation + opacity drift (keep existing behaviour)
-      nebulaStars.material.opacity = 0.88 + Math.sin(elapsed * 0.6) * 0.1;
+      // Audio-reactive: breath subtly brightens star field
+      nebulaStars.material.opacity = 0.88 + Math.sin(elapsed * 0.6) * 0.1 + b * 0.06;
       nebulaStars.rotation.z += dt * 0.002;
       nebulaStars.rotation.y += dt * 0.0008;
     } catch (e) { /* per-star twinkle graceful fallback */ }
