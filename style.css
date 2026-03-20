@@ -1151,6 +1151,37 @@ canvas {
   }
 }
 
+/* ── Focus-visible: keyboard navigation indicator ── */
+:focus-visible {
+  outline: 2px solid rgba(200, 184, 138, 0.7);
+  outline-offset: 3px;
+  border-radius: 4px;
+}
+
+.audio-toggle:focus-visible,
+.mic-toggle:focus-visible,
+.fs-toggle:focus-visible {
+  outline: 2px solid rgba(200, 184, 138, 0.8);
+  outline-offset: 4px;
+  box-shadow: 0 0 12px 2px rgba(200, 184, 138, 0.15);
+}
+
+.enter-btn:focus-visible {
+  outline: 2px solid rgba(200, 184, 138, 0.9);
+  outline-offset: 4px;
+  box-shadow: 0 0 20px 4px rgba(200, 184, 138, 0.2);
+}
+
+.slider-track:focus-visible {
+  outline: 2px solid rgba(200, 184, 138, 0.6);
+  outline-offset: 2px;
+}
+
+/* Remove default outlines for mouse/touch users */
+:focus:not(:focus-visible) {
+  outline: none;
+}
+
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after {
     animation-duration: 0.01ms !important;

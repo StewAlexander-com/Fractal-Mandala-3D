@@ -25,6 +25,9 @@
 <meta name="apple-mobile-web-app-title" content="Fractal Mandala">
 <meta name="mobile-web-app-capable" content="yes">
 <link rel="manifest" href="manifest.json">
+<link rel="icon" href="favicon.svg" type="image/svg+xml">
+<link rel="icon" href="icon-192.png" type="image/png" sizes="192x192">
+<link rel="apple-touch-icon" href="icon-512.png">
 
 <title>The Fractal Mandala — Seven Layers of Sacred Geometry</title>
 <meta name="description" content="Seven layers of sacred geometry. One interactive journey inward. A 3D quantum orbital mandala of presence and liberation.">
@@ -53,13 +56,15 @@
 
 <!-- Preconnect: CDN + fonts for faster first paint -->
 <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
+<!-- Modulepreload Three.js core — overlaps fetch with font/CSS loading -->
+<link rel="modulepreload" href="https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <!-- Fonts: display=swap ensures text is visible immediately with system fallback
      if Google Fonts CDN is slow or unavailable -->
 <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,300;1,400&family=Jost:wght@300;400;500&family=Lora:ital,wght@0,400;0,500;1,400;1,500&display=swap" rel="stylesheet">
 <!-- Preload audio hint — browser can start fetching before user enters -->
-<link rel="preload" href="ambient-meditation.mp3" as="fetch" crossorigin type="audio/mpeg">
+<link rel="preload" href="ambient-meditation.mp3" as="audio" crossorigin type="audio/mpeg">
 <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -78,7 +83,7 @@
   <!-- Teaching panel -->
   <div class="teaching-wrap" id="teachingWrap">
     <div class="teaching-panel" id="teachingPanel">
-      <div class="teaching-inner" id="teachingInner"></div>
+      <div class="teaching-inner" id="teachingInner" tabindex="0" role="region" aria-label="Layer teaching content"></div>
     </div>
     <div class="scroll-hint scroll-hint--up" id="scrollHintUp">
       <svg width="28" height="14" viewBox="0 0 20 10" fill="none"><path d="M2 9L10 2L18 9" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
@@ -114,7 +119,7 @@
   </div>
 
   <!-- Audio toggle -->
-  <button class="audio-toggle" id="audioToggle" title="Toggle ambient sound">
+  <button class="audio-toggle" id="audioToggle" title="Toggle ambient sound" aria-label="Toggle ambient sound" aria-pressed="false">
     <svg class="audio-icon audio-on" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
       <path d="M11 5L6 9H2v6h4l5 4V5z"/>
       <path d="M19.07 4.93a10 10 0 010 14.14M15.54 8.46a5 5 0 010 7.07"/>
@@ -127,7 +132,7 @@
   </button>
 
   <!-- Mic reactive toggle -->
-  <button class="mic-toggle" id="micToggle" title="Enable breath-reactive mode">
+  <button class="mic-toggle" id="micToggle" title="Enable breath-reactive mode" aria-label="Toggle microphone" aria-pressed="false">
     <svg class="mic-icon mic-off-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
       <rect x="9" y="1" width="6" height="12" rx="3"/>
       <path d="M5 10a7 7 0 0014 0"/>
@@ -157,7 +162,7 @@
   </div>
 
   <!-- Fullscreen toggle -->
-  <button class="fs-toggle" id="fsToggle" title="Toggle fullscreen">
+  <button class="fs-toggle" id="fsToggle" title="Toggle fullscreen" aria-label="Toggle fullscreen" aria-pressed="false">
     <svg class="fs-icon fs-enter" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
       <path d="M8 3H5a2 2 0 00-2 2v3M21 8V5a2 2 0 00-2-2h-3M3 16v3a2 2 0 002 2h3M16 21h3a2 2 0 002-2v-3"/>
     </svg>
@@ -203,6 +208,15 @@ window.addEventListener('unhandledrejection', function(e) {
   e.preventDefault();  // prevent console noise from non-critical async failures
 });
 </script>
+<noscript>
+  <div style="position:fixed;inset:0;z-index:9999;display:flex;align-items:center;justify-content:center;background:#06050a;color:#c8b88a;font-family:system-ui,sans-serif;text-align:center;padding:2rem;">
+    <div>
+      <h1 style="font-size:1.5rem;margin-bottom:1rem;">The Fractal Mandala</h1>
+      <p>This experience requires JavaScript to render interactive 3D sacred geometry.</p>
+      <p style="margin-top:1rem;opacity:0.6;font-size:0.9rem;">Please enable JavaScript in your browser settings and reload.</p>
+    </div>
+  </div>
+</noscript>
 <script type="module" src="mandala3d.js"></script>
 </body>
 </html>

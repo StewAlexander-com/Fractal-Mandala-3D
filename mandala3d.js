@@ -9,6 +9,14 @@
 const MAX_DT = 0.1;          // 100ms — anything larger is a tab resume spike
 const SAFE_NUM = (v, fallback = 0) => Number.isFinite(v) ? v : fallback;
 
+// ─── Reduced-motion preference ───
+// Queries OS-level accessibility setting. When active, we scale down
+// continuous JS animations (orbit, drift, particle motion) to near-zero
+// while keeping the scene renderable and navigable.
+const reducedMotionQuery = window.matchMedia('(prefers-reduced-motion: reduce)');
+let prefersReducedMotion = reducedMotionQuery.matches;
+reducedMotionQuery.addEventListener('change', (e) => { prefersReducedMotion = e.matches; });
+
 import * as THREE from 'three';
 
 // ─── LAYER TEACHINGS ───
@@ -1465,6 +1473,19 @@ if (canvas) canvas.addEventListener('touchend', () => {
 
 // ── Keyboard ──
 document.addEventListener('keydown', (e) => {
+  // Escape key: close mic modal or teaching panel (works before/after enter)
+  if (e.key === 'Escape') {
+    if (micModal && micModal.classList.contains('visible')) {
+      hideMicModal();
+      return;
+    }
+    if (teachingPanel && teachingPanel.classList.contains('visible')) {
+      teachingPanel.classList.remove('visible');
+      if (scrollHintUp) scrollHintUp.classList.remove('visible');
+      if (scrollHintDown) scrollHintDown.classList.remove('visible');
+      return;
+    }
+  }
   if (!entered) return;
   if (e.key === 'ArrowDown' || e.key === 'j') {
     goToLayer(Math.min(LAYER_COUNT - 1, currentLayer + 1));
@@ -1562,7 +1583,10 @@ function initAudio() {
       console.log('Audio autoplay blocked — tap sound icon to enable');
     });
 
-    if (audioToggle) audioToggle.classList.add('visible');
+    if (audioToggle) {
+      audioToggle.classList.add('visible');
+      audioToggle.setAttribute('aria-pressed', 'true');
+    }
   } catch (err) {
     console.warn('Audio init failed:', err);
   }
@@ -1583,7 +1607,10 @@ function handleAudioToggle(e) {
   }
 
   audioMuted = !audioMuted;
-  if (audioToggle) audioToggle.classList.toggle('muted', audioMuted);
+  if (audioToggle) {
+    audioToggle.classList.toggle('muted', audioMuted);
+    audioToggle.setAttribute('aria-pressed', String(!audioMuted));
+  }
 
   if (audioMuted) {
     // Cancel any in-progress fade
@@ -1920,7 +1947,7 @@ async function enableMic() {
     micFreqData = new Uint8Array(micAnalyser.frequencyBinCount);
     micZeroFrames = 0;  // reset dead-stream counter
     micActive = true;
-    if (micToggle) micToggle.classList.add('active');
+    if (micToggle) { micToggle.classList.add('active'); micToggle.setAttribute('aria-pressed', 'true'); }
 
   } catch (err) {
     // Catch-all: user denied, or any unexpected failure
@@ -1933,7 +1960,7 @@ async function enableMic() {
 function disableMic() {
   micActive = false;
   micZeroFrames = 0;
-  if (micToggle) micToggle.classList.remove('active');
+  if (micToggle) { micToggle.classList.remove('active'); micToggle.setAttribute('aria-pressed', 'false'); }
   if (micStream) {
     try { micStream.getTracks().forEach(t => t.stop()); } catch (e) {}
     micStream = null;
@@ -1999,7 +2026,11 @@ function isFullscreen() {
 }
 
 function updateFsIcon() {
-  if (fsToggle) fsToggle.classList.toggle('is-fs', isFullscreen());
+  if (fsToggle) {
+    const fs = isFullscreen();
+    fsToggle.classList.toggle('is-fs', fs);
+    fsToggle.setAttribute('aria-pressed', String(fs));
+  }
 }
 
 function handleFsToggle(e) {
@@ -2104,6 +2135,10 @@ function animate() {
   const dt = Math.min(rawDt, MAX_DT);          // clamp: prevent physics explosions on tab-resume
   const elapsed = clock.getElapsedTime();
 
+  // Reduced-motion: scale continuous animations to 5% speed (not zero — the
+  // scene should still feel alive, just calm enough to avoid vestibular triggers)
+  const motionScale = prefersReducedMotion ? 0.05 : 1.0;
+
   // ── Audio-reactive breath signal ──
   updateAudioBreath();
   // audioBreath is 0..1, heavily smoothed, wide distribution
@@ -2130,17 +2165,17 @@ function animate() {
   cameraZ += (targetCameraZ - cameraZ) * dt * lerpSpeed;
 
   // ── Combined orbit: gentle auto-drift + user orbit ──
-  const autoAngle = elapsed * 0.08;
+  const autoAngle = elapsed * 0.08 * motionScale;
   const totalAngle = autoAngle + userOrbitAngle;
 
   // Depth cue 3: parallax micro-bob — two overlapping frequencies create
   // differential parallax between near and far objects
   // Audio-reactive: breath gently amplifies the bob (1.0—1.15x)
   const bobBreathMul = 1.0 + b * 0.15;
-  const bobX = Math.sin(totalAngle) * BASE_ORBIT_RADIUS * bobBreathMul
-             + Math.sin(elapsed * 0.23) * 0.6;    // slow lateral drift
-  const bobY = Math.cos(elapsed * 0.12) * BASE_ORBIT_RADIUS * 0.5 * bobBreathMul
-             + Math.cos(elapsed * 0.17) * 0.4;    // secondary vertical drift
+  const bobX = (Math.sin(totalAngle) * BASE_ORBIT_RADIUS * bobBreathMul
+             + Math.sin(elapsed * 0.23) * 0.6) * motionScale;    // slow lateral drift
+  const bobY = (Math.cos(elapsed * 0.12) * BASE_ORBIT_RADIUS * 0.5 * bobBreathMul
+             + Math.cos(elapsed * 0.17) * 0.4) * motionScale;    // secondary vertical drift
 
   camera.position.x = bobX;
   camera.position.y = bobY;
@@ -2174,7 +2209,7 @@ function animate() {
     const layer = LAYERS[i];
     const baseSpeed = 0.15 + i * 0.03;
     // Audio-reactive: breath subtly modulates rotation speed (1.0—1.12x)
-    const speed = baseSpeed * (1.0 + b * 0.12);
+    const speed = baseSpeed * (1.0 + b * 0.12) * motionScale;
     const dir = i % 2 === 0 ? 1 : -1;
 
     // ── Depth cue 1: slow gyroscopic precession ──
@@ -2310,15 +2345,15 @@ function animate() {
       // Global rotation + opacity drift (keep existing behaviour)
       // Audio-reactive: breath subtly brightens star field
       nebulaStars.material.opacity = 0.88 + Math.sin(elapsed * 0.6) * 0.1 + b * 0.06;
-      nebulaStars.rotation.z += dt * 0.002;
-      nebulaStars.rotation.y += dt * 0.0008;
+      nebulaStars.rotation.z += dt * 0.002 * motionScale;
+      nebulaStars.rotation.y += dt * 0.0008 * motionScale;
     } catch (e) { /* per-star twinkle graceful fallback */ }
   }
 
   // ── Shooting stars — occasional meteor streaks ──
   try {
     // Spawn check: ~one every 4–8 seconds
-    if (shootingStars.length > 0 && Math.random() < dt * 0.18) {
+    if (shootingStars.length > 0 && Math.random() < dt * 0.18 * motionScale) {
       const inactive = shootingStars.find(s => !s.userData.active);
       if (inactive) {
         const d = inactive.userData;
@@ -2378,8 +2413,8 @@ function animate() {
   // ── Cosmic dust ring — glacial rotation + per-particle breathing ──
   if (cosmicDust) {
     try {
-      cosmicDust.rotation.y += dt * 0.003;
-      cosmicDust.rotation.x += dt * 0.0005;
+      cosmicDust.rotation.y += dt * 0.003 * motionScale;
+      cosmicDust.rotation.x += dt * 0.0005 * motionScale;
 
       // Per-particle size animation — subtle transparency variation
       // Updates a rolling batch per frame to keep CPU light
@@ -2417,8 +2452,8 @@ function animate() {
       rSizes.needsUpdate = true;
       // Gentle global opacity sway + follow star field rotation
       radiantStars.material.opacity = 0.8 + Math.sin(elapsed * 0.4) * 0.15 + b * 0.05;
-      radiantStars.rotation.z += dt * 0.002;
-      radiantStars.rotation.y += dt * 0.0008;
+      radiantStars.rotation.z += dt * 0.002 * motionScale;
+      radiantStars.rotation.y += dt * 0.0008 * motionScale;
     } catch (e) { /* radiant stars fallback */ }
   }
 
