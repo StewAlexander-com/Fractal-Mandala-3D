@@ -542,6 +542,28 @@ canvas {
   letter-spacing: 0.02em;
 }
 
+/* Notable quotes — understated, attributed */
+.teaching-inner .quote {
+  display: block;
+  font-family: 'Lora', Georgia, serif;
+  font-style: italic;
+  font-size: 0.92em;
+  line-height: 1.6;
+  color: rgba(200, 184, 138, 0.75);
+  margin: 0.8rem 0 0.15rem 0;
+  padding-left: 1em;
+  border-left: 2px solid rgba(200, 184, 138, 0.2);
+}
+.teaching-inner .quote-author {
+  display: block;
+  font-family: 'Jost', sans-serif;
+  font-style: normal;
+  font-size: 0.78em;
+  color: rgba(200, 184, 138, 0.45);
+  letter-spacing: 0.06em;
+  margin: 0.15rem 0 0.7rem 1em;
+}
+
 .teaching-inner .latin {
   font-style: italic;
   color: var(--rose);

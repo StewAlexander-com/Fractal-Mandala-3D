@@ -36,6 +36,10 @@ const LAYERS = [
       <p class="dim">Your release affects field. My release affects field. We're not separate practitioners.</p>
       <p>We are <span class="key-phrase">perspectives of unified awareness</span>, <span class="dim">clarifying together.</span></p>
       <span class="explain">Indra’s net in Hindu cosmology, where every jewel reflects every other—a holographic universe of mutual seeing.</span>
+      <p class="quote">“Observe the wonders as they occur around you. Don’t claim them. Feel the artistry moving through, and be silent.”</p>
+      <p class="quote-author">— Rumi</p>
+      <p class="quote">“The quieter you become, the more you are able to hear.”</p>
+      <p class="quote-author">— Rumi</p>
     `,
     color: new THREE.Color(0x3a2e40),    // indigo-tinted outer
     emissive: new THREE.Color(0x4a3b55),
@@ -57,6 +61,10 @@ const LAYERS = [
       <p><span class="key-phrase">Qualia unique, stuff shared</span></p>
       <span class="explain">Neuroscience confirms each brain wires itself uniquely, yet we share the same atoms—your red and my red may differ, but the light is one.</span>
       <p class="dim">Your experience irreducibly yours. My experience irreducibly mine. Both made of same substrate. Individuation and connection both real.</p>
+      <p class="quote">“No man ever steps in the same river twice, for it’s not the same river and he’s not the same man.”</p>
+      <p class="quote-author">— Heraclitus</p>
+      <p class="quote">“To see a world in a grain of sand and a heaven in a wild flower, hold infinity in the palm of your hand and eternity in an hour.”</p>
+      <p class="quote-author">— William Blake, <em>Auguries of Innocence</em></p>
     `,
     color: new THREE.Color(0x4a3f42),    // lavender hint
     emissive: new THREE.Color(0x5e4f5a),
@@ -77,6 +85,10 @@ const LAYERS = [
       <span class="explain">The prefrontal cortex that lets you compose a symphony is the same one that rehearses catastrophe at 3 a.m.—the tool is neutral, the wielder matters.</span>
       <div class="distinction"><span class="symbol">◇</span><span><span class="key-phrase">Ego = filter</span><br><span class="dim">Not enemy to destroy. Not self to cling to. Transparent pattern to see through.</span></span></div>
       <span class="explain">Like a lens that focuses light but is not the light itself, ego organises experience without being the experiencer.</span>
+      <p class="quote">“It is not things that disturb us, but our judgments about things.”</p>
+      <p class="quote-author">— Epictetus, <em>Enchiridion</em></p>
+      <p class="quote">“Imagination is more important than knowledge. Knowledge is limited. Imagination encircles the world.”</p>
+      <p class="quote-author">— Albert Einstein</p>
     `,
     color: new THREE.Color(0x5e4f4a),    // rose-warm
     emissive: new THREE.Color(0x7d6260),
@@ -97,6 +109,10 @@ const LAYERS = [
       <span class="explain">Hindu līlā, the divine play of creation, echoed in Huizinga’s homo ludens—life is most alive when it stops being a problem to solve and becomes a game to inhabit.</span>
       <p style="margin-top:0.5rem">Three concentric acceptances:<br><span class="dim">The whole contains the now. The now contains the play. The play contains the whole.</span></p>
       <span class="explain">Nested like Russian dolls or fractal geometry—each acceptance lives inside the others, the smallest holding the shape of the largest.</span>
+      <p class="quote">“My formula for greatness in a human being is amor fati: that one wants nothing to be different, not forward, not backward, not in all eternity.”</p>
+      <p class="quote-author">— Friedrich Nietzsche, <em>Ecce Homo</em></p>
+      <p class="quote">“Accept the things to which fate binds you, and love the people with whom fate brings you together.”</p>
+      <p class="quote-author">— Marcus Aurelius, <em>Meditations</em></p>
     `,
     color: new THREE.Color(0x7d6245),
     emissive: new THREE.Color(0x9a7555),
@@ -122,6 +138,10 @@ const LAYERS = [
       <span class="explain">Breath is the body’s oldest teacher: inhale gathers, exhale releases, the pause between knows.</span>
       <p class="dim">Fractal: the pattern repeats at every scale. One breath. One hour. One life.</p>
       <span class="explain">Scale invariance in nature—coastlines, bronchial trees, galaxy clusters—the same geometry repeating from the microscopic to the cosmic.</span>
+      <p class="quote">“Water is fluid, soft, and yielding. But water will wear away rock, which is rigid and cannot yield.”</p>
+      <p class="quote-author">— Lao Tzu, <em>Tao Te Ching</em></p>
+      <p class="quote">“I slept and dreamt that life was joy. I awoke and saw that life was service. I acted and behold, service was joy.”</p>
+      <p class="quote-author">— Rabindranath Tagore</p>
     `,
     color: new THREE.Color(0x9a7555),
     emissive: new THREE.Color(0xb08560),
@@ -143,6 +163,10 @@ const LAYERS = [
       <p class="dim">Discomfort is reality (first arrow). Suffering is story (second arrow).</p>
       <p>The practice is not removing arrows. It is <span class="key-phrase">seeing which ones you shot at yourself</span>.</p>
       <span class="explain">Self-compassion research shows that simply recognising self-inflicted narratives reduces their hold—awareness is already halfway to release.</span>
+      <p class="quote">“In life, we cannot always control the first arrow. However, the second arrow is our reaction to the first.”</p>
+      <p class="quote-author">— The Buddha, <em>Sallatha Sutta</em></p>
+      <p class="quote">“The wound is the place where the Light enters you.”</p>
+      <p class="quote-author">— Rumi</p>
     `,
     color: new THREE.Color(0xb08560),
     emissive: new THREE.Color(0xc4956a),
@@ -165,6 +189,10 @@ const LAYERS = [
       <p class="dim">Ship of Theseus: not the planks, the pattern. Life persists as process, not thing.</p>
       <p>"This too shall pass" = liberation, not pessimism.<br><span class="dim">Wave-form temporary, sea-stuff eternal.</span></p>
       <span class="explain">The Sufi adage, the Second Law of Thermodynamics, and the Buddhist teaching of anicca all say the same thing: impermanence is not a flaw, it is the engine.</span>
+      <p class="quote">“The art of progress is to preserve order amid change and to preserve change amid order.”</p>
+      <p class="quote-author">— Alfred North Whitehead, <em>Process and Reality</em></p>
+      <p class="quote">“There is only one moment for you to be alive, and that is the present moment.”</p>
+      <p class="quote-author">— Thich Nhat Hanh</p>
     `,
     color: new THREE.Color(0xd4a574),
     emissive: new THREE.Color(0xf0d9b5),
