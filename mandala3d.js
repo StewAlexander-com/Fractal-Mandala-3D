@@ -1532,9 +1532,15 @@ function updateAudioBreath() {
       }
     }
 
-    // Blend: mic takes priority when active (70/30 mic/ambient), else 100% ambient
+    // Soft-limit mic energy so speech peaks can't spike the blend.
+    // tanh gives a smooth ceiling that compresses loud input without clipping.
+    const clampedMic = micActive ? Math.tanh(micEnergy * 1.5) * 0.6 : 0;
+
+    // Blend: ambient always dominates — mic adds subtle breath modulation on top.
+    // Ambient drives the primary visual rhythm; mic never overshadows it.
+    // This prevents speech or room noise from hijacking the experience.
     const rawEnergy = micActive
-      ? micEnergy * 0.7 + ambientEnergy * 0.3
+      ? ambientEnergy * 0.65 + clampedMic * 0.35
       : ambientEnergy;
 
     // Map to 0..1 with a floor and ceiling — wide flat distribution
@@ -1601,16 +1607,29 @@ async function enableMic() {
     // Try ideal constraints first, then fall back to minimal
     let stream = null;
     const constraintSets = [
-      // Ideal: echo cancellation on, noise suppression off (we want breath),
-      // auto gain on
+      // CRITICAL: all processing OFF.
+      // echoCancellation MUST be false — when true the browser's AEC fights
+      // the ambient track playing through speakers, altering its perceived
+      // texture and ducking/muting playback during speech.
+      // noiseSuppression off — we want raw ambient room energy, not cleaned signal.
+      // autoGainControl off — AGC amplifies silence and compresses peaks,
+      // distorting the smooth breath envelope we need.
       {
         audio: {
-          echoCancellation: { ideal: true },
-          noiseSuppression: { ideal: false },
-          autoGainControl: { ideal: true }
+          echoCancellation: { exact: false },
+          noiseSuppression: { exact: false },
+          autoGainControl: { exact: false }
         }
       },
-      // Fallback: just ask for any audio
+      // Fallback with ideal (soft) constraints if exact fails
+      {
+        audio: {
+          echoCancellation: { ideal: false },
+          noiseSuppression: { ideal: false },
+          autoGainControl: { ideal: false }
+        }
+      },
+      // Last resort: just ask for any audio
       { audio: true }
     ];
 
