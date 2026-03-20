@@ -1394,6 +1394,24 @@ if (audioToggle) {
 // Both feed AnalyserNodes → frequency data → smoothed RMS energy → single
 // normalized "breath" value (0..1) on a wide, heavily-smoothed distribution.
 // This drives: (1) emissive warmth/intensity, (2) subtle movement modulation.
+//
+// FAULT TOLERANCE DESIGN:
+//   • Every audio API call is wrapped in try/catch — no single failure can kill
+//     the render loop or break the experience
+//   • AudioContext state is checked before every operation (can be 'suspended',
+//     'interrupted', 'closed' at any time by the OS)
+//   • Mic stream tracks are monitored for unexpected 'ended' events (hardware
+//     disconnect, OS revoke, phone call interruption)
+//   • NaN/Infinity guards on all numeric outputs — corrupt data → 0, not NaN
+//   • Zero-data detection: some mobile browsers return all-zero FFT data from
+//     analysers even when audio is playing — detected and treated as silence
+//   • Graceful degradation chain: mic+ambient → ambient-only → zero-energy
+//     baseline. The mandala always works; audio reactivity is pure enhancement.
+//   • getUserMedia constraints use progressive fallback — if ideal constraints
+//     fail, retry with minimal constraints before giving up
+//   • Analyser reconnection: if the AudioContext is interrupted/resumed (iOS
+//     phone call, Siri, Control Center), analysers are re-validated
+//   • No feature detection = no mic button shown (insecure origin, no API)
 
 // Pre-allocated color objects for per-frame audio-reactive modulation (avoid GC)
 const _warmGold = new THREE.Color(0xd4a840);
@@ -1407,66 +1425,133 @@ let micSource = null;           // MediaStreamAudioSourceNode
 let micActive = false;          // is mic currently feeding data?
 let audioBreath = 0;            // the final smoothed 0..1 breath signal
 let audioBreathTarget = 0;      // raw target before smoothing
+let ambientAnalyserFailed = false;  // latch: don't retry if ambient analyser permanently failed
+let micZeroFrames = 0;          // consecutive frames of zero mic energy (dead-stream detection)
+const MIC_ZERO_THRESHOLD = 180; // ~3s at 60fps — if mic reads zero for this long, stream is dead
 
 // Frequency data buffers (reused each frame)
 let ambientFreqData = null;
 let micFreqData = null;
 
+// ── Utility: check if AudioContext is in a usable state ──
+function isAudioCtxUsable() {
+  return audioCtx && audioCtx.state !== 'closed';
+}
+
+// ── Utility: safe number — clamp and NaN-guard ──
+function safeBreathNum(v) {
+  if (!Number.isFinite(v)) return 0;
+  return Math.max(0, Math.min(1, v));
+}
+
+// ── Feature detection: hide mic button if getUserMedia is unavailable ──
+// (insecure origins, old browsers, restrictive CSP)
+(function detectMicSupport() {
+  const hasGetUserMedia = !!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia);
+  const isSecureContext = window.isSecureContext !== false; // treat undefined as true for older browsers
+  if (!hasGetUserMedia || !isSecureContext) {
+    if (micToggle) micToggle.style.display = 'none';
+  }
+})();
+
 // Attach analyser to the ambient track (called after audio pipeline is ready)
 function attachAmbientAnalyser() {
-  if (ambientAnalyser || !audioCtx || !audioSource) return;
+  if (ambientAnalyser || ambientAnalyserFailed) return;
+  if (!isAudioCtxUsable() || !audioSource) return;
   try {
     ambientAnalyser = audioCtx.createAnalyser();
-    ambientAnalyser.fftSize = 256;            // 128 frequency bins — enough for energy
+    ambientAnalyser.fftSize = 256;
     ambientAnalyser.smoothingTimeConstant = 0.85;
-    audioSource.connect(ambientAnalyser);     // tap the existing source → analyser
-    // audioSource still connects to gainNode (multiple connects are fine in Web Audio)
+    audioSource.connect(ambientAnalyser);
     ambientFreqData = new Uint8Array(ambientAnalyser.frequencyBinCount);
   } catch (e) {
     console.warn('Ambient analyser attach failed:', e.message);
+    ambientAnalyser = null;
+    ambientFreqData = null;
+    // If the context is closed, don't retry forever
+    if (audioCtx && audioCtx.state === 'closed') ambientAnalyserFailed = true;
   }
 }
 
 // Compute RMS energy from an AnalyserNode's frequency data, normalized 0..1
+// Returns 0 on any failure — never throws, never returns NaN.
 function getAnalyserEnergy(analyser, freqData) {
   if (!analyser || !freqData) return 0;
-  analyser.getByteFrequencyData(freqData);
+  try {
+    analyser.getByteFrequencyData(freqData);
+  } catch (e) {
+    // Analyser disconnected, context closed, or node GC'd
+    return 0;
+  }
   let sum = 0;
   const len = freqData.length;
+  if (len === 0) return 0;
   // Weight low-mid frequencies more (where breath and ambient drones live)
   for (let i = 0; i < len; i++) {
-    const weight = i < len * 0.4 ? 1.5 : 1.0;  // boost low-mids
+    const weight = i < len * 0.4 ? 1.5 : 1.0;
     const v = freqData[i] / 255;
     sum += v * v * weight;
   }
-  return Math.sqrt(sum / len);
+  const energy = Math.sqrt(sum / len);
+  // Guard against NaN from corrupt data
+  return Number.isFinite(energy) ? energy : 0;
 }
 
-// Per-frame: blend both sources into a single breath value
+// Per-frame: blend both sources into a single breath value.
+// Entire function is fault-isolated — any failure → audioBreath decays to 0.
 function updateAudioBreath() {
-  // Ensure ambient analyser is connected once audio is playing
-  if (!ambientAnalyser && audioReady) attachAmbientAnalyser();
+  try {
+    // Re-check AudioContext state (iOS can suspend/interrupt at any time)
+    if (audioCtx && audioCtx.state === 'interrupted') {
+      // iOS-specific: context was interrupted (phone call, Siri, etc.)
+      // Try to resume — if it fails, that's fine, we just get zero energy
+      audioCtx.resume().catch(() => {});
+    }
 
-  const ambientEnergy = getAnalyserEnergy(ambientAnalyser, ambientFreqData);
-  const micEnergy = micActive ? getAnalyserEnergy(micAnalyser, micFreqData) : 0;
+    // Ensure ambient analyser is connected once audio is playing
+    if (!ambientAnalyser && audioReady) attachAmbientAnalyser();
 
-  // Blend: mic takes priority when active (70/30 mic/ambient), else 100% ambient
-  const rawEnergy = micActive
-    ? micEnergy * 0.7 + ambientEnergy * 0.3
-    : ambientEnergy;
+    // If AudioContext is suspended/closed, analysers return zero — that's fine
+    const ambientEnergy = getAnalyserEnergy(ambientAnalyser, ambientFreqData);
+    let micEnergy = 0;
 
-  // Map to 0..1 with a floor and ceiling — wide flat distribution
-  // Floor at 0.08 so silent moments still produce a gentle baseline
-  // Ceiling at 0.6 raw energy → 1.0 breath (don't need shouting to max out)
-  const mapped = Math.max(0, Math.min(1, (rawEnergy - 0.02) / 0.5));
-  audioBreathTarget = mapped;
+    if (micActive) {
+      micEnergy = getAnalyserEnergy(micAnalyser, micFreqData);
 
-  // Heavy exponential smoothing — this is what makes it feel like breathing
-  // Rise slowly (filling lungs), fall even slower (exhale)
-  const rise = 0.015;   // ~4-5 seconds to reach peak
-  const fall = 0.008;   // ~8 seconds to fully exhale
-  const rate = audioBreathTarget > audioBreath ? rise : fall;
-  audioBreath += (audioBreathTarget - audioBreath) * rate;
+      // Dead-stream detection: if mic returns zero for too long, the stream
+      // is likely dead (hardware disconnect, OS revoked permission, etc.)
+      if (micEnergy < 0.001) {
+        micZeroFrames++;
+        if (micZeroFrames > MIC_ZERO_THRESHOLD) {
+          console.warn('Mic stream appears dead — auto-disabling');
+          disableMic();
+          micEnergy = 0;
+        }
+      } else {
+        micZeroFrames = 0;  // reset on any non-zero data
+      }
+    }
+
+    // Blend: mic takes priority when active (70/30 mic/ambient), else 100% ambient
+    const rawEnergy = micActive
+      ? micEnergy * 0.7 + ambientEnergy * 0.3
+      : ambientEnergy;
+
+    // Map to 0..1 with a floor and ceiling — wide flat distribution
+    const mapped = Math.max(0, Math.min(1, (rawEnergy - 0.02) / 0.5));
+    audioBreathTarget = safeBreathNum(mapped);
+
+    // Heavy exponential smoothing — this is what makes it feel like breathing
+    const rise = 0.015;
+    const fall = 0.008;
+    const rate = audioBreathTarget > audioBreath ? rise : fall;
+    audioBreath = safeBreathNum(audioBreath + (audioBreathTarget - audioBreath) * rate);
+
+  } catch (e) {
+    // Total failure — just decay gracefully toward zero
+    audioBreath *= 0.95;
+    if (audioBreath < 0.001) audioBreath = 0;
+  }
 }
 
 // ── Mic permission flow ──
@@ -1480,42 +1565,130 @@ function hideMicModal() {
 async function enableMic() {
   hideMicModal();
   try {
+    // Guard: getUserMedia requires secure context + API support
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+      console.warn('getUserMedia not available (insecure origin or old browser)');
+      return;
+    }
+
     // Ensure AudioContext exists (user may tap mic before audio plays)
     if (!audioCtx) {
       const AC = window.AudioContext || window.webkitAudioContext;
-      if (!AC) return;
-      audioCtx = new AC();
-    }
-    if (audioCtx.state === 'suspended') await audioCtx.resume();
-
-    micStream = await navigator.mediaDevices.getUserMedia({
-      audio: {
-        echoCancellation: true,
-        noiseSuppression: false,    // we want breath noise
-        autoGainControl: true
+      if (!AC) {
+        console.warn('Web Audio API not supported');
+        return;
       }
+      try {
+        audioCtx = new AC();
+      } catch (ctxErr) {
+        console.warn('AudioContext creation failed:', ctxErr.message);
+        return;
+      }
+    }
+
+    // Resume if suspended (required on iOS for user-gesture gating)
+    if (audioCtx.state === 'suspended' || audioCtx.state === 'interrupted') {
+      try { await audioCtx.resume(); } catch (e) { /* best effort */ }
+    }
+
+    // If context is closed (e.g., OS killed it), we can't proceed
+    if (audioCtx.state === 'closed') {
+      console.warn('AudioContext is closed — cannot enable mic');
+      return;
+    }
+
+    // Progressive constraint fallback:
+    // Try ideal constraints first, then fall back to minimal
+    let stream = null;
+    const constraintSets = [
+      // Ideal: echo cancellation on, noise suppression off (we want breath),
+      // auto gain on
+      {
+        audio: {
+          echoCancellation: { ideal: true },
+          noiseSuppression: { ideal: false },
+          autoGainControl: { ideal: true }
+        }
+      },
+      // Fallback: just ask for any audio
+      { audio: true }
+    ];
+
+    for (const constraints of constraintSets) {
+      try {
+        stream = await navigator.mediaDevices.getUserMedia(constraints);
+        break;  // success
+      } catch (e) {
+        // NotAllowedError = user denied — don't retry with different constraints
+        if (e.name === 'NotAllowedError' || e.name === 'SecurityError') throw e;
+        // OverconstrainedError, NotReadableError, etc — try next constraint set
+        console.warn('getUserMedia constraint set failed, trying fallback:', e.name);
+      }
+    }
+
+    if (!stream) {
+      console.warn('All getUserMedia constraint sets failed');
+      return;
+    }
+
+    micStream = stream;
+
+    // Monitor for unexpected track end (hardware disconnect, OS revoke)
+    micStream.getAudioTracks().forEach(track => {
+      track.addEventListener('ended', () => {
+        console.warn('Mic track ended unexpectedly — disabling');
+        disableMic();
+      });
+      // Also watch for mute (some browsers fire this on permission revoke)
+      track.addEventListener('mute', () => {
+        console.warn('Mic track muted by system');
+      });
     });
-    micSource = audioCtx.createMediaStreamSource(micStream);
-    micAnalyser = audioCtx.createAnalyser();
-    micAnalyser.fftSize = 256;
-    micAnalyser.smoothingTimeConstant = 0.88;
-    micSource.connect(micAnalyser);
+
+    // Create audio nodes — each can fail independently
+    try {
+      micSource = audioCtx.createMediaStreamSource(micStream);
+    } catch (srcErr) {
+      console.warn('createMediaStreamSource failed:', srcErr.message);
+      micStream.getTracks().forEach(t => t.stop());
+      micStream = null;
+      return;
+    }
+
+    try {
+      micAnalyser = audioCtx.createAnalyser();
+      micAnalyser.fftSize = 256;
+      micAnalyser.smoothingTimeConstant = 0.88;
+      micSource.connect(micAnalyser);
+    } catch (analyserErr) {
+      console.warn('Mic analyser setup failed:', analyserErr.message);
+      try { micSource.disconnect(); } catch (e) {}
+      micSource = null;
+      micStream.getTracks().forEach(t => t.stop());
+      micStream = null;
+      return;
+    }
+
     // Do NOT connect micSource to destination — we don't want to hear the mic
     micFreqData = new Uint8Array(micAnalyser.frequencyBinCount);
+    micZeroFrames = 0;  // reset dead-stream counter
     micActive = true;
     if (micToggle) micToggle.classList.add('active');
+
   } catch (err) {
-    console.warn('Mic access denied or failed:', err.message);
-    micActive = false;
-    if (micToggle) micToggle.classList.remove('active');
+    // Catch-all: user denied, or any unexpected failure
+    const reason = err.name || err.message || 'unknown';
+    console.warn('Mic enable failed (' + reason + '):', err.message || '');
+    disableMic();
   }
 }
 
 function disableMic() {
   micActive = false;
+  micZeroFrames = 0;
   if (micToggle) micToggle.classList.remove('active');
   if (micStream) {
-    micStream.getTracks().forEach(t => t.stop());
+    try { micStream.getTracks().forEach(t => t.stop()); } catch (e) {}
     micStream = null;
   }
   if (micSource) {
@@ -1526,8 +1699,14 @@ function disableMic() {
   micFreqData = null;
 }
 
+// Debounce guard for mic toggle (same pattern as audio toggle)
+let lastMicToggleTime = 0;
 function handleMicToggle(e) {
   if (e) e.preventDefault();
+  const now = Date.now();
+  if (now - lastMicToggleTime < 300) return;
+  lastMicToggleTime = now;
+
   if (micActive) {
     disableMic();
   } else {
@@ -1540,13 +1719,25 @@ if (micToggle) {
   micToggle.addEventListener('touchend', handleMicToggle);
 }
 if (micAllow) {
-  micAllow.addEventListener('click', (e) => { e.preventDefault(); enableMic(); });
-  micAllow.addEventListener('touchend', (e) => { e.preventDefault(); enableMic(); });
+  const doAllow = (e) => { e.preventDefault(); enableMic(); };
+  micAllow.addEventListener('click', doAllow);
+  micAllow.addEventListener('touchend', doAllow);
 }
 if (micDeny) {
-  micDeny.addEventListener('click', (e) => { e.preventDefault(); hideMicModal(); });
-  micDeny.addEventListener('touchend', (e) => { e.preventDefault(); hideMicModal(); });
+  const doDeny = (e) => { e.preventDefault(); hideMicModal(); };
+  micDeny.addEventListener('click', doDeny);
+  micDeny.addEventListener('touchend', doDeny);
 }
+
+// ── Visibility change: clean up mic when page goes background ──
+// Some mobile browsers stop mic streams when the page is hidden;
+// others keep them running but return stale data. Proactively disable.
+document.addEventListener('visibilitychange', () => {
+  if (document.hidden && micActive) {
+    console.log('Page hidden — pausing mic to conserve resources');
+    disableMic();
+  }
+});
 
 // ─── FULLSCREEN TOGGLE ───
 // Uses the Fullscreen API (desktop) and falls back gracefully.
@@ -1642,7 +1833,8 @@ function animate() {
   updateAudioBreath();
   // audioBreath is 0..1, heavily smoothed, wide distribution
   // b = breath intensity for use throughout the loop
-  const b = audioBreath;
+  // Final NaN guard: if anything upstream corrupted the value, clamp to 0
+  const b = Number.isFinite(audioBreath) ? Math.max(0, Math.min(1, audioBreath)) : 0;
 
   // ── Lerp user controls ──
   const ctrlLerp = 1 - Math.exp(-8 * dt);          // smooth ~8 Hz exponential ease
