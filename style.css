@@ -28,7 +28,7 @@
   --lavender:   #a088c0;
   --blue-star:  #a0d4f0;
   --teal-glow:  #7ec8a0;
-  --panel-bg:   rgba(8, 6, 14, 0.50);
+  --panel-bg:   rgba(8, 6, 14, 0.38);
   --panel-border: rgba(155, 138, 184, 0.12);
   --font-display: 'Cormorant Garamond', Georgia, serif;
   --font-body: 'Jost', 'Helvetica Neue', sans-serif;
@@ -219,8 +219,8 @@ canvas {
   -webkit-overflow-scrolling: touch; /* smooth inertial scroll on iOS */
   touch-action: pan-y;            /* tell browser: vertical = scroll this panel */
   background: var(--panel-bg);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
+  backdrop-filter: blur(26px);
+  -webkit-backdrop-filter: blur(26px);
   border: 1px solid var(--panel-border);
   border-radius: 6px;
   padding: clamp(18px, 3vmin, 30px);
@@ -895,16 +895,16 @@ canvas {
   height: 18px;
 }
 /* Panel opacity states — applied to .teaching-panel via JS */
-/* Default (frosted): 0.50 alpha, 20px blur — set via --panel-bg + base rule */
+/* Default (frosted): 0.38 alpha, 26px blur — set via --panel-bg + base rule */
 .teaching-panel.panel-lighter {
-  background: rgba(8, 6, 14, 0.35);
-  backdrop-filter: blur(28px);
-  -webkit-backdrop-filter: blur(28px);
+  background: rgba(8, 6, 14, 0.23);
+  backdrop-filter: blur(34px);
+  -webkit-backdrop-filter: blur(34px);
 }
 .teaching-panel.panel-darker {
-  background: rgba(8, 6, 14, 0.65);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
+  background: rgba(8, 6, 14, 0.53);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
 }
 
 /* ═══ FULLSCREEN TOGGLE ═══ */
