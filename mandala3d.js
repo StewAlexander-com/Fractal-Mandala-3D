@@ -4,6 +4,11 @@
    Navigate inward/outward through concentric consciousness
    ═══════════════════════════════════════════════════════════ */
 
+// ─── RESILIENCE LAYER — fault-tolerant foundation ───
+// Clamp delta-time to prevent physics explosions after tab-refocus
+const MAX_DT = 0.1;          // 100ms — anything larger is a tab resume spike
+const SAFE_NUM = (v, fallback = 0) => Number.isFinite(v) ? v : fallback;
+
 import * as THREE from 'three';
 
 // ─── LAYER TEACHINGS ───
@@ -189,39 +194,41 @@ const ZOOM_MIN = 0.55;
 const ZOOM_MAX = 1.6;
 const BASE_ORBIT_RADIUS = 2;  // the gentle auto-orbit amplitude
 
-// ─── DOM ───
-const canvas = document.getElementById('canvas');
-const layerTitle = document.getElementById('layerTitle');
-const layerNumber = document.getElementById('layerNumber');
-const layerName = document.getElementById('layerName');
-const layerSubtitle = document.getElementById('layerSubtitle');
-const teachingPanel = document.getElementById('teachingPanel');
-const teachingInner = document.getElementById('teachingInner');
-const welcome = document.getElementById('welcome');
-const enterBtn = document.getElementById('enterBtn');
-const sliderTrack = document.getElementById('sliderTrack');
-const sliderFill = document.getElementById('sliderFill');
-const sliderThumb = document.getElementById('sliderThumb');
-const sliderStops = document.getElementById('sliderStops');
-const sliderTooltip = document.getElementById('sliderTooltip');
+// ─── DOM (null-safe — every ref guarded so a missing element can’t crash the app) ───
+const $ = id => document.getElementById(id);  // shorthand
+const canvas         = $('canvas');
+const layerTitle     = $('layerTitle');
+const layerNumber    = $('layerNumber');
+const layerName      = $('layerName');
+const layerSubtitle  = $('layerSubtitle');
+const teachingPanel  = $('teachingPanel');
+const teachingInner  = $('teachingInner');
+const welcome        = $('welcome');
+const enterBtn       = $('enterBtn');
+const sliderTrack    = $('sliderTrack');
+const sliderFill     = $('sliderFill');
+const sliderThumb    = $('sliderThumb');
+const sliderStops    = $('sliderStops');
+const sliderTooltip  = $('sliderTooltip');
 let visitedLayers = new Set();
-const audioToggle = document.getElementById('audioToggle');
+const audioToggle    = $('audioToggle');
 
 // ─── SCROLL FADE INDICATORS + HINT ARROWS ───
-const scrollHintUp = document.getElementById('scrollHintUp');
-const scrollHintDown = document.getElementById('scrollHintDown');
+const scrollHintUp   = $('scrollHintUp');
+const scrollHintDown = $('scrollHintDown');
 
 function updateScrollFades() {
+  if (!teachingPanel) return;
   const el = teachingPanel;
   const threshold = 8;
   const canUp = el.scrollTop > threshold;
   const canDown = el.scrollHeight - el.scrollTop - el.clientHeight > threshold;
   el.classList.toggle('fade-top', canUp);
   el.classList.toggle('fade-bottom', canDown);
-  scrollHintUp.classList.toggle('visible', canUp);
-  scrollHintDown.classList.toggle('visible', canDown);
+  if (scrollHintUp)   scrollHintUp.classList.toggle('visible', canUp);
+  if (scrollHintDown)  scrollHintDown.classList.toggle('visible', canDown);
 }
-teachingPanel.addEventListener('scroll', updateScrollFades, { passive: true });
+if (teachingPanel) teachingPanel.addEventListener('scroll', updateScrollFades, { passive: true });
 
 // ─── NEBULA BACKGROUND DATA ───
 let nebulaStars;        // distant star-points
@@ -233,7 +240,11 @@ let starTwinkleSpeeds;  // per-star twinkle rates
 let starBaseOpacities;  // per-star base brightness
 
 // ─── INIT THREE.JS ───
+let contextLost = false;   // WebGL context-loss flag
+
 function init() {
+  if (!canvas) { console.error('Canvas element missing'); return; }
+
   clock = new THREE.Clock();
   scene = new THREE.Scene();
   scene.background = new THREE.Color(0x06050a);         // indigo-black
@@ -245,12 +256,30 @@ function init() {
   renderer = new THREE.WebGLRenderer({
     canvas,
     antialias: true,
-    alpha: false
+    alpha: false,
+    powerPreference: 'high-performance',  // prefer discrete GPU when available
   });
   renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
   handleResize();   // initial size — uses actual element dimensions
   renderer.toneMapping = THREE.ACESFilmicToneMapping;
   renderer.toneMappingExposure = 2.0;
+
+  // ─── WebGL CONTEXT LOSS RECOVERY ───
+  // Mobile GPUs can reclaim context when backgrounded. Recover silently.
+  canvas.addEventListener('webglcontextlost', (e) => {
+    e.preventDefault();  // signal we intend to restore
+    contextLost = true;
+    console.warn('WebGL context lost — waiting for restore');
+  }, false);
+  canvas.addEventListener('webglcontextrestored', () => {
+    contextLost = false;
+    console.info('WebGL context restored — rebuilding');
+    // Three.js r170 auto-restores most state, but we nudge it:
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    handleResize();
+    renderer.toneMapping = THREE.ACESFilmicToneMapping;
+    renderer.toneMappingExposure = 2.0;
+  }, false);
 
   // Shared radial glow texture — astronomical point-spread function
   // Bright saturated core with extended halo, like real star optics
@@ -303,9 +332,9 @@ function init() {
   backLight.position.set(0, 30, -50);
   scene.add(backLight);
 
-  buildLayers();
-  buildNebulaBackground();
-  buildNavDots();
+  try { buildLayers(); } catch (e) { console.error('buildLayers failed:', e); }
+  try { buildNebulaBackground(); } catch (e) { console.error('buildNebulaBackground failed:', e); }
+  try { buildNavDots(); } catch (e) { console.error('buildNavDots failed:', e); }
   animate();
 }
 
@@ -831,6 +860,7 @@ function buildSpirals() {
 
 // ─── NAVIGATION ───
 function buildNavDots() {
+  if (!sliderStops) return;
   sliderStops.innerHTML = '';
   LAYERS.forEach((layer, i) => {
     const stop = document.createElement('div');
@@ -848,11 +878,12 @@ function buildNavDots() {
 
 function updateSliderPosition(index) {
   const pct = (index / (LAYER_COUNT - 1)) * 100;
-  sliderThumb.style.top = `${pct}%`;
-  sliderFill.style.height = `${pct}%`;
+  if (sliderThumb) sliderThumb.style.top = `${pct}%`;
+  if (sliderFill)  sliderFill.style.height = `${pct}%`;
   // Mark visited
   visitedLayers.add(index);
   // Update stop dots
+  if (!sliderStops) return;
   sliderStops.querySelectorAll('.slider-stop').forEach((stop, i) => {
     stop.classList.toggle('active', i === index);
     stop.classList.toggle('visited', visitedLayers.has(i) && i !== index);
@@ -860,18 +891,22 @@ function updateSliderPosition(index) {
 }
 
 function showSliderTooltip(index, refEl) {
+  if (!sliderTooltip || !sliderTrack) return;
   const layer = LAYERS[index];
+  if (!layer) return;
   sliderTooltip.textContent = `${LAYER_COUNT - index}. ${layer.name}`;
   // Position tooltip vertically aligned with the stop
   const trackRect = sliderTrack.getBoundingClientRect();
   const stopRect = refEl.getBoundingClientRect();
-  const navRect = document.getElementById('navControls').getBoundingClientRect();
+  const navEl = $('navControls');
+  if (!navEl) return;
+  const navRect = navEl.getBoundingClientRect();
   sliderTooltip.style.top = `${stopRect.top - navRect.top + stopRect.height / 2}px`;
   sliderTooltip.classList.add('visible');
 }
 
 function hideSliderTooltip() {
-  sliderTooltip.classList.remove('visible');
+  if (sliderTooltip) sliderTooltip.classList.remove('visible');
 }
 
 function goToLayer(index) {
@@ -888,18 +923,18 @@ function goToLayer(index) {
 
 function showLayerTitle(index) {
   const layer = LAYERS[index];
-  layerNumber.textContent = `layer ${LAYER_COUNT - index}`;
-  layerName.textContent = layer.name;
-  layerSubtitle.textContent = layer.subtitle;
-  layerTitle.classList.add('visible');
-  teachingPanel.classList.remove('visible');
+  if (!layer) return;
+  if (layerNumber)   layerNumber.textContent = `layer ${LAYER_COUNT - index}`;
+  if (layerName)     layerName.textContent = layer.name;
+  if (layerSubtitle) layerSubtitle.textContent = layer.subtitle;
+  if (layerTitle)    layerTitle.classList.add('visible');
+  if (teachingPanel) teachingPanel.classList.remove('visible');
 
   clearTimeout(showLayerTitle._timer);
   showLayerTitle._timer = setTimeout(() => {
-    layerTitle.classList.remove('visible');
-    teachingInner.innerHTML = layer.content;
-    teachingPanel.scrollTop = 0;
-    teachingPanel.classList.add('visible');
+    if (layerTitle) layerTitle.classList.remove('visible');
+    if (teachingInner) teachingInner.innerHTML = layer.content;
+    if (teachingPanel) { teachingPanel.scrollTop = 0; teachingPanel.classList.add('visible'); }
     updateScrollFades();
   }, 2400);
 }
@@ -908,18 +943,19 @@ function showLayerTitle(index) {
 let isDragging = false;
 
 function sliderYToLayer(clientY) {
+  if (!sliderTrack) return 0;
   const rect = sliderTrack.getBoundingClientRect();
   const pct = Math.max(0, Math.min(1, (clientY - rect.top) / rect.height));
   return Math.round(pct * (LAYER_COUNT - 1));
 }
 
 function onDragStart(e) {
-  if (!entered) return;
+  if (!entered || !sliderThumb) return;
   isDragging = true;
   sliderThumb.classList.add('dragging');
   // Disable smooth transition while dragging for instant feedback
-  sliderThumb.style.transition = 'transform 0.1s, box-shadow 0.1s';
-  sliderFill.style.transition = 'none';
+  if (sliderThumb) sliderThumb.style.transition = 'transform 0.1s, box-shadow 0.1s';
+  if (sliderFill)  sliderFill.style.transition = 'none';
   const clientY = e.touches ? e.touches[0].clientY : e.clientY;
   const layer = sliderYToLayer(clientY);
   goToLayer(layer);
@@ -936,26 +972,27 @@ function onDragMove(e) {
 function onDragEnd() {
   if (!isDragging) return;
   isDragging = false;
-  sliderThumb.classList.remove('dragging');
-  sliderThumb.style.transition = '';
-  sliderFill.style.transition = '';
+  if (sliderThumb) { sliderThumb.classList.remove('dragging'); sliderThumb.style.transition = ''; }
+  if (sliderFill)  sliderFill.style.transition = '';
 }
 
 // Mouse drag on thumb
-sliderThumb.addEventListener('mousedown', onDragStart);
+if (sliderThumb) {
+  sliderThumb.addEventListener('mousedown', onDragStart);
+  sliderThumb.addEventListener('touchstart', onDragStart, { passive: true });
+}
 document.addEventListener('mousemove', onDragMove);
 document.addEventListener('mouseup', onDragEnd);
-
-// Touch drag on thumb
-sliderThumb.addEventListener('touchstart', onDragStart, { passive: true });
 document.addEventListener('touchmove', (e) => { if (isDragging) onDragMove(e); }, { passive: false });
 document.addEventListener('touchend', onDragEnd);
 
 // Click on track = jump to closest layer
-sliderTrack.addEventListener('click', (e) => {
-  if (!entered) return;
-  goToLayer(sliderYToLayer(e.clientY));
-});
+if (sliderTrack) {
+  sliderTrack.addEventListener('click', (e) => {
+    if (!entered) return;
+    goToLayer(sliderYToLayer(e.clientY));
+  });
+}
 
 // ─── INPUT HANDLING — Unified Gesture System ───
 //
@@ -977,7 +1014,7 @@ function handleLayerScroll(delta) {
 }
 
 // ── Desktop: mouse wheel ──
-canvas.addEventListener('wheel', (e) => {
+if (canvas) canvas.addEventListener('wheel', (e) => {
   e.preventDefault();
   if (!entered) return;
   if (e.ctrlKey || e.metaKey) {
@@ -992,11 +1029,11 @@ canvas.addEventListener('wheel', (e) => {
 let isMouseDragging = false;
 let mouseLastX = 0;
 
-canvas.addEventListener('mousedown', (e) => {
+if (canvas) canvas.addEventListener('mousedown', (e) => {
   if (!entered) return;
   isMouseDragging = true;
   mouseLastX = e.clientX;
-  canvas.style.cursor = 'grabbing';
+  if (canvas) canvas.style.cursor = 'grabbing';
 });
 
 document.addEventListener('mousemove', (e) => {
@@ -1008,7 +1045,7 @@ document.addEventListener('mousemove', (e) => {
 
 document.addEventListener('mouseup', () => {
   isMouseDragging = false;
-  canvas.style.cursor = '';
+  if (canvas) canvas.style.cursor = '';
 });
 
 // ── Touch: unified 1-finger + 2-finger gesture handling ──
@@ -1030,7 +1067,7 @@ function pinchDist(e) {
   return Math.sqrt(dx * dx + dy * dy);
 }
 
-canvas.addEventListener('touchstart', (e) => {
+if (canvas) canvas.addEventListener('touchstart', (e) => {
   if (!entered) return;
   touch.fingers = e.touches.length;
   touch.intent = null;
@@ -1047,7 +1084,7 @@ canvas.addEventListener('touchstart', (e) => {
   }
 }, { passive: true });
 
-canvas.addEventListener('touchmove', (e) => {
+if (canvas) canvas.addEventListener('touchmove', (e) => {
   if (!entered) return;
   e.preventDefault();
 
@@ -1088,7 +1125,7 @@ canvas.addEventListener('touchmove', (e) => {
   touch.lastY = cy;
 }, { passive: false });
 
-canvas.addEventListener('touchend', () => {
+if (canvas) canvas.addEventListener('touchend', () => {
   touch.fingers = 0;
   touch.intent = null;
   touch.locked = false;
@@ -1188,7 +1225,7 @@ function initAudio() {
       console.log('Audio autoplay blocked — tap sound icon to enable');
     });
 
-    audioToggle.classList.add('visible');
+    if (audioToggle) audioToggle.classList.add('visible');
   } catch (err) {
     console.warn('Audio init failed:', err);
   }
@@ -1209,7 +1246,7 @@ function handleAudioToggle(e) {
   }
 
   audioMuted = !audioMuted;
-  audioToggle.classList.toggle('muted', audioMuted);
+  if (audioToggle) audioToggle.classList.toggle('muted', audioMuted);
 
   if (audioMuted) {
     // Cancel any in-progress fade
@@ -1238,32 +1275,39 @@ function handleAudioToggle(e) {
   }
 }
 // Listen on both click (desktop) and touchend (iOS standalone fallback)
-audioToggle.addEventListener('click', handleAudioToggle);
-audioToggle.addEventListener('touchend', handleAudioToggle);
+if (audioToggle) {
+  audioToggle.addEventListener('click', handleAudioToggle);
+  audioToggle.addEventListener('touchend', handleAudioToggle);
+}
 
 // Enter button
 function handleEnter(e) {
   if (e) e.preventDefault();
   entered = true;
-  welcome.classList.add('hidden');
+  if (welcome) welcome.classList.add('hidden');
   goToLayer(0);
   initAudio();  // user gesture — safe to start audio
 }
-enterBtn.addEventListener('click', handleEnter);
-enterBtn.addEventListener('touchend', handleEnter);
+if (enterBtn) {
+  enterBtn.addEventListener('click', handleEnter);
+  enterBtn.addEventListener('touchend', handleEnter);
+}
 
 // ─── ROBUST RESIZE — works with iOS safe-area, dynamic toolbar, notch ───
 function handleResize() {
-  // Use visualViewport when available (iOS Safari, Android Chrome)
-  const vv = window.visualViewport;
-  const w = vv ? vv.width  : window.innerWidth;
-  const h = vv ? vv.height : window.innerHeight;
+  if (!renderer || !camera) return;
+  try {
+    // Use visualViewport when available (iOS Safari, Android Chrome)
+    const vv = window.visualViewport;
+    const w = vv ? vv.width  : window.innerWidth;
+    const h = vv ? vv.height : window.innerHeight;
 
-  // Set the WebGL drawing-buffer size but do NOT touch CSS inline styles
-  // (third arg `false`) — our CSS already handles layout via 100vw/100dvh
-  renderer.setSize(w, h, false);
-  camera.aspect = w / h;
-  camera.updateProjectionMatrix();
+    // Set the WebGL drawing-buffer size but do NOT touch CSS inline styles
+    // (third arg `false`) — our CSS already handles layout via 100vw/100dvh
+    renderer.setSize(w, h, false);
+    camera.aspect = w / h;
+    camera.updateProjectionMatrix();
+  } catch (e) { console.warn('Resize handler error:', e); }
 }
 
 window.addEventListener('resize', handleResize);
@@ -1276,10 +1320,15 @@ window.addEventListener('orientationchange', () => {
   setTimeout(handleResize, 150);  // slight delay for layout to settle
 });
 
-// ─── ANIMATION LOOP ───
+// ─── ANIMATION LOOP (fault-isolated — no single subsystem can kill the loop) ───
 function animate() {
   requestAnimationFrame(animate);
-  const dt = clock.getDelta();
+
+  // Skip rendering while WebGL context is lost — GPU will restore on its own
+  if (contextLost) return;
+
+  const rawDt = clock.getDelta();
+  const dt = Math.min(rawDt, MAX_DT);          // clamp: prevent physics explosions on tab-resume
   const elapsed = clock.getElapsedTime();
 
   // ── Lerp user controls ──
@@ -1315,6 +1364,7 @@ function animate() {
   }
 
   // Animate orbital groups
+  try {
   orbitalGroups.forEach((group, i) => {
     const layer = LAYERS[i];
     const speed = 0.15 + i * 0.03;
@@ -1333,7 +1383,7 @@ function animate() {
 
     // Particle orbital motion
     const particles = particleSystems[i];
-    if (particles) {
+    if (particles && particles.geometry && particles.geometry.attributes.position) {
       const positions = particles.geometry.attributes.position;
       const count = positions.count;
       for (let p = 0; p < count; p++) {
@@ -1341,8 +1391,8 @@ function animate() {
         let y = positions.getY(p);
         const angle = Math.atan2(y, x) + dt * speed * 0.5 * dir;
         const r = Math.sqrt(x * x + y * y);
-        positions.setX(p, Math.cos(angle) * r);
-        positions.setY(p, Math.sin(angle) * r);
+        positions.setX(p, SAFE_NUM(Math.cos(angle) * r));
+        positions.setY(p, SAFE_NUM(Math.sin(angle) * r));
       }
       positions.needsUpdate = true;
     }
@@ -1368,20 +1418,23 @@ function animate() {
       }
     });
   });
+  } catch (e) { /* orbital animation fault-isolated */ }
 
   // Core breathing — pulsing heart of the mandala
-  if (coreGlow) {
+  try {
+  if (coreGlow && coreGlow.material) {
     const breathe = 0.2 + Math.sin(elapsed * 0.5) * 0.1;
     coreGlow.material.opacity = breathe;
     const s = 1 + Math.sin(elapsed * 0.5) * 0.15;
     coreGlow.scale.set(s, s, s);
     // Outer halo breathes in counter-phase
-    if (coreGlow.userData.halo) {
+    if (coreGlow.userData.halo && coreGlow.userData.halo.material) {
       const hs = 1 + Math.sin(elapsed * 0.35) * 0.2;
       coreGlow.userData.halo.scale.set(hs, hs, hs);
       coreGlow.userData.halo.material.opacity = 0.06 + Math.sin(elapsed * 0.35 + 1) * 0.03;
     }
   }
+  } catch (e) { /* core glow fault-isolated */ }
 
   // ── Per-star twinkle — individual shimmer at different rates ──
   if (nebulaStars && starTwinklePhases) {
@@ -1490,8 +1543,25 @@ function animate() {
     } catch (e) { /* cloud breathing fallback */ }
   });
 
-  renderer.render(scene, camera);
+  // NaN guard — if camera position corrupted, reset to last known-good
+  if (!Number.isFinite(camera.position.z)) {
+    camera.position.set(0, 0, cameraZ);
+  }
+
+  try { renderer.render(scene, camera); } catch (e) { /* render fault-isolated */ }
 }
 
 // ─── START ───
-init();
+try {
+  init();
+} catch (e) {
+  console.error('Mandala init failed:', e);
+  // Show a graceful message instead of a blank screen
+  if (welcome) {
+    welcome.classList.remove('hidden');
+    const sub = welcome.querySelector('.welcome-sub');
+    if (sub) sub.textContent = 'requires WebGL — try a different browser';
+    const btn = welcome.querySelector('.enter-btn');
+    if (btn) btn.style.display = 'none';
+  }
+}

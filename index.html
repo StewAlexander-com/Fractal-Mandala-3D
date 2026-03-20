@@ -43,9 +43,15 @@
 <meta name="theme-color" content="#06050a">
 <link rel="canonical" href="https://stewalexander-com.github.io/Fractal-Mandala-3D/">
 
+<!-- Preconnect: CDN + fonts for faster first paint -->
+<link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<!-- Fonts: display=swap ensures text is visible immediately with system fallback
+     if Google Fonts CDN is slow or unavailable -->
 <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,300;1,400&family=Jost:wght@300;400;500&family=Lora:ital,wght@0,400;0,500;1,400;1,500&display=swap" rel="stylesheet">
+<!-- Preload audio hint — browser can start fetching before user enters -->
+<link rel="preload" href="ambient-meditation.mp3" as="fetch" crossorigin type="audio/mpeg">
 <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -118,6 +124,7 @@
   </div>
 </div>
 
+<!-- Three.js — primary CDN with preconnect warming -->
 <script type="importmap">
 {
   "imports": {
@@ -125,6 +132,28 @@
     "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.170.0/examples/jsm/"
   }
 }
+</script>
+
+<!-- Global error handler: if Three.js CDN or module fails, show graceful message -->
+<script>
+window.addEventListener('error', function(e) {
+  // Module resolution failure or network error on critical script
+  if (e.filename && (e.filename.indexOf('three') !== -1 || e.filename.indexOf('mandala3d') !== -1)) {
+    var w = document.getElementById('welcome');
+    if (w) {
+      w.classList.remove('hidden');
+      var s = w.querySelector('.welcome-sub');
+      if (s) s.textContent = 'unable to load 3D engine \u2014 check your connection';
+      var b = w.querySelector('.enter-btn');
+      if (b) b.style.display = 'none';
+    }
+  }
+});
+// Catch unhandled promise rejections (dynamic import failures, etc.)
+window.addEventListener('unhandledrejection', function(e) {
+  console.warn('Unhandled rejection:', e.reason);
+  e.preventDefault();  // prevent console noise from non-critical async failures
+});
 </script>
 <script type="module" src="mandala3d.js"></script>
 </body>
