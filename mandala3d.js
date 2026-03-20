@@ -1020,6 +1020,7 @@ function showLayerTitle(index) {
     if (layerTitle) layerTitle.classList.remove('visible');
     if (teachingInner) teachingInner.innerHTML = layer.content;
     if (teachingPanel) { teachingPanel.scrollTop = 0; teachingPanel.classList.add('visible'); }
+    updatePanelOpacity(index);
     updateScrollFades();
   }, 2400);
 }
@@ -1823,21 +1824,39 @@ const panelOpacityToggle = $('panelOpacityToggle');
 // Sync icon when user exits fullscreen via Escape or browser chrome
 document.addEventListener('fullscreenchange', updateFsIcon);
 document.addEventListener('webkitfullscreenchange', updateFsIcon);
-// States cycle: frosted (default 0.38/26px) → lighter (0.23/34px) → darker (0.53/16px)
+// States cycle: frosted → lighter → darker
+// Each state has a base alpha + blur; layer depth adds up to +0.22 alpha
+// at the innermost layer so text stays readable against bright geometry.
+const PANEL_PRESETS = {
+  frosted: { alpha: 0.38, blur: 26 },
+  lighter: { alpha: 0.23, blur: 34 },
+  darker:  { alpha: 0.53, blur: 16 }
+};
+const PANEL_DEPTH_BOOST = 0.22; // extra alpha added at innermost layer
 const PANEL_STATES = ['frosted', 'lighter', 'darker'];
 let panelStateIndex = 0;
+
+function updatePanelOpacity(layerIndex) {
+  if (!teachingPanel) return;
+  const preset = PANEL_PRESETS[PANEL_STATES[panelStateIndex]];
+  const depth = layerIndex / (LAYER_COUNT - 1); // 0 = outer, 1 = core
+  const alpha = Math.min(preset.alpha + depth * PANEL_DEPTH_BOOST, 0.90);
+  teachingPanel.style.background = `rgba(8, 6, 14, ${alpha.toFixed(2)})`;
+  // Blur stays per-preset (set via class or base rule)
+}
 
 function handlePanelOpacityToggle(e) {
   if (e) e.preventDefault();
   panelStateIndex = (panelStateIndex + 1) % PANEL_STATES.length;
   const state = PANEL_STATES[panelStateIndex];
 
-  // Remove all panel state classes
+  // Update blur via class (alpha set dynamically by updatePanelOpacity)
   if (teachingPanel) {
     teachingPanel.classList.remove('panel-lighter', 'panel-darker');
     if (state === 'lighter') teachingPanel.classList.add('panel-lighter');
     if (state === 'darker')  teachingPanel.classList.add('panel-darker');
   }
+  updatePanelOpacity(currentLayer);
 
   // Visual feedback on the button
   if (panelOpacityToggle) {

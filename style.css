@@ -895,14 +895,13 @@ canvas {
   height: 18px;
 }
 /* Panel opacity states — applied to .teaching-panel via JS */
-/* Default (frosted): 0.38 alpha, 26px blur — set via --panel-bg + base rule */
+/* Background alpha is set dynamically per-layer by updatePanelOpacity().
+   These classes only override the blur amount. */
 .teaching-panel.panel-lighter {
-  background: rgba(8, 6, 14, 0.23);
   backdrop-filter: blur(34px);
   -webkit-backdrop-filter: blur(34px);
 }
 .teaching-panel.panel-darker {
-  background: rgba(8, 6, 14, 0.53);
   backdrop-filter: blur(16px);
   -webkit-backdrop-filter: blur(16px);
 }
