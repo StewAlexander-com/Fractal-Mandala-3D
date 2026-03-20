@@ -250,7 +250,7 @@ function init() {
   renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
   handleResize();   // initial size — uses actual element dimensions
   renderer.toneMapping = THREE.ACESFilmicToneMapping;
-  renderer.toneMappingExposure = 1.6;
+  renderer.toneMappingExposure = 1.8;
 
   // Shared radial glow texture for all point materials
   const glowCanvas = document.createElement('canvas');
@@ -259,9 +259,10 @@ function init() {
   const glowCtx = glowCanvas.getContext('2d');
   const grad = glowCtx.createRadialGradient(32, 32, 0, 32, 32, 32);
   grad.addColorStop(0,    'rgba(255,255,255,1)');
-  grad.addColorStop(0.12, 'rgba(255,255,255,0.75)');
-  grad.addColorStop(0.35, 'rgba(255,255,255,0.22)');
-  grad.addColorStop(0.65, 'rgba(255,255,255,0.05)');
+  grad.addColorStop(0.08, 'rgba(255,255,255,0.9)');
+  grad.addColorStop(0.2,  'rgba(255,255,255,0.55)');
+  grad.addColorStop(0.45, 'rgba(255,255,255,0.15)');
+  grad.addColorStop(0.75, 'rgba(255,255,255,0.03)');
   grad.addColorStop(1,    'rgba(255,255,255,0)');
   glowCtx.fillStyle = grad;
   glowCtx.fillRect(0, 0, 64, 64);
@@ -406,22 +407,22 @@ function buildNebulaBackground() {
 
     // Tiered star classes for depth
     let brightness, size;
-    if (roll < 0.02) {
-      // Giant stars (2%) — rare beacons
-      brightness = 2.0 + Math.random() * 0.8;
-      size = 1.4 + Math.random() * 1.2;
-    } else if (roll < 0.14) {
-      // Bright accents (12%) — prominent
-      brightness = 1.3 + Math.random() * 0.7;
-      size = 0.5 + Math.random() * 0.8;
-    } else if (roll < 0.45) {
-      // Medium stars (31%) — visible mid-field
-      brightness = 0.6 + Math.random() * 0.5;
-      size = 0.2 + Math.random() * 0.4;
+    if (roll < 0.03) {
+      // Giant stars (3%) — rare beacons
+      brightness = 2.8 + Math.random() * 1.2;
+      size = 2.0 + Math.random() * 1.8;
+    } else if (roll < 0.16) {
+      // Bright accents (13%) — prominent
+      brightness = 1.8 + Math.random() * 1.0;
+      size = 0.9 + Math.random() * 1.0;
+    } else if (roll < 0.46) {
+      // Medium stars (30%) — visible mid-field
+      brightness = 1.0 + Math.random() * 0.7;
+      size = 0.4 + Math.random() * 0.6;
     } else {
-      // Dim dust (55%) — background texture
-      brightness = 0.25 + Math.random() * 0.4;
-      size = 0.08 + Math.random() * 0.2;
+      // Dim dust (54%) — background texture
+      brightness = 0.5 + Math.random() * 0.6;
+      size = 0.15 + Math.random() * 0.35;
     }
 
     starColors[i * 3]     = Math.min(1, col.r * brightness);
@@ -446,11 +447,11 @@ function buildNebulaBackground() {
   }
 
   const starMat = new THREE.PointsMaterial({
-    size: 0.8,
+    size: 1.2,
     map: starGlowTexture,
     vertexColors: true,
     transparent: true,
-    opacity: 0.92,
+    opacity: 1.0,
     blending: THREE.AdditiveBlending,
     depthWrite: false,
     sizeAttenuation: true,
@@ -1317,13 +1318,13 @@ function animate() {
         const idx = (offset + i) % count;
         const phase = starTwinklePhases[idx] + elapsed * starTwinkleSpeeds[idx];
         // Composite flicker: primary sine + secondary harmonic
-        const flicker = 0.7 + Math.sin(phase) * 0.25 + Math.sin(phase * 2.7) * 0.05;
+        const flicker = 0.85 + Math.sin(phase) * 0.15 + Math.sin(phase * 2.7) * 0.04;
         sizes.setX(idx, starBaseOpacities[idx] * flicker);
       }
       sizes.needsUpdate = true;
 
       // Global rotation + opacity drift (keep existing behaviour)
-      nebulaStars.material.opacity = 0.6 + Math.sin(elapsed * 0.6) * 0.12;
+      nebulaStars.material.opacity = 0.88 + Math.sin(elapsed * 0.6) * 0.1;
       nebulaStars.rotation.z += dt * 0.002;
       nebulaStars.rotation.y += dt * 0.0008;
     } catch (e) { /* per-star twinkle graceful fallback */ }
