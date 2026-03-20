@@ -1258,7 +1258,10 @@ document.addEventListener('keydown', (e) => {
   } else {
     const num = parseInt(e.key);
     if (num >= 1 && num <= LAYER_COUNT) {
-      goToLayer(num - 1);
+      // Map key N to the layer displayed as "layer N".
+      // showLayerTitle displays index 0 as "layer 7" (outermost) and
+      // index 6 as "layer 1" (core), so key 1 → index 6, key 7 → index 0.
+      goToLayer(LAYER_COUNT - num);
     }
   }
 });
