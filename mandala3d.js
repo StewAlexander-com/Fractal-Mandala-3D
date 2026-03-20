@@ -1014,6 +1014,9 @@ function showLayerTitle(index) {
   if (layerSubtitle) layerSubtitle.textContent = layer.subtitle;
   if (layerTitle)    layerTitle.classList.add('visible');
   if (teachingPanel) teachingPanel.classList.remove('visible');
+  // Hide scroll-hint chevrons while the title is showing — they can overlap it
+  if (scrollHintUp)   scrollHintUp.classList.remove('visible');
+  if (scrollHintDown) scrollHintDown.classList.remove('visible');
 
   clearTimeout(showLayerTitle._timer);
   showLayerTitle._timer = setTimeout(() => {
