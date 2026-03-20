@@ -201,6 +201,7 @@ const layerTitle     = $('layerTitle');
 const layerNumber    = $('layerNumber');
 const layerName      = $('layerName');
 const layerSubtitle  = $('layerSubtitle');
+const teachingWrap   = $('teachingWrap');
 const teachingPanel  = $('teachingPanel');
 const teachingInner  = $('teachingInner');
 const welcome        = $('welcome');
@@ -229,6 +230,27 @@ function updateScrollFades() {
   if (scrollHintDown)  scrollHintDown.classList.toggle('visible', canDown);
 }
 if (teachingPanel) teachingPanel.addEventListener('scroll', updateScrollFades, { passive: true });
+
+// ─── PANEL TOUCH ISOLATION ───
+// Prevent touch events on the teaching panel from leaking to the canvas
+// gesture system. On mobile, the panel should scroll its own content;
+// vertical swipes should NOT trigger layer navigation.
+let panelTouchActive = false;
+if (teachingPanel) {
+  teachingPanel.addEventListener('touchstart', (e) => {
+    panelTouchActive = true;
+    e.stopPropagation(); // belt-and-suspenders: prevent canvas from seeing this
+  }, { passive: true });
+  teachingPanel.addEventListener('touchmove', (e) => {
+    e.stopPropagation();
+  }, { passive: true });
+  teachingPanel.addEventListener('touchend', () => {
+    panelTouchActive = false;
+  }, { passive: true });
+  teachingPanel.addEventListener('touchcancel', () => {
+    panelTouchActive = false;
+  }, { passive: true });
+}
 
 // ─── NEBULA BACKGROUND DATA ───
 let nebulaStars;        // distant star-points
@@ -1042,7 +1064,16 @@ function handleLayerScroll(delta) {
 }
 
 // ── Desktop: mouse wheel ──
+// Guard: if pointer is over the teaching panel, let the panel scroll natively
 if (canvas) canvas.addEventListener('wheel', (e) => {
+  // Check if the cursor is actually over the teaching panel
+  if (teachingPanel && teachingPanel.classList.contains('visible')) {
+    const panelRect = teachingPanel.getBoundingClientRect();
+    if (e.clientX >= panelRect.left && e.clientX <= panelRect.right &&
+        e.clientY >= panelRect.top  && e.clientY <= panelRect.bottom) {
+      return; // let panel scroll naturally — don't preventDefault, don't navigate layers
+    }
+  }
   e.preventDefault();
   if (!entered) return;
   if (e.ctrlKey || e.metaKey) {
@@ -1052,6 +1083,11 @@ if (canvas) canvas.addEventListener('wheel', (e) => {
     handleLayerScroll(e.deltaY);
   }
 }, { passive: false });
+
+// Also stop wheel propagation from within the panel itself
+if (teachingPanel) teachingPanel.addEventListener('wheel', (e) => {
+  e.stopPropagation();
+}, { passive: true });
 
 // ── Desktop: mouse drag = orbit ──
 let isMouseDragging = false;
@@ -1096,7 +1132,7 @@ function pinchDist(e) {
 }
 
 if (canvas) canvas.addEventListener('touchstart', (e) => {
-  if (!entered) return;
+  if (!entered || panelTouchActive) return;
   touch.fingers = e.touches.length;
   touch.intent = null;
   touch.locked = false;
@@ -1113,7 +1149,7 @@ if (canvas) canvas.addEventListener('touchstart', (e) => {
 }, { passive: true });
 
 if (canvas) canvas.addEventListener('touchmove', (e) => {
-  if (!entered) return;
+  if (!entered || panelTouchActive) return;
   e.preventDefault();
 
   // ── Pinch zoom (2 fingers) ──

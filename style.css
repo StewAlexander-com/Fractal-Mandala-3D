@@ -211,6 +211,9 @@ canvas {
   position: relative;
   max-height: 42vh;
   overflow-y: auto;
+  overscroll-behavior: contain;   /* prevent scroll-chaining to canvas */
+  -webkit-overflow-scrolling: touch; /* smooth inertial scroll on iOS */
+  touch-action: pan-y;            /* tell browser: vertical = scroll this panel */
   background: var(--panel-bg);
   backdrop-filter: blur(24px);
   -webkit-backdrop-filter: blur(24px);
