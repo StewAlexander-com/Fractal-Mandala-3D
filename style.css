@@ -221,19 +221,18 @@ canvas {
   background: var(--panel-bg);
   backdrop-filter: blur(26px);
   -webkit-backdrop-filter: blur(26px);
-  border: 1px solid rgba(155, 138, 184, 0.06);
-  border-radius: 16px;
-  padding: clamp(18px, 3vmin, 30px);
+  border: none;
+  border-radius: 20px;
+  padding: clamp(22px, 3.5vmin, 34px);
   opacity: 0;
   pointer-events: none;
   transform: translateY(20px);
   transition: opacity 0.6s var(--ease-out), transform 0.6s var(--ease-out);
-  /* Diffuse edges — layered soft shadows feather the panel into the scene */
+  /* Diffuse edges — large soft spread dissolves the panel boundary */
   box-shadow:
-    0 0 20px 8px  rgba(8, 6, 14, 0.30),
-    0 0 50px 16px rgba(8, 6, 14, 0.18),
-    0 0 90px 30px rgba(8, 6, 14, 0.08),
-    0 0 40px rgba(155, 138, 184, 0.03);
+    0 0 30px 12px rgba(8, 6, 14, 0.50),
+    0 0 60px 25px rgba(8, 6, 14, 0.30),
+    0 0 100px 50px rgba(8, 6, 14, 0.12);
 }
 
 .teaching-panel.visible {
