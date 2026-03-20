@@ -324,83 +324,85 @@ canvas {
   display: block;
   font-family: 'Lora', Georgia, serif;
   font-style: italic;
-  font-weight: 400;
+  font-weight: 500;
   font-size: 1.12em;
   line-height: 1.65;
-  color: #f8f4ea;
+  color: #fbf8f0;
   margin: 0.25rem 0 0.85rem 0;
   padding: 0.3em 0.5em;
   position: relative;
   border-radius: 3px;
-  /* Warm luminous haze around each letterform */
+  /* Dark outline for letterform definition, then warm diffuse haze */
   text-shadow:
-    0 0 8px rgba(240, 200, 100, 0.25),
-    0 0 20px rgba(212, 165, 116, 0.12);
+    0 1px 2px rgba(0, 0, 0, 0.6),
+    0 0 1px rgba(0, 0, 0, 0.35),
+    0 0 14px rgba(240, 200, 100, 0.18),
+    0 0 32px rgba(212, 165, 116, 0.09);
 }
 
-/* Radiating background glow — multi-color, breathes outward */
+/* Radiating background glow — diffuse, slow-breathing warmth */
 .teaching-inner .explain::before {
   content: '';
   position: absolute;
-  inset: -6px -14px;
-  border-radius: 8px;
+  inset: -10px -22px;
+  border-radius: 14px;
   background: radial-gradient(
     ellipse at 30% 50%,
-    rgba(240, 200, 80, 0.28) 0%,
-    rgba(212, 165, 116, 0.16) 30%,
-    rgba(126, 200, 160, 0.10) 55%,
-    rgba(212, 136, 154, 0.07) 75%,
+    rgba(240, 200, 80, 0.16) 0%,
+    rgba(212, 165, 116, 0.10) 35%,
+    rgba(126, 200, 160, 0.06) 60%,
+    rgba(212, 136, 154, 0.04) 80%,
     transparent 100%
   );
   opacity: 0.5;
-  animation: explainGlow 10s ease-in-out infinite;
+  animation: explainGlow 18s ease-in-out infinite;
   z-index: -1;
   pointer-events: none;
 }
 
-/* Secondary layer — warm edge-light that offsets the first for depth */
+/* Secondary layer — diffuse warm edge-light, offset timing for depth */
 .teaching-inner .explain::after {
   content: '';
   position: absolute;
-  inset: -3px -8px;
-  border-radius: 6px;
+  inset: -6px -16px;
+  border-radius: 10px;
   background: radial-gradient(
     ellipse at 70% 40%,
-    rgba(240, 210, 130, 0.18) 0%,
-    rgba(200, 160, 80, 0.08) 50%,
+    rgba(240, 210, 130, 0.12) 0%,
+    rgba(200, 160, 80, 0.05) 55%,
     transparent 100%
   );
   opacity: 0;
-  animation: explainGlow2 10s ease-in-out infinite;
+  animation: explainGlow2 18s ease-in-out infinite;
   z-index: -1;
   pointer-events: none;
 }
 
 @keyframes explainGlow {
   0%, 100% {
-    opacity: 0.45;
-    transform: scale(0.98);
-    filter: blur(6px);
+    opacity: 0.4;
+    transform: scale(0.99);
+    filter: blur(10px);
   }
   50% {
-    opacity: 1;
-    transform: scale(1.05);
-    filter: blur(10px);
+    opacity: 0.85;
+    transform: scale(1.03);
+    filter: blur(16px);
   }
 }
 
 @keyframes explainGlow2 {
   0%, 100% {
     opacity: 0;
-    transform: scale(1.02);
-    filter: blur(4px);
-  }
-  40% {
-    opacity: 0.7;
-    transform: scale(1.06);
+    transform: scale(1.01);
     filter: blur(8px);
   }
-  80% {
+  45% {
+    opacity: 0.5;
+    transform: scale(1.04);
+    filter: blur(14px);
+  }
+  85% {
     opacity: 0;
   }
 }
