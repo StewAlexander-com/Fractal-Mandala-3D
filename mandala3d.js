@@ -1308,6 +1308,45 @@ if (audioToggle) {
   audioToggle.addEventListener('touchend', handleAudioToggle);
 }
 
+// ─── FULLSCREEN TOGGLE ───
+// Uses the Fullscreen API (desktop) and falls back gracefully.
+// iOS Safari doesn't support Fullscreen API on the document, but
+// webkit supports it on <video> elements. For non-video we just
+// let the button be a no-op on iOS — the PWA / Add-to-Home-Screen
+// path already runs fullscreen via the viewport-fit=cover meta tag.
+const fsToggle = $('fsToggle');
+
+function isFullscreen() {
+  return !!(document.fullscreenElement || document.webkitFullscreenElement);
+}
+
+function updateFsIcon() {
+  if (fsToggle) fsToggle.classList.toggle('is-fs', isFullscreen());
+}
+
+function handleFsToggle(e) {
+  if (e) e.preventDefault();
+  try {
+    if (isFullscreen()) {
+      (document.exitFullscreen || document.webkitExitFullscreen).call(document);
+    } else {
+      const el = document.documentElement;
+      const rfs = el.requestFullscreen || el.webkitRequestFullscreen;
+      if (rfs) rfs.call(el);
+    }
+  } catch (err) {
+    console.warn('Fullscreen toggle failed:', err);
+  }
+}
+
+if (fsToggle) {
+  fsToggle.addEventListener('click', handleFsToggle);
+  fsToggle.addEventListener('touchend', handleFsToggle);
+}
+// Sync icon when user exits fullscreen via Escape or browser chrome
+document.addEventListener('fullscreenchange', updateFsIcon);
+document.addEventListener('webkitfullscreenchange', updateFsIcon);
+
 // Enter button
 function handleEnter(e) {
   if (e) e.preventDefault();
