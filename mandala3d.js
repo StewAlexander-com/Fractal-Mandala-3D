@@ -1823,7 +1823,7 @@ const panelOpacityToggle = $('panelOpacityToggle');
 // Sync icon when user exits fullscreen via Escape or browser chrome
 document.addEventListener('fullscreenchange', updateFsIcon);
 document.addEventListener('webkitfullscreenchange', updateFsIcon);
-// States cycle: frosted (default 0.72/24px) → lighter (0.57/32px) → darker (0.87/16px)
+// States cycle: frosted (default 0.50/20px) → lighter (0.35/28px) → darker (0.65/12px)
 const PANEL_STATES = ['frosted', 'lighter', 'darker'];
 let panelStateIndex = 0;
 
