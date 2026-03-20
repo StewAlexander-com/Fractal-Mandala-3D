@@ -157,6 +157,51 @@ canvas {
     0 2px 20px rgba(6, 5, 10, 0.9),
     0 0 40px rgba(6, 5, 10, 0.7),
     0 0 80px rgba(6, 5, 10, 0.4);
+  /* Padding gives the backdrop vignette room to breathe around the text */
+  padding: 2.5rem 3.5rem;
+}
+
+/* Soft radial vignette behind the title — keeps text readable
+   against bright torus rings at every layer without a hard box.
+   Sized generously so the fade never ends abruptly. */
+.layer-title::before {
+  content: '';
+  position: absolute;
+  inset: -80% -70%;
+  background: radial-gradient(
+    ellipse 50% 50% at 50% 50%,
+    rgba(4, 3, 8, 0.82) 0%,
+    rgba(4, 3, 8, 0.65) 30%,
+    rgba(4, 3, 8, 0.35) 55%,
+    rgba(4, 3, 8, 0.10) 75%,
+    transparent 100%
+  );
+  z-index: -1;
+  pointer-events: none;
+  border-radius: 50%;
+}
+
+/* Dim the actual canvas pixels behind the title text area.
+   backdrop-filter works through the composited WebGL canvas;
+   the blur softens hard geometry edges and brightness dims them.
+   Masked to a soft oval so it blends without a visible box edge. */
+.layer-title::after {
+  content: '';
+  position: absolute;
+  inset: -40% -30%;
+  backdrop-filter: brightness(0.45) blur(4px);
+  -webkit-backdrop-filter: brightness(0.45) blur(4px);
+  z-index: -1;
+  pointer-events: none;
+  border-radius: 50%;
+  mask-image: radial-gradient(
+    ellipse 52% 52% at 50% 50%,
+    black 0%, black 40%, transparent 100%
+  );
+  -webkit-mask-image: radial-gradient(
+    ellipse 52% 52% at 50% 50%,
+    black 0%, black 40%, transparent 100%
+  );
 }
 
 .layer-title.visible {
@@ -176,7 +221,8 @@ canvas {
   letter-spacing: 0.3em;
   text-transform: uppercase;
   margin-bottom: 0.5rem;
-  opacity: 0.75;
+  opacity: 0.8;
+  text-shadow: 0 1px 12px rgba(4, 3, 8, 0.9);
 }
 
 .layer-name {
@@ -187,7 +233,11 @@ canvas {
   letter-spacing: 0.06em;
   line-height: 1.15;
   text-wrap: balance;
-  text-shadow: 0 0 30px rgba(240, 200, 80, 0.35), 0 0 60px rgba(212, 165, 116, 0.15);
+  text-shadow:
+    0 0 30px rgba(240, 200, 80, 0.35),
+    0 0 60px rgba(212, 165, 116, 0.15),
+    0 2px 16px rgba(4, 3, 8, 0.95),
+    0 0 40px rgba(4, 3, 8, 0.6);
 }
 
 .layer-subtitle {
@@ -198,6 +248,7 @@ canvas {
   margin-top: 0.5rem;
   letter-spacing: 0.04em;
   opacity: 0.85;
+  text-shadow: 0 1px 12px rgba(4, 3, 8, 0.9);
 }
 
 /* ═══ TEACHING PANEL ═══ */
