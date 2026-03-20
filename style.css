@@ -355,7 +355,7 @@ canvas {
     transparent 100%
   );
   opacity: 0.5;
-  animation: explainGlow 18s ease-in-out infinite;
+  animation: explainGlow 28s ease-in-out infinite;
   z-index: -1;
   pointer-events: none;
 }
@@ -373,7 +373,7 @@ canvas {
     transparent 100%
   );
   opacity: 0;
-  animation: explainGlow2 18s ease-in-out infinite;
+  animation: explainGlow2 28s ease-in-out infinite;
   z-index: -1;
   pointer-events: none;
 }
