@@ -867,7 +867,14 @@ function buildNavDots() {
     stop.className = 'slider-stop' + (i === 0 ? ' active' : '');
     stop.style.top = `${(i / (LAYER_COUNT - 1)) * 100}%`;
     stop.dataset.layer = i;
-    stop.addEventListener('click', () => goToLayer(i));
+    // Click + touchend for reliable tap on all platforms
+    const handleStopTap = (e) => {
+      e.stopPropagation();
+      if (e.type === 'touchend') e.preventDefault();  // prevent ghost click
+      goToLayer(i);
+    };
+    stop.addEventListener('click', handleStopTap);
+    stop.addEventListener('touchend', handleStopTap);
     // Show tooltip on hover
     stop.addEventListener('mouseenter', () => showSliderTooltip(i, stop));
     stop.addEventListener('mouseleave', hideSliderTooltip);
@@ -882,11 +889,19 @@ function updateSliderPosition(index) {
   if (sliderFill)  sliderFill.style.height = `${pct}%`;
   // Mark visited
   visitedLayers.add(index);
-  // Update stop dots
+  // Update stop dots + trigger pulse animation on newly active dot
   if (!sliderStops) return;
   sliderStops.querySelectorAll('.slider-stop').forEach((stop, i) => {
+    const wasActive = stop.classList.contains('active');
     stop.classList.toggle('active', i === index);
     stop.classList.toggle('visited', visitedLayers.has(i) && i !== index);
+    // Trigger grow/glow pulse on newly activated dot
+    if (i === index && !wasActive) {
+      stop.classList.remove('pulse');
+      // Force reflow to restart animation
+      void stop.offsetWidth;
+      stop.classList.add('pulse');
+    }
   });
 }
 
@@ -992,6 +1007,19 @@ if (sliderTrack) {
     if (!entered) return;
     goToLayer(sliderYToLayer(e.clientY));
   });
+
+  // Touch on track = start drag from anywhere on the track, not just thumb
+  sliderTrack.addEventListener('touchstart', (e) => {
+    if (!entered) return;
+    isDragging = true;
+    if (sliderThumb) {
+      sliderThumb.classList.add('dragging');
+      sliderThumb.style.transition = 'transform 0.1s, box-shadow 0.1s';
+    }
+    if (sliderFill) sliderFill.style.transition = 'none';
+    const clientY = e.touches[0].clientY;
+    goToLayer(sliderYToLayer(clientY));
+  }, { passive: true });
 }
 
 // ─── INPUT HANDLING — Unified Gesture System ───
