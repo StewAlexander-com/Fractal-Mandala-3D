@@ -250,46 +250,56 @@ function init() {
   renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
   handleResize();   // initial size — uses actual element dimensions
   renderer.toneMapping = THREE.ACESFilmicToneMapping;
-  renderer.toneMappingExposure = 1.8;
+  renderer.toneMappingExposure = 2.0;
 
-  // Shared radial glow texture for all point materials
+  // Shared radial glow texture — astronomical point-spread function
+  // Bright saturated core with extended halo, like real star optics
   const glowCanvas = document.createElement('canvas');
-  glowCanvas.width = 64;
-  glowCanvas.height = 64;
+  glowCanvas.width = 128;
+  glowCanvas.height = 128;
   const glowCtx = glowCanvas.getContext('2d');
-  const grad = glowCtx.createRadialGradient(32, 32, 0, 32, 32, 32);
-  grad.addColorStop(0,    'rgba(255,255,255,1)');
-  grad.addColorStop(0.08, 'rgba(255,255,255,0.9)');
-  grad.addColorStop(0.2,  'rgba(255,255,255,0.55)');
-  grad.addColorStop(0.45, 'rgba(255,255,255,0.15)');
-  grad.addColorStop(0.75, 'rgba(255,255,255,0.03)');
-  grad.addColorStop(1,    'rgba(255,255,255,0)');
-  glowCtx.fillStyle = grad;
-  glowCtx.fillRect(0, 0, 64, 64);
+  // Layer 1: wide soft halo
+  const halo = glowCtx.createRadialGradient(64, 64, 0, 64, 64, 64);
+  halo.addColorStop(0,    'rgba(255,255,255,0.6)');
+  halo.addColorStop(0.25, 'rgba(255,255,255,0.15)');
+  halo.addColorStop(0.55, 'rgba(255,255,255,0.04)');
+  halo.addColorStop(1,    'rgba(255,255,255,0)');
+  glowCtx.fillStyle = halo;
+  glowCtx.fillRect(0, 0, 128, 128);
+  // Layer 2: intense core burn (additive)
+  glowCtx.globalCompositeOperation = 'lighter';
+  const core = glowCtx.createRadialGradient(64, 64, 0, 64, 64, 24);
+  core.addColorStop(0,   'rgba(255,255,255,1)');
+  core.addColorStop(0.3, 'rgba(255,255,255,0.85)');
+  core.addColorStop(0.6, 'rgba(255,255,255,0.3)');
+  core.addColorStop(1,   'rgba(255,255,255,0)');
+  glowCtx.fillStyle = core;
+  glowCtx.fillRect(0, 0, 128, 128);
+  glowCtx.globalCompositeOperation = 'source-over';
   starGlowTexture = new THREE.CanvasTexture(glowCanvas);
 
   // Lighting — warm core + nebula accent lights
   const ambient = new THREE.AmbientLight(0x1a1528, 0.6);
   scene.add(ambient);
 
-  const coreLight = new THREE.PointLight(0xd4a574, 2, 200);
+  const coreLight = new THREE.PointLight(0xffeedd, 3.5, 250);
   coreLight.position.set(0, 0, 0);
   scene.add(coreLight);
 
-  // Nebula accent lights — very subtle coloured fills
-  const roseLight = new THREE.PointLight(0xc7889a, 0.35, 250);
+  // Nebula accent lights — coloured fills that illuminate the gas
+  const roseLight = new THREE.PointLight(0xc7889a, 0.6, 300);
   roseLight.position.set(-40, 25, 40);
   scene.add(roseLight);
 
-  const lavenderLight = new THREE.PointLight(0x9b8ab8, 0.3, 250);
+  const lavenderLight = new THREE.PointLight(0x9b8ab8, 0.5, 300);
   lavenderLight.position.set(35, -20, 60);
   scene.add(lavenderLight);
 
-  const blueLight = new THREE.PointLight(0x7eb4d4, 0.25, 250);
+  const blueLight = new THREE.PointLight(0x7eb4d4, 0.5, 300);
   blueLight.position.set(0, 30, -30);
   scene.add(blueLight);
 
-  const backLight = new THREE.PointLight(0x4a3f32, 0.8, 300);
+  const backLight = new THREE.PointLight(0x4a3f32, 1.0, 350);
   backLight.position.set(0, 30, -50);
   scene.add(backLight);
 
@@ -376,58 +386,74 @@ function buildLayers() {
   buildSpirals();
 }
 
-// ─── NEBULA BACKGROUND — Star Field + Volumetric Clouds ───
+// ─── NEBULA BACKGROUND — Astronomically-inspired Star Field + Nebula Gas ───
 function buildNebulaBackground() {
-  // 1. Distant star-point field — layered depth: dim dust → normal → bright → giant
-  const starCount = 1800;
+  // 1. Star field — concentrated toward center, sparser at edges
+  //    Like a real stellar nursery: density ∝ 1/r² from core
+  const starCount = 2400;
   const starPositions = new Float32Array(starCount * 3);
   const starColors    = new Float32Array(starCount * 3);
   const starSizes     = new Float32Array(starCount);
 
+  // Spectral palette — weighted toward hot blue-white (O/B stars near center)
   const starPalette = [
-    new THREE.Color(0x7eb4d4), // cool blue
+    new THREE.Color(0x9dc8ff), // O-type blue-white
+    new THREE.Color(0xaabfff), // B-type blue
+    new THREE.Color(0xfff4e8), // A-type white
+    new THREE.Color(0xffeedd), // F-type yellow-white
+    new THREE.Color(0xffd2a1), // G-type gold
+    new THREE.Color(0xffb07a), // K-type orange
     new THREE.Color(0xf0d9b5), // warm white
-    new THREE.Color(0xc7889a), // dusty rose
-    new THREE.Color(0x9b8ab8), // lavender
-    new THREE.Color(0xaad4ef), // ice blue
-    new THREE.Color(0xfff8e8), // hot white
+    new THREE.Color(0xffffff), // pure white (overexposed)
   ];
+
+  const maxField = LAYER_COUNT * LAYER_SPACING + 90;
 
   for (let i = 0; i < starCount; i++) {
     const angle  = Math.random() * TAU;
-    const radius = 45 + Math.random() * 130;
-    const z      = (Math.random() - 0.3) * (LAYER_COUNT * LAYER_SPACING + 90);
+    // Inverse-square distribution: more stars near center, fewer at edges
+    const u = Math.random();
+    const radius = 8 + Math.pow(u, 0.55) * 165;  // bunches ~40% within r<60
+    const z = (Math.random() - 0.3) * maxField;
 
     starPositions[i * 3]     = Math.cos(angle) * radius;
     starPositions[i * 3 + 1] = Math.sin(angle) * radius;
     starPositions[i * 3 + 2] = z;
 
+    // Stars near center are hotter (bluer, brighter); edges are cooler
+    const distNorm = Math.min(1, radius / 160);  // 0=center, 1=edge
     const col = starPalette[Math.floor(Math.random() * starPalette.length)];
     const roll = Math.random();
 
-    // Tiered star classes for depth
+    // Luminosity tiers — center-biased brightness
+    const centerBoost = 1.0 + (1.0 - distNorm) * 1.5;  // up to 2.5× at center
     let brightness, size;
     if (roll < 0.03) {
-      // Giant stars (3%) — rare beacons
-      brightness = 2.8 + Math.random() * 1.2;
-      size = 2.0 + Math.random() * 1.8;
-    } else if (roll < 0.16) {
-      // Bright accents (13%) — prominent
-      brightness = 1.8 + Math.random() * 1.0;
-      size = 0.9 + Math.random() * 1.0;
-    } else if (roll < 0.46) {
-      // Medium stars (30%) — visible mid-field
-      brightness = 1.0 + Math.random() * 0.7;
-      size = 0.4 + Math.random() * 0.6;
+      // Supergiant stars (3%) — blazing beacons
+      brightness = (3.5 + Math.random() * 2.0) * centerBoost;
+      size = 2.5 + Math.random() * 2.5;
+    } else if (roll < 0.12) {
+      // Bright giants (9%)
+      brightness = (2.0 + Math.random() * 1.5) * centerBoost;
+      size = 1.2 + Math.random() * 1.5;
+    } else if (roll < 0.35) {
+      // Main sequence bright (23%)
+      brightness = (1.2 + Math.random() * 1.0) * centerBoost;
+      size = 0.5 + Math.random() * 0.8;
+    } else if (roll < 0.65) {
+      // Main sequence dim (30%)
+      brightness = (0.6 + Math.random() * 0.6) * centerBoost * 0.7;
+      size = 0.2 + Math.random() * 0.5;
     } else {
-      // Dim dust (54%) — background texture
-      brightness = 0.5 + Math.random() * 0.6;
-      size = 0.15 + Math.random() * 0.35;
+      // Red/brown dwarfs + dust (35%)
+      brightness = (0.3 + Math.random() * 0.5) * centerBoost * 0.5;
+      size = 0.1 + Math.random() * 0.3;
     }
 
-    starColors[i * 3]     = Math.min(1, col.r * brightness);
-    starColors[i * 3 + 1] = Math.min(1, col.g * brightness);
-    starColors[i * 3 + 2] = Math.min(1, col.b * brightness);
+    // Clamp color channels — additive blending will push past 1.0 visually
+    starColors[i * 3]     = Math.min(1.0, col.r * brightness);
+    starColors[i * 3 + 1] = Math.min(1.0, col.g * brightness);
+    starColors[i * 3 + 2] = Math.min(1.0, col.b * brightness);
     starSizes[i] = size;
   }
 
@@ -436,18 +462,18 @@ function buildNebulaBackground() {
   starGeo.setAttribute('color',    new THREE.Float32BufferAttribute(starColors, 3));
   starGeo.setAttribute('size',     new THREE.Float32BufferAttribute(starSizes, 1));
 
-  // Per-star twinkle data — each star shimmers at its own rate
+  // Per-star twinkle data — atmospheric scintillation
   starTwinklePhases  = new Float32Array(starCount);
   starTwinkleSpeeds  = new Float32Array(starCount);
-  starBaseOpacities  = new Float32Array(starCount); // stores base sizes
+  starBaseOpacities  = new Float32Array(starCount);
   for (let i = 0; i < starCount; i++) {
     starTwinklePhases[i] = Math.random() * TAU;
-    starTwinkleSpeeds[i] = 0.3 + Math.random() * 1.5;   // 0.3 – 1.8 Hz
-    starBaseOpacities[i] = starSizes[i];                 // snapshot original size
+    starTwinkleSpeeds[i] = 0.3 + Math.random() * 1.5;
+    starBaseOpacities[i] = starSizes[i];
   }
 
   const starMat = new THREE.PointsMaterial({
-    size: 1.2,
+    size: 1.5,
     map: starGlowTexture,
     vertexColors: true,
     transparent: true,
@@ -460,33 +486,47 @@ function buildNebulaBackground() {
   nebulaStars = new THREE.Points(starGeo, starMat);
   scene.add(nebulaStars);
 
-  // 2. Volumetric nebula clouds — procedural sprite billboards
-  const cloudColors = [
-    { color: 0xc7889a, opacity: 0.04 },   // dusty rose
-    { color: 0x9b8ab8, opacity: 0.03 },   // lavender
-    { color: 0x3e2a55, opacity: 0.045 },  // deep indigo
-    { color: 0x7eb4d4, opacity: 0.025 },  // blue mist
-    { color: 0x8b5e3c, opacity: 0.03 },   // amber dust
-    { color: 0xd4a574, opacity: 0.02 },   // warm gold haze
-  ];
-
-  // Generate a soft radial-gradient canvas for cloud sprites
+  // 2. Nebula gas — dense luminous clouds, bright core fading to dark edges
+  //    Like Hubble imagery: layered emission nebula with H-II regions
   const cloudCanvas = document.createElement('canvas');
   cloudCanvas.width = 256;
   cloudCanvas.height = 256;
   const ctx = cloudCanvas.getContext('2d');
-  const grad = ctx.createRadialGradient(128, 128, 0, 128, 128, 128);
-  grad.addColorStop(0, 'rgba(255,255,255,1)');
-  grad.addColorStop(0.3, 'rgba(255,255,255,0.5)');
-  grad.addColorStop(0.7, 'rgba(255,255,255,0.1)');
-  grad.addColorStop(1, 'rgba(255,255,255,0)');
-  ctx.fillStyle = grad;
+  const cGrad = ctx.createRadialGradient(128, 128, 0, 128, 128, 128);
+  cGrad.addColorStop(0,    'rgba(255,255,255,1)');
+  cGrad.addColorStop(0.15, 'rgba(255,255,255,0.7)');
+  cGrad.addColorStop(0.4,  'rgba(255,255,255,0.25)');
+  cGrad.addColorStop(0.7,  'rgba(255,255,255,0.06)');
+  cGrad.addColorStop(1,    'rgba(255,255,255,0)');
+  ctx.fillStyle = cGrad;
   ctx.fillRect(0, 0, 256, 256);
   const cloudTexture = new THREE.CanvasTexture(cloudCanvas);
 
-  const cloudCount = 28;
-  for (let i = 0; i < cloudCount; i++) {
-    const pick = cloudColors[Math.floor(Math.random() * cloudColors.length)];
+  // Inner nebula: bright, dense, warm-toned (H-II emission)
+  const innerClouds = [
+    { color: 0xffccaa, opacity: 0.09 },   // warm emission glow
+    { color: 0xeebb99, opacity: 0.07 },   // amber gas
+    { color: 0xddaa88, opacity: 0.06 },   // dusty gold
+    { color: 0xccbbdd, opacity: 0.05 },   // reflection nebula blue-violet
+    { color: 0xffddcc, opacity: 0.08 },   // hot hydrogen pink-white
+  ];
+  // Mid-field: subtler, more colour variety
+  const midClouds = [
+    { color: 0xc7889a, opacity: 0.045 },  // dusty rose
+    { color: 0x9b8ab8, opacity: 0.035 },  // lavender
+    { color: 0x7eb4d4, opacity: 0.03 },   // blue mist
+    { color: 0xd4a574, opacity: 0.025 },  // warm gold haze
+    { color: 0x8b5e3c, opacity: 0.03 },   // amber dust
+  ];
+  // Outer: dark absorption nebula wisps
+  const outerClouds = [
+    { color: 0x3e2a55, opacity: 0.04 },   // deep indigo
+    { color: 0x2a1f3a, opacity: 0.03 },   // near-black violet
+    { color: 0x4a3528, opacity: 0.025 },  // dark brown dust
+  ];
+
+  // Place clouds in 3 radial zones
+  const placeCloud = (pick, minR, maxR, minSize, maxSize) => {
     const spriteMat = new THREE.SpriteMaterial({
       map: cloudTexture,
       color: pick.color,
@@ -496,23 +536,33 @@ function buildNebulaBackground() {
       depthWrite: false,
     });
     const sprite = new THREE.Sprite(spriteMat);
-
-    const angle = Math.random() * TAU;
-    const radius = 30 + Math.random() * 90;
-    const z = (Math.random() - 0.2) * (LAYER_COUNT * LAYER_SPACING + 60);
-    sprite.position.set(
-      Math.cos(angle) * radius,
-      Math.sin(angle) * radius,
-      z
-    );
-
-    const size = 30 + Math.random() * 70;
-    sprite.scale.set(size, size, 1);
-    sprite.userData.driftSpeed = 0.005 + Math.random() * 0.01;
+    const a = Math.random() * TAU;
+    const r = minR + Math.random() * (maxR - minR);
+    const z = (Math.random() - 0.25) * maxField * 0.8;
+    sprite.position.set(Math.cos(a) * r, Math.sin(a) * r, z);
+    const sz = minSize + Math.random() * (maxSize - minSize);
+    sprite.scale.set(sz, sz, 1);
+    sprite.userData.driftSpeed = 0.003 + Math.random() * 0.008;
     sprite.userData.driftAngle = Math.random() * TAU;
-
+    sprite.userData.baseOpacity = pick.opacity;
     scene.add(sprite);
     nebulaClouds.push(sprite);
+  };
+
+  // Inner zone (r 0–40): dense, bright, 14 clouds
+  for (let i = 0; i < 14; i++) {
+    const pick = innerClouds[Math.floor(Math.random() * innerClouds.length)];
+    placeCloud(pick, 5, 40, 25, 65);
+  }
+  // Mid zone (r 30–90): 12 clouds
+  for (let i = 0; i < 12; i++) {
+    const pick = midClouds[Math.floor(Math.random() * midClouds.length)];
+    placeCloud(pick, 30, 90, 35, 80);
+  }
+  // Outer zone (r 70–150): sparse dark wisps, 10 clouds
+  for (let i = 0; i < 10; i++) {
+    const pick = outerClouds[Math.floor(Math.random() * outerClouds.length)];
+    placeCloud(pick, 70, 150, 40, 100);
   }
 
   // 3. Shooting stars — small pool of reusable meteor streaks
@@ -1400,18 +1450,16 @@ function animate() {
     } catch (e) { /* cosmic dust fallback */ }
   }
 
-  // ── Nebula cloud drift + colour breathing ──
+  // ── Nebula cloud drift + luminosity breathing ──
   nebulaClouds.forEach((sprite, ci) => {
     const spd = sprite.userData.driftSpeed;
     sprite.userData.driftAngle += dt * spd;
     sprite.position.x += Math.sin(sprite.userData.driftAngle) * dt * 0.15;
     sprite.position.y += Math.cos(sprite.userData.driftAngle * 1.3) * dt * 0.1;
-    // Colour breathing: very slow hue shift per cloud
     try {
-      const hueShift = Math.sin(elapsed * 0.08 + ci * 1.3) * 0.04;
-      sprite.material.opacity = sprite.material.opacity * (1.0 + Math.sin(elapsed * 0.15 + ci) * 0.08);
-      // Keep opacity bounded
-      sprite.material.opacity = Math.max(0.005, Math.min(0.045, sprite.material.opacity));
+      const base = sprite.userData.baseOpacity || 0.03;
+      const breath = 1.0 + Math.sin(elapsed * 0.12 + ci * 1.1) * 0.15;
+      sprite.material.opacity = Math.max(0.005, Math.min(base * 2.0, base * breath));
     } catch (e) { /* cloud breathing fallback */ }
   });
 
