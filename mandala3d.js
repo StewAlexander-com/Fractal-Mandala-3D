@@ -361,12 +361,37 @@ function init() {
 }
 
 // ─── BUILD SACRED GEOMETRY LAYERS ───
+// Per-layer tilt seeds (6-DOF depth cue 1: each layer tilts uniquely so rings
+// read as true 3D ellipses, not flat circles)
+const LAYER_TILTS = [
+  { x:  0.25, y:  0.15, z:  0.0  },   // outermost — gentle forward lean
+  { x: -0.18, y:  0.30, z:  0.12 },
+  { x:  0.35, y: -0.10, z: -0.15 },
+  { x: -0.12, y: -0.25, z:  0.20 },
+  { x:  0.20, y:  0.20, z: -0.10 },
+  { x: -0.30, y:  0.08, z:  0.15 },
+  { x:  0.10, y: -0.35, z: -0.08 },   // innermost — tilt away
+];
+
+// Depth glow halos — one per layer (6-DOF depth cue 5)
+let layerHalos = [];
+
 function buildLayers() {
   LAYERS.forEach((layer, i) => {
     const zPos = (LAYER_COUNT - 1 - i) * LAYER_SPACING;
     const group = new THREE.Group();
     group.position.z = zPos;
-    group.userData = { baseZ: zPos, index: i };
+    group.userData = {
+      baseZ: zPos,
+      index: i,
+      baseTilt: LAYER_TILTS[i] || { x: 0, y: 0, z: 0 },
+      baseEmissive: layer.emissive.clone(),   // for depth-dependent lighting
+      baseColor: layer.color.clone(),
+    };
+
+    // Apply base group tilt (depth cue 1)
+    const tilt = LAYER_TILTS[i] || { x: 0, y: 0, z: 0 };
+    group.rotation.set(tilt.x, tilt.y, tilt.z);
 
     // Orbital ring — torus
     const torusR = layer.radius;
@@ -420,6 +445,22 @@ function buildLayers() {
     const particles = createParticleCloud(layer, torusR);
     group.add(particles);
     particleSystems.push(particles);
+
+    // ── Depth glow halo (cue 5): soft additive disc under each ring ──
+    const haloSize = torusR * 1.6;
+    const haloSpriteMat = new THREE.SpriteMaterial({
+      map: starGlowTexture,
+      color: layer.emissive,
+      transparent: true,
+      opacity: 0.0,   // set dynamically based on proximity
+      blending: THREE.AdditiveBlending,
+      depthWrite: false,
+    });
+    const haloSprite = new THREE.Sprite(haloSpriteMat);
+    haloSprite.scale.set(haloSize, haloSize, 1);
+    haloSprite.position.z = -0.5;  // slightly behind the ring
+    group.add(haloSprite);
+    layerHalos.push(haloSprite);
 
     scene.add(group);
     orbitalGroups.push(group);
@@ -1447,8 +1488,15 @@ function animate() {
   const autoAngle = elapsed * 0.08;
   const totalAngle = autoAngle + userOrbitAngle;
 
-  camera.position.x = Math.sin(totalAngle) * BASE_ORBIT_RADIUS;
-  camera.position.y = Math.cos(elapsed * 0.12) * BASE_ORBIT_RADIUS * 0.5;
+  // Depth cue 3: parallax micro-bob — two overlapping frequencies create
+  // differential parallax between near and far objects
+  const bobX = Math.sin(totalAngle) * BASE_ORBIT_RADIUS
+             + Math.sin(elapsed * 0.23) * 0.6;    // slow lateral drift
+  const bobY = Math.cos(elapsed * 0.12) * BASE_ORBIT_RADIUS * 0.5
+             + Math.cos(elapsed * 0.17) * 0.4;    // secondary vertical drift
+
+  camera.position.x = bobX;
+  camera.position.y = bobY;
 
   // ── Zoom: offset camera Z relative to target layer ──
   //   userZoom 1.0 = default (+6 above layer)   <1 = closer   >1 = farther
@@ -1466,12 +1514,24 @@ function animate() {
     }
   }
 
+  // Fog color for atmospheric perspective (cue 6)
+  const fogColor = new THREE.Color(0x06050a);
+
   // Animate orbital groups
   try {
   orbitalGroups.forEach((group, i) => {
     const layer = LAYERS[i];
     const speed = 0.15 + i * 0.03;
     const dir = i % 2 === 0 ? 1 : -1;
+
+    // ── Depth cue 1: slow gyroscopic precession ──
+    // Each group's base tilt was set in buildLayers; here we add slow
+    // wobble so the ellipse orientation shifts over time, like a gyroscope
+    const bt = group.userData.baseTilt || { x: 0, y: 0, z: 0 };
+    const precRate = 0.015 + i * 0.005;  // inner layers precess slightly faster
+    group.rotation.x = bt.x + Math.sin(elapsed * precRate)          * 0.08;
+    group.rotation.y = bt.y + Math.cos(elapsed * precRate * 0.7)    * 0.06;
+    // z-rotation left to child-level orbital spin below
 
     // Rotate orbitals
     group.children.forEach((child, ci) => {
@@ -1484,7 +1544,7 @@ function animate() {
       }
     });
 
-    // Particle orbital motion
+    // Particle orbital motion + Z-axis drift (depth cue 4)
     const particles = particleSystems[i];
     if (particles && particles.geometry && particles.geometry.attributes.position) {
       const positions = particles.geometry.attributes.position;
@@ -1492,15 +1552,20 @@ function animate() {
       for (let p = 0; p < count; p++) {
         let x = positions.getX(p);
         let y = positions.getY(p);
+        let z = positions.getZ(p);
         const angle = Math.atan2(y, x) + dt * speed * 0.5 * dir;
         const r = Math.sqrt(x * x + y * y);
         positions.setX(p, SAFE_NUM(Math.cos(angle) * r));
         positions.setY(p, SAFE_NUM(Math.sin(angle) * r));
+        // Cue 4: sinusoidal Z drift — each particle floats forward/back
+        // Use particle index + elapsed for per-particle phase
+        const zDrift = Math.sin(elapsed * 0.4 + p * 0.37) * 0.03;
+        positions.setZ(p, SAFE_NUM(z + zDrift));
       }
       positions.needsUpdate = true;
     }
 
-    // Proximity-based opacity (use actual camera Z, not lerp target)
+    // Proximity-based opacity + depth lighting + atmospheric perspective
     const distFromCamera = Math.abs(group.position.z - camera.position.z + 6);
     const fadeStart = LAYER_SPACING * 1.5;
     const fadeEnd = LAYER_SPACING * 4;
@@ -1513,11 +1578,37 @@ function animate() {
       opacity = 0;
     }
 
+    // ── Depth cue 2: emissive intensity scales with proximity ──
+    // Near layers glow brighter; far layers dim to near-zero emissive
+    const emissiveScale = opacity * opacity;  // quadratic falloff feels more physical
+
+    // ── Depth cue 6: atmospheric desaturation for distant layers ──
+    // Lerp material color toward fog color as distance increases
+    const atmosFactor = 1 - opacity;  // 0 = near, 1 = far
+
     group.children.forEach(child => {
       if (child.material) {
-        child.material.opacity = child.userData.baseOpacity !== undefined
-          ? child.userData.baseOpacity * opacity
-          : opacity * 0.7;
+        if (child.isSprite) {
+          // Depth glow halo (cue 5): bright when near, invisible when far
+          child.material.opacity = opacity * 0.15;  // subtle bloom
+        } else {
+          child.material.opacity = child.userData.baseOpacity !== undefined
+            ? child.userData.baseOpacity * opacity
+            : opacity * 0.7;
+        }
+
+        // Depth-dependent emissive (cue 2)
+        if (child.material.emissiveIntensity !== undefined && child.isMesh) {
+          child.material.emissiveIntensity = 0.55 * emissiveScale + 0.05;  // floor so fully dark layers still have faint glow
+        }
+
+        // Atmospheric color shift (cue 6) — only on mesh materials
+        if (child.material.color && child.isMesh && group.userData.baseColor) {
+          child.material.color.copy(group.userData.baseColor).lerp(fogColor, atmosFactor * 0.4);
+        }
+        if (child.material.emissive && child.isMesh && group.userData.baseEmissive) {
+          child.material.emissive.copy(group.userData.baseEmissive).lerp(fogColor, atmosFactor * 0.3);
+        }
       }
     });
   });
