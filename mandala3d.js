@@ -1823,8 +1823,8 @@ const panelOpacityToggle = $('panelOpacityToggle');
 // Sync icon when user exits fullscreen via Escape or browser chrome
 document.addEventListener('fullscreenchange', updateFsIcon);
 document.addEventListener('webkitfullscreenchange', updateFsIcon);
-// States cycle: frosted (default 0.72) → solid (0.90 cap) → translucent → minimal
-const PANEL_STATES = ['frosted', 'solid', 'translucent', 'minimal'];
+// States cycle: frosted (default 0.72/24px) → lighter (0.57/32px) → darker (0.87/16px)
+const PANEL_STATES = ['frosted', 'lighter', 'darker'];
 let panelStateIndex = 0;
 
 function handlePanelOpacityToggle(e) {
@@ -1834,10 +1834,9 @@ function handlePanelOpacityToggle(e) {
 
   // Remove all panel state classes
   if (teachingPanel) {
-    teachingPanel.classList.remove('panel-solid', 'panel-translucent', 'panel-minimal');
-    if (state === 'solid')       teachingPanel.classList.add('panel-solid');
-    if (state === 'translucent') teachingPanel.classList.add('panel-translucent');
-    if (state === 'minimal')     teachingPanel.classList.add('panel-minimal');
+    teachingPanel.classList.remove('panel-lighter', 'panel-darker');
+    if (state === 'lighter') teachingPanel.classList.add('panel-lighter');
+    if (state === 'darker')  teachingPanel.classList.add('panel-darker');
   }
 
   // Visual feedback on the button

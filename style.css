@@ -895,16 +895,16 @@ canvas {
   height: 18px;
 }
 /* Panel opacity states — applied to .teaching-panel via JS */
-/* Default (frosted): 0.72 — set via --panel-bg */
-.teaching-panel.panel-solid {
-  background: rgba(8, 6, 14, 0.90);
+/* Default (frosted): 0.72 alpha, 24px blur — set via --panel-bg + base rule */
+.teaching-panel.panel-lighter {
+  background: rgba(8, 6, 14, 0.57);
+  backdrop-filter: blur(32px);
+  -webkit-backdrop-filter: blur(32px);
 }
-.teaching-panel.panel-translucent {
-  background: rgba(8, 6, 14, 0.40);
-}
-.teaching-panel.panel-minimal {
-  background: rgba(8, 6, 14, 0.12);
-  border-color: rgba(155, 138, 184, 0.06);
+.teaching-panel.panel-darker {
+  background: rgba(8, 6, 14, 0.87);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
 }
 
 /* ═══ FULLSCREEN TOGGLE ═══ */
