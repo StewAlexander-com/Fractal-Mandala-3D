@@ -271,6 +271,10 @@ let radiantStars;       // sparse colored radiant stars (red/blue/yellow-shift)
 let radiantPulsePhases; // per-radiant-star pulse phase offsets
 let radiantPulseSpeeds; // per-radiant-star pulse rates
 let radiantBaseSizes;   // per-radiant-star base sizes for pulsing
+let radiantTrails;      // Points object for radiance trails
+let radiantTrailData;   // per-trail metadata: which star, history ring buffer
+const TRAIL_STARS = 14; // how many radiant stars get trails
+const TRAIL_LENGTH = 12; // trail segments per star (head→tail)
 let dustParticlePhases; // per-dust-particle animation phase offsets
 let dustParticleSpeeds; // per-dust-particle animation rates
 let dustBaseOpacities;  // per-dust-particle base brightness (varied)
@@ -874,6 +878,95 @@ function buildNebulaBackground() {
 
     radiantStars = new THREE.Points(radiantGeo, radiantMat);
     scene.add(radiantStars);
+
+    // 5b. Radiance trails — illuminated dust wake behind selected radiant stars
+    //     Each trail is TRAIL_LENGTH points fading from star to nothing,
+    //     as if the star's light ionises dust along its path through the ISM.
+    const totalTrailPts = TRAIL_STARS * TRAIL_LENGTH;
+    const trailPositions = new Float32Array(totalTrailPts * 3);
+    const trailColors    = new Float32Array(totalTrailPts * 3);
+    const trailSizes     = new Float32Array(totalTrailPts);
+
+    // Pick which radiant stars get trails (spread across colour families)
+    // 5 red, 5 blue, 4 yellow — ensures visual variety
+    const trailStarIndices = [];
+    for (let family = 0; family < 3; family++) {
+      const familyStart = family * 12; // 12 per colour family
+      const count = family < 2 ? 5 : 4;
+      const picked = new Set();
+      while (picked.size < count) {
+        picked.add(familyStart + Math.floor(Math.random() * 12));
+      }
+      picked.forEach(idx => trailStarIndices.push(idx));
+    }
+
+    radiantTrailData = [];
+    for (let t = 0; t < TRAIL_STARS; t++) {
+      const starIdx = trailStarIndices[t];
+      // Get the star's colour (already stored in radiantColors)
+      const cr = radiantColors[starIdx * 3];
+      const cg = radiantColors[starIdx * 3 + 1];
+      const cb = radiantColors[starIdx * 3 + 2];
+      // Get the star's initial position
+      const sx = radiantPositions[starIdx * 3];
+      const sy = radiantPositions[starIdx * 3 + 1];
+      const sz = radiantPositions[starIdx * 3 + 2];
+
+      // Each trail particle: opacity fades from head (j=0) to tail (j=TRAIL_LENGTH-1)
+      const baseOffset = t * TRAIL_LENGTH;
+      for (let j = 0; j < TRAIL_LENGTH; j++) {
+        const fadeT = j / (TRAIL_LENGTH - 1); // 0 at head, 1 at tail
+        const alpha = 1.0 - fadeT;  // linear fade
+        const idx3 = (baseOffset + j) * 3;
+
+        // Initialise all trail points at the star's position
+        trailPositions[idx3]     = sx;
+        trailPositions[idx3 + 1] = sy;
+        trailPositions[idx3 + 2] = sz;
+
+        // Colour: same hue as star but dimmer toward tail
+        // Multiply by alpha² for a nice luminance falloff (inverse-square feel)
+        const lum = alpha * alpha;
+        trailColors[idx3]     = Math.min(1.0, cr * lum);
+        trailColors[idx3 + 1] = Math.min(1.0, cg * lum);
+        trailColors[idx3 + 2] = Math.min(1.0, cb * lum);
+
+        // Size: larger near star, shrinks to nothing
+        trailSizes[baseOffset + j] = (1.8 + Math.random() * 0.6) * alpha;
+      }
+
+      // Store trail metadata for animation
+      radiantTrailData.push({
+        starIdx,
+        baseOffset,
+        // Ring buffer of past world positions (newest at index 0)
+        history: Array.from({ length: TRAIL_LENGTH }, () => ({
+          x: sx, y: sy, z: sz
+        })),
+        // Sample interval counter — don't record every frame, space them out
+        sampleAccum: 0,
+      });
+    }
+
+    const trailGeo = new THREE.BufferGeometry();
+    trailGeo.setAttribute('position', new THREE.Float32BufferAttribute(trailPositions, 3));
+    trailGeo.setAttribute('color',    new THREE.Float32BufferAttribute(trailColors, 3));
+    trailGeo.setAttribute('size',     new THREE.Float32BufferAttribute(trailSizes, 1));
+
+    const trailMat = new THREE.PointsMaterial({
+      size: 1.8,
+      map: starGlowTexture,
+      vertexColors: true,
+      transparent: true,
+      opacity: 0.18,       // very transparent — illuminated dust, not a comet
+      blending: THREE.AdditiveBlending,
+      depthWrite: false,
+      sizeAttenuation: true,
+    });
+
+    radiantTrails = new THREE.Points(trailGeo, trailMat);
+    scene.add(radiantTrails);
+
   } catch (e) { console.warn('Radiant stars init skipped:', e.message); }
 }
 
@@ -2327,6 +2420,71 @@ function animate() {
       radiantStars.rotation.z += dt * 0.002;
       radiantStars.rotation.y += dt * 0.0008;
     } catch (e) { /* radiant stars fallback */ }
+  }
+
+  // ── Radiance trails — illuminated dust wakes behind moving stars ──
+  if (radiantTrails && radiantTrailData && radiantStars) {
+    try {
+      const trailPos = radiantTrails.geometry.attributes.position;
+      const starPos  = radiantStars.geometry.attributes.position;
+      const SAMPLE_INTERVAL = 0.12; // seconds between history samples
+
+      // We need the radiant stars' world matrix to transform local → world
+      radiantStars.updateMatrixWorld();
+      const wm = radiantStars.matrixWorld;
+
+      for (let t = 0; t < radiantTrailData.length; t++) {
+        const td = radiantTrailData[t];
+        const si = td.starIdx;
+
+        // Get star's LOCAL position from the geometry
+        const lx = starPos.getX(si);
+        const ly = starPos.getY(si);
+        const lz = starPos.getZ(si);
+
+        // Transform to world space using the group's rotation matrix
+        // matrixWorld elements: e[0..3]=col0, e[4..7]=col1, e[8..11]=col2, e[12..15]=col3
+        const e = wm.elements;
+        const wx = e[0]*lx + e[4]*ly + e[8]*lz  + e[12];
+        const wy = e[1]*lx + e[5]*ly + e[9]*lz  + e[13];
+        const wz = e[2]*lx + e[6]*ly + e[10]*lz + e[14];
+
+        // Accumulate time; when enough passes, shift history and record new position
+        td.sampleAccum += dt;
+        if (td.sampleAccum >= SAMPLE_INTERVAL) {
+          td.sampleAccum -= SAMPLE_INTERVAL;
+          // Shift history: drop oldest, add newest at front
+          for (let h = td.history.length - 1; h > 0; h--) {
+            td.history[h].x = td.history[h - 1].x;
+            td.history[h].y = td.history[h - 1].y;
+            td.history[h].z = td.history[h - 1].z;
+          }
+          td.history[0].x = wx;
+          td.history[0].y = wy;
+          td.history[0].z = wz;
+        }
+
+        // Write history positions into the trail geometry
+        // Interpolate head (j=0) toward current world pos for smoothness
+        for (let j = 0; j < TRAIL_LENGTH; j++) {
+          const pi = (td.baseOffset + j) * 3;
+          if (j === 0) {
+            // Head tracks the star exactly (no lag)
+            trailPos.array[pi]     = wx;
+            trailPos.array[pi + 1] = wy;
+            trailPos.array[pi + 2] = wz;
+          } else {
+            trailPos.array[pi]     = td.history[j].x;
+            trailPos.array[pi + 1] = td.history[j].y;
+            trailPos.array[pi + 2] = td.history[j].z;
+          }
+        }
+      }
+      trailPos.needsUpdate = true;
+
+      // Subtle global opacity pulse — breathes with the dust
+      radiantTrails.material.opacity = 0.15 + Math.sin(elapsed * 0.3) * 0.04;
+    } catch (e) { /* radiant trails fallback */ }
   }
 
   // ── Nebula cloud drift + luminosity breathing ──
