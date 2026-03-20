@@ -1800,10 +1800,6 @@ function handleFsToggle(e) {
   }
 }
 
-// ─── PANEL OPACITY TOGGLE ───
-// Cycles teaching panel background: solid → translucent → minimal → solid
-const panelOpacityToggle = $('panelOpacityToggle');
-
 // Hide fullscreen button on platforms where the API doesn't work.
 // iOS Safari has no Fullscreen API for non-video elements; the button
 // would do nothing. Users can "Add to Home Screen" for a fullscreen PWA.
@@ -1815,7 +1811,6 @@ const panelOpacityToggle = $('panelOpacityToggle');
     fsToggle.style.display = 'none';
     // Shift remaining buttons left to fill the gap
     if (micToggle) micToggle.style.left = 'calc(clamp(12px, 2vw, 24px) + 54px)';
-    if (panelOpacityToggle) panelOpacityToggle.style.left = 'calc(clamp(12px, 2vw, 24px) + 108px)';
     return;
   }
   fsToggle.addEventListener('click', handleFsToggle);
@@ -1824,49 +1819,18 @@ const panelOpacityToggle = $('panelOpacityToggle');
 // Sync icon when user exits fullscreen via Escape or browser chrome
 document.addEventListener('fullscreenchange', updateFsIcon);
 document.addEventListener('webkitfullscreenchange', updateFsIcon);
-// States cycle: frosted → lighter → darker
-// Each state has a base alpha + blur; layer depth adds up to +0.22 alpha
-// at the innermost layer so text stays readable against bright geometry.
-const PANEL_PRESETS = {
-  frosted: { alpha: 0.38, blur: 26 },
-  lighter: { alpha: 0.23, blur: 34 },
-  darker:  { alpha: 0.53, blur: 16 }
-};
+
+// ─── LAYER-ADAPTIVE PANEL OPACITY ───
+// Panel darkens progressively toward the bright inner layers
+// so text stays readable against luminous core geometry.
+const PANEL_BASE_ALPHA = 0.38;
 const PANEL_DEPTH_BOOST = 0.22; // extra alpha added at innermost layer
-const PANEL_STATES = ['frosted', 'lighter', 'darker'];
-let panelStateIndex = 0;
 
 function updatePanelOpacity(layerIndex) {
   if (!teachingPanel) return;
-  const preset = PANEL_PRESETS[PANEL_STATES[panelStateIndex]];
   const depth = layerIndex / (LAYER_COUNT - 1); // 0 = outer, 1 = core
-  const alpha = Math.min(preset.alpha + depth * PANEL_DEPTH_BOOST, 0.90);
+  const alpha = Math.min(PANEL_BASE_ALPHA + depth * PANEL_DEPTH_BOOST, 0.90);
   teachingPanel.style.background = `rgba(8, 6, 14, ${alpha.toFixed(2)})`;
-  // Blur stays per-preset (set via class or base rule)
-}
-
-function handlePanelOpacityToggle(e) {
-  if (e) e.preventDefault();
-  panelStateIndex = (panelStateIndex + 1) % PANEL_STATES.length;
-  const state = PANEL_STATES[panelStateIndex];
-
-  // Update blur via class (alpha set dynamically by updatePanelOpacity)
-  if (teachingPanel) {
-    teachingPanel.classList.remove('panel-lighter', 'panel-darker');
-    if (state === 'lighter') teachingPanel.classList.add('panel-lighter');
-    if (state === 'darker')  teachingPanel.classList.add('panel-darker');
-  }
-  updatePanelOpacity(currentLayer);
-
-  // Visual feedback on the button
-  if (panelOpacityToggle) {
-    panelOpacityToggle.classList.toggle('active', state !== 'frosted');
-  }
-}
-
-if (panelOpacityToggle) {
-  panelOpacityToggle.addEventListener('click', handlePanelOpacityToggle);
-  panelOpacityToggle.addEventListener('touchend', handlePanelOpacityToggle);
 }
 
 // Enter button
