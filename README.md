@@ -8,7 +8,7 @@
 
 A 3D interactive sacred geometry mandala of presence and liberation. Seven concentric layers of metacognitive awareness rendered as quantum orbital shells — fly through them in your browser. Built with Three.js, set in an astronomically-inspired nebula star field with ambient meditation audio.
 
-The teachings are a distillation of converging ideas from Buddhism, Hinduism, Stoicism, Sufism, Taoism, and Christian mysticism, interwoven with modern physics, neuroscience, cognitive-behavioral research, process philosophy, and the mathematics of fractals and calculus — drawn from cultures across Asia, Africa, Europe, and the Americas. Where traditions separated by thousands of miles and thousands of years arrive at the same insight, that convergence is the signal.
+The teachings distill converging ideas from Buddhism, Hinduism, Stoicism, Sufism, Taoism, and Christian mysticism, interwoven with modern physics, neuroscience, cognitive-behavioral research, process philosophy, and the mathematics of fractals and calculus — drawn from cultures across Asia, Africa, Europe, and the Americas. Where traditions separated by thousands of miles and thousands of years arrive at the same insight, that convergence is the signal.
 
 ---
 
@@ -30,21 +30,34 @@ The teachings are a distillation of converging ideas from Buddhism, Hinduism, St
 |-------|---------|--------|
 | **Navigate layers** | Scroll wheel / ↑↓ arrows / slider | Vertical swipe / slider |
 | **Orbit camera** | Click-drag / ←→ arrows | Horizontal swipe |
-| **Zoom** | Ctrl+scroll / +/- keys | Two-finger pinch |
+| **Zoom** | Ctrl+scroll / +/− keys | Two-finger pinch |
 | **Jump to layer** | Number keys 1–7 / click slider stops | Tap slider stops |
 | **Toggle audio** | Click speaker icon (bottom-left) | Tap speaker icon |
+| **Fullscreen** | Click expand icon (bottom-left) | Tap expand icon |
+
+## 6-DOF Volumetric Depth
+
+The orbital shells are rendered with six physical depth cues so the Z-axis reads as truly three-dimensional:
+
+1. **Orbital tilt diversity** — each layer group has a unique XYZ base tilt; rings appear as foreshortened ellipses, not face-on circles
+2. **Gyroscopic precession** — slow wobble shifts each ring's viewing angle over time
+3. **Depth-dependent illuminance** — emissive intensity scales quadratically with camera proximity (inverse-square law); near layers glow warm, far layers dim
+4. **Parallax camera bob** — two-frequency lateral + vertical micro-oscillation; near objects shift faster than far objects
+5. **Z-axis particle drift** — sinusoidal per-particle Z displacement; electron clouds float forward/backward through the ring plane
+6. **Per-ring glow halos** — additive depth-attenuated sprite behind each torus; anchors rings in Z-space
+7. **Atmospheric perspective** — distant layers desaturate and cool toward the fog color, complementing the exponential fog
 
 ## Nebula Star Field
 
 The background environment is modeled after Hubble imagery of stellar nurseries — luminous at the core, fading to dark void at the edges.
 
 ### Stars — Inverse-Square Radial Distribution
-- **2400 stars** placed with center-concentrated density (density ∝ 1/r², like a real stellar nursery)
-- **Spectral classification palette**: O-type blue-white, B-type blue, A-type white, F-type yellow-white, G-type gold, K-type orange, plus overexposed pure white
-- **Center-biased luminosity**: stars near the core receive up to 2.5× brightness boost
+- **2,400 stars** placed with center-concentrated density (density ∝ 1/r²)
+- **Spectral classification palette**: O-type blue-white, B-type blue, A-type white, F-type yellow-white, G-type gold, K-type orange, overexposed pure white
+- **Center-biased luminosity**: up to 2.5× brightness boost near the core
 - **5 luminosity tiers**: supergiant beacons (3%), bright giants (9%), main-sequence bright (23%), main-sequence dim (30%), red dwarfs & dust (35%)
-- **Per-star twinkle**: each star shimmers at its own frequency (0.3–1.8 Hz) with composite sine harmonics
-- **128px dual-layer glow texture**: wide soft halo + intense additive core burn (mimics telescope point-spread function)
+- **Per-star twinkle**: individual shimmer at 0.3–1.8 Hz with composite sine harmonics
+- **128px dual-layer glow texture**: wide soft halo + intense additive core burn (telescope point-spread function)
 
 ### Nebula Gas — 3 Radial Emission Zones
 - **Inner zone** (r 0–40): 14 dense, bright clouds — warm H-II emission tones (amber, gold, pink-white, dusty gold, blue-violet)
@@ -53,23 +66,25 @@ The background environment is modeled after Hubble imagery of stellar nurseries 
 - Clouds drift and breathe with per-cloud opacity oscillation
 
 ### Additional Effects
-- **Shooting stars** — occasional meteor streaks across the field (pool of 4, ~1 every 5 seconds)
-- **Cosmic dust ring** — 600-particle toroidal band at the scene midpoint, glacial rotation
+- **Shooting stars** — occasional meteor streaks (pool of 4, ~1 every 5 seconds)
+- **Cosmic dust ring** — 600-particle toroidal band at the midpoint, glacial rotation
 - **Nebula accent lights** — rose, lavender, blue, and warm backlight point lights
 - **ACES filmic tone mapping** at exposure 2.0 for cinematic dynamic range
-- **Ambient meditation audio** — "Angelic Meditation" (Pixabay License), looping at 33% volume with fade-in
-
-All background subsystems are wrapped in try/catch fault tolerance — if any fails, the rest continues.
+- **Ambient meditation audio** — looping at 33% volume with fade-in
 
 ## UI & Design
 
 - **Milky Way palette**: indigo-black background, warm gold accents, muted earth tones
-- **Lora italic** for teaching text — clean, elegant readability at small sizes
-- **Radial glow shimmer** on key text (amber/teal/rose `::before` pseudo-element, 14s cycle)
-- **Scroll indicators**: gold chevron arrows with drop-shadow glow, bouncing above/below the teaching panel to signal scrollable content
-- **Fade masks**: top and bottom inset shadows appear dynamically when content overflows
-- **Splash screen**: centered title with high-contrast warm text, "enter the mandala" gate
-- **Layer transitions**: scroll resets to top on layer switch
+- **Lora italic** for key teaching text — clean serif readability at small sizes
+- **Jost** body text, **Cormorant Garamond** display titles
+- **Radial glow shimmer** on explain text (amber/teal/rose, 12s breathing cycle)
+- **Blur-reveal layer titles** — scale up from 94% with 6px blur dissolve on layer transitions
+- **Slide-in teaching panels** — translate-Y entrance with 0.7s ease
+- **Scroll indicators**: gold chevron arrows with drop-shadow glow, bouncing above/below the panel
+- **Fade masks**: top/bottom inset shadows appear dynamically when content overflows
+- **Touch-responsive navigation**: 44px invisible hit zones on slider stops (WCAG minimum), grow/glow pulse animation on activation
+- **Fullscreen toggle**: Fullscreen API + webkit fallback, icon state syncs with Escape key
+- **Panel scroll isolation**: `overscroll-behavior: contain` + `touch-action: pan-y` + event isolation prevent text scrolling from triggering layer navigation
 
 ## The Core Teaching
 
@@ -81,13 +96,26 @@ The practice is fractal: Meditate → Let revelation emerge → Ask questions �
 
 ## Technical Architecture
 
-- **Three.js** (WebGL) via CDN import maps — no build step, pure ES modules
-- **Gesture system** — unified input handling: mouse drag, scroll, touch swipe (intent-locked axis), pinch zoom, keyboard
-- **Camera** — auto-orbit baseline + user orbit angle + zoom Z-offset, all lerped with exponential ease
-- **iOS hardened** — `visualViewport` API for sizing, `100dvh` fallback, `viewport-fit=cover`, safe-area insets
-- **Audio** — Web Audio API pipeline (AudioContext → GainNode → destination) for reliable mute/unmute in all environments including iOS standalone; HTML5 Audio fallback; autoplay-gate; fade-in; loop
-- **Performance** — star twinkle updates in rolling batches (~350/frame), additive blending, depth-write disabled on particles
-- **Fault tolerance** — all background subsystems in try/catch, shooting stars use object pooling
+- **Three.js r170** (WebGL) via CDN import maps — no build step, pure ES modules
+- **Gesture system** — unified intent-locked input: mouse drag, scroll, touch swipe, pinch zoom, keyboard, slider drag
+- **6-DOF camera** — auto-orbit + user orbit + parallax bob + zoom Z-offset, all lerped with exponential ease
+- **iOS hardened** — `visualViewport` API sizing, `100dvh` fallback, `viewport-fit=cover`, safe-area insets
+- **Audio** — Web Audio API pipeline (AudioContext → GainNode → destination) with HTML5 Audio fallback; autoplay gate; fade-in; loop; iOS standalone safe
+- **Performance** — star twinkle in rolling batches (~350/frame), additive blending, depth-write disabled on particles, `powerPreference: 'high-performance'`
+
+### Resilience
+
+The mandala is designed to run unattended without degradation:
+
+- **WebGL context loss recovery** — `webglcontextlost` / `webglcontextrestored` event handling; silent rebuild after mobile GPU reclaims context
+- **Delta-time clamping** — `MAX_DT = 100ms` prevents physics explosions after tab-resume
+- **NaN guards** — `SAFE_NUM()` wrapper on all particle position updates; camera position reset if corrupted
+- **Null-safe DOM** — every `getElementById` ref guarded; missing elements can't crash the app
+- **Fault-isolated animation loop** — each subsystem (orbitals, core glow, star twinkle, shooting stars, cosmic dust, nebula clouds) wrapped in independent try/catch
+- **Global error handler** — catches CDN/module failures and shows graceful "unable to load" message instead of blank screen
+- **CDN preconnect** — `<link rel="preconnect">` hints for jsdelivr and Google Fonts
+- **Audio preload** — `<link rel="preload" as="fetch">` hint for ambient track
+- **Font fallback** — `display=swap` ensures visible text during font load
 
 ## Palette
 
