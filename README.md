@@ -33,7 +33,9 @@ The teachings distill converging ideas from Buddhism, Hinduism, Stoicism, Sufism
 | **Zoom** | Ctrl+scroll / +/− keys | Two-finger pinch |
 | **Jump to layer** | Number keys 1–7 / click slider stops | Tap slider stops |
 | **Toggle audio** | Click speaker icon (bottom-left) | Tap speaker icon |
-| **Fullscreen** | Click expand icon (bottom-left) | Tap expand icon |
+| **Toggle mic** | Click mic icon (bottom-left) | Tap mic icon (headphones recommended) |
+| **Panel opacity** | Click eye icon (bottom-left) | Tap eye icon — cycles solid → translucent → minimal |
+| **Fullscreen** | Click expand icon (bottom-left) | Tap expand icon (hidden on iOS — use Add to Home Screen) |
 
 ## 6-DOF Volumetric Depth
 
@@ -75,7 +77,8 @@ The background environment is modeled after Hubble imagery of stellar nurseries 
 ## UI & Design
 
 - **Milky Way palette**: indigo-black background, warm gold accents, muted earth tones
-- **Lora italic** for key teaching text — clean serif readability at small sizes
+- **Lora** base teaching text — clean serif readability at small sizes
+- **Cormorant Garamond** key-phrase display, **Courier New** math notation
 - **Jost** body text, **Cormorant Garamond** display titles
 - **Radial glow shimmer** on explain text (amber/teal/rose, 12s breathing cycle)
 - **Blur-reveal layer titles** — scale up from 94% with 6px blur dissolve on layer transitions
@@ -83,7 +86,9 @@ The background environment is modeled after Hubble imagery of stellar nurseries 
 - **Scroll indicators**: gold chevron arrows with drop-shadow glow, bouncing above/below the panel
 - **Fade masks**: top/bottom inset shadows appear dynamically when content overflows
 - **Touch-responsive navigation**: 44px invisible hit zones on slider stops (WCAG minimum), grow/glow pulse animation on activation
-- **Fullscreen toggle**: Fullscreen API + webkit fallback, icon state syncs with Escape key
+- **Panel opacity toggle**: eye icon cycles teaching panel background through solid (0.88) → translucent (0.45) → minimal (0.15)
+- **Fullscreen toggle**: Fullscreen API + webkit fallback, icon state syncs with Escape key; auto-hidden on iOS Safari where the API is absent
+- **Auto-orbit resume**: after 4 seconds of no orbit input, the manual camera offset decays smoothly back to zero and the ambient drift takes over
 - **Panel scroll isolation**: `overscroll-behavior: contain` + `touch-action: pan-y` + event isolation prevent text scrolling from triggering layer navigation
 
 ## The Core Teaching
