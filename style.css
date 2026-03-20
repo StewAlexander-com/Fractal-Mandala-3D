@@ -28,7 +28,7 @@
   --lavender:   #a088c0;
   --blue-star:  #a0d4f0;
   --teal-glow:  #7ec8a0;
-  --panel-bg:   rgba(8, 6, 14, 0.38);
+  --panel-bg:   radial-gradient(ellipse 85% 80% at 50% 50%, rgba(8,6,14,0.38) 40%, rgba(8,6,14,0.06) 100%);
   --panel-border: rgba(155, 138, 184, 0.12);
   --font-display: 'Cormorant Garamond', Georgia, serif;
   --font-body: 'Jost', 'Helvetica Neue', sans-serif;
