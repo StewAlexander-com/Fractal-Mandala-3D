@@ -267,6 +267,13 @@ let cosmicDust;         // faint toroidal dust ring
 let starTwinklePhases;  // per-star twinkle phase offsets
 let starTwinkleSpeeds;  // per-star twinkle rates
 let starBaseOpacities;  // per-star base brightness
+let radiantStars;       // sparse colored radiant stars (red/blue/yellow-shift)
+let radiantPulsePhases; // per-radiant-star pulse phase offsets
+let radiantPulseSpeeds; // per-radiant-star pulse rates
+let radiantBaseSizes;   // per-radiant-star base sizes for pulsing
+let dustParticlePhases; // per-dust-particle animation phase offsets
+let dustParticleSpeeds; // per-dust-particle animation rates
+let dustBaseOpacities;  // per-dust-particle base brightness (varied)
 
 // ─── INIT THREE.JS ───
 let contextLost = false;   // WebGL context-loss flag
@@ -712,18 +719,28 @@ function buildNebulaBackground() {
     }
   } catch (e) { console.warn('Shooting stars init skipped:', e.message); }
 
-  // 4. Cosmic dust ring — faint toroidal particle band at the midpoint
+  // 4. Cosmic dust ring — luminous toroidal particle band at the midpoint
+  //    Now with per-particle brightness variation: glowing hotspots and dim wisps
   try {
-    const dustCount = 600;
+    const dustCount = 800; // slightly more for richer texture
     const dustPositions = new Float32Array(dustCount * 3);
-    const dustColors = new Float32Array(dustCount * 3);
+    const dustColors    = new Float32Array(dustCount * 3);
+    const dustSizes     = new Float32Array(dustCount);
     const midZ = (LAYER_COUNT - 1) * LAYER_SPACING * 0.5;
     const dustPalette = [
       new THREE.Color(0x3e2a55),  // deep indigo
       new THREE.Color(0x2a1f3d),  // dark violet
       new THREE.Color(0x4a3552),  // muted purple
       new THREE.Color(0x5c4a3a),  // warm brown
+      new THREE.Color(0x6a4a6e),  // rose-violet (luminous accent)
+      new THREE.Color(0x8a6a40),  // warm amber glow
     ];
+
+    // Per-particle animation data
+    dustParticlePhases = new Float32Array(dustCount);
+    dustParticleSpeeds = new Float32Array(dustCount);
+    dustBaseOpacities  = new Float32Array(dustCount);
+
     for (let i = 0; i < dustCount; i++) {
       const theta = Math.random() * TAU;
       const phi = (Math.random() - 0.5) * 0.8; // flatten to disc
@@ -733,20 +750,43 @@ function buildNebulaBackground() {
       dustPositions[i * 3 + 2] = midZ + Math.sin(theta) * r * 0.3;
 
       const c = dustPalette[Math.floor(Math.random() * dustPalette.length)];
-      const b = 0.3 + Math.random() * 0.5;
+
+      // Per-particle luminosity: ~15% are luminous hotspots, ~25% are dim wisps
+      const lumRoll = Math.random();
+      let b;
+      if (lumRoll < 0.15) {
+        // Luminous hotspot — glowing knot in the dust
+        b = 0.8 + Math.random() * 0.6;
+        dustSizes[i] = 0.35 + Math.random() * 0.25; // slightly larger
+      } else if (lumRoll < 0.40) {
+        // Dim wisp — barely there
+        b = 0.12 + Math.random() * 0.18;
+        dustSizes[i] = 0.12 + Math.random() * 0.15;
+      } else {
+        // Normal dust
+        b = 0.3 + Math.random() * 0.5;
+        dustSizes[i] = 0.18 + Math.random() * 0.15;
+      }
+
       dustColors[i * 3]     = c.r * b;
       dustColors[i * 3 + 1] = c.g * b;
       dustColors[i * 3 + 2] = c.b * b;
+
+      // Per-particle animation phase — slow, desynchronised breathing
+      dustParticlePhases[i] = Math.random() * TAU;
+      dustParticleSpeeds[i] = 0.08 + Math.random() * 0.25; // very slow
+      dustBaseOpacities[i]  = dustSizes[i]; // tie base opacity to size
     }
     const dustGeo = new THREE.BufferGeometry();
     dustGeo.setAttribute('position', new THREE.Float32BufferAttribute(dustPositions, 3));
-    dustGeo.setAttribute('color', new THREE.Float32BufferAttribute(dustColors, 3));
+    dustGeo.setAttribute('color',    new THREE.Float32BufferAttribute(dustColors, 3));
+    dustGeo.setAttribute('size',     new THREE.Float32BufferAttribute(dustSizes, 1));
     const dustMat = new THREE.PointsMaterial({
-      size: 0.25,
+      size: 0.3,
       map: starGlowTexture,
       vertexColors: true,
       transparent: true,
-      opacity: 0.12,
+      opacity: 0.14,
       blending: THREE.AdditiveBlending,
       depthWrite: false,
       sizeAttenuation: true,
@@ -754,6 +794,87 @@ function buildNebulaBackground() {
     cosmicDust = new THREE.Points(dustGeo, dustMat);
     scene.add(cosmicDust);
   } catch (e) { console.warn('Cosmic dust init skipped:', e.message); }
+
+  // 5. Radiant stars — sparse, distinctly coloured gems: red-shift, blue-shift, yellow
+  //    Think quasars and variable stars scattered across the field — rare, vivid accents
+  try {
+    const radiantCount = 36; // sparse — about 1.5% of the main star count
+    const radiantPositions = new Float32Array(radiantCount * 3);
+    const radiantColors    = new Float32Array(radiantCount * 3);
+    const radiantSizes     = new Float32Array(radiantCount);
+
+    // Three spectral families, physically motivated:
+    // Red-shift: receding objects / cool giants (Hα emission)
+    // Blue-shift: approaching / hot young stars (O/B emission)
+    // Yellow radiant: solar-type supergiants (Cepheids)
+    const radiantPalette = [
+      // Red-shift stars (12) — deep cherry to warm crimson
+      { r: 1.0,  g: 0.22, b: 0.15 },  // hot red
+      { r: 0.95, g: 0.30, b: 0.20 },  // warm red
+      { r: 0.85, g: 0.18, b: 0.25 },  // crimson
+      { r: 1.0,  g: 0.35, b: 0.18 },  // red-orange
+      // Blue-shift stars (12) — sapphire to electric cyan
+      { r: 0.20, g: 0.45, b: 1.0  },  // deep blue
+      { r: 0.30, g: 0.55, b: 0.95 },  // royal blue
+      { r: 0.15, g: 0.60, b: 1.0  },  // blue-cyan
+      { r: 0.25, g: 0.40, b: 0.90 },  // sapphire
+      // Yellow radiant stars (12) — amber to brilliant gold
+      { r: 1.0,  g: 0.85, b: 0.20 },  // rich gold
+      { r: 1.0,  g: 0.78, b: 0.15 },  // deep amber
+      { r: 0.95, g: 0.90, b: 0.35 },  // warm yellow
+      { r: 1.0,  g: 0.70, b: 0.10 },  // intense amber
+    ];
+
+    radiantPulsePhases = new Float32Array(radiantCount);
+    radiantPulseSpeeds = new Float32Array(radiantCount);
+    radiantBaseSizes   = new Float32Array(radiantCount);
+
+    for (let i = 0; i < radiantCount; i++) {
+      const angle = Math.random() * TAU;
+      const u = Math.random();
+      const radius = 12 + Math.pow(u, 0.6) * 150;
+      const z = (Math.random() - 0.3) * maxField;
+
+      radiantPositions[i * 3]     = Math.cos(angle) * radius;
+      radiantPositions[i * 3 + 1] = Math.sin(angle) * radius;
+      radiantPositions[i * 3 + 2] = z;
+
+      // Cycle through the palette: 0-11 red, 12-23 blue, 24-35 yellow
+      const palIdx = i % radiantPalette.length;
+      const col = radiantPalette[palIdx];
+      const brightness = 1.5 + Math.random() * 1.5; // vivid
+      radiantColors[i * 3]     = Math.min(1.0, col.r * brightness);
+      radiantColors[i * 3 + 1] = Math.min(1.0, col.g * brightness);
+      radiantColors[i * 3 + 2] = Math.min(1.0, col.b * brightness);
+
+      const baseSize = 2.5 + Math.random() * 3.0; // larger than typical stars
+      radiantSizes[i] = baseSize;
+      radiantBaseSizes[i] = baseSize;
+
+      // Slow pulsing — Cepheid-like variability
+      radiantPulsePhases[i] = Math.random() * TAU;
+      radiantPulseSpeeds[i] = 0.15 + Math.random() * 0.5; // slow, dreamy
+    }
+
+    const radiantGeo = new THREE.BufferGeometry();
+    radiantGeo.setAttribute('position', new THREE.Float32BufferAttribute(radiantPositions, 3));
+    radiantGeo.setAttribute('color',    new THREE.Float32BufferAttribute(radiantColors, 3));
+    radiantGeo.setAttribute('size',     new THREE.Float32BufferAttribute(radiantSizes, 1));
+
+    const radiantMat = new THREE.PointsMaterial({
+      size: 3.5,
+      map: starGlowTexture,
+      vertexColors: true,
+      transparent: true,
+      opacity: 0.9,
+      blending: THREE.AdditiveBlending,
+      depthWrite: false,
+      sizeAttenuation: true,
+    });
+
+    radiantStars = new THREE.Points(radiantGeo, radiantMat);
+    scene.add(radiantStars);
+  } catch (e) { console.warn('Radiant stars init skipped:', e.message); }
 }
 
 // ─── SACRED GEOMETRY GENERATORS ───
@@ -2161,14 +2282,51 @@ function animate() {
     });
   } catch (e) { /* shooting stars graceful fallback */ }
 
-  // ── Cosmic dust ring — glacial rotation ──
+  // ── Cosmic dust ring — glacial rotation + per-particle breathing ──
   if (cosmicDust) {
     try {
       cosmicDust.rotation.y += dt * 0.003;
       cosmicDust.rotation.x += dt * 0.0005;
-      // Subtle opacity pulse
-      cosmicDust.material.opacity = 0.10 + Math.sin(elapsed * 0.25) * 0.03;
+
+      // Per-particle size animation — subtle transparency variation
+      // Updates a rolling batch per frame to keep CPU light
+      if (dustParticlePhases) {
+        const dustSizes = cosmicDust.geometry.attributes.size;
+        const dustCount = dustSizes.count;
+        const dustBatch = Math.min(200, dustCount);
+        const dustOffset = Math.floor(elapsed * 8) * dustBatch % dustCount;
+        for (let i = 0; i < dustBatch; i++) {
+          const idx = (dustOffset + i) % dustCount;
+          const phase = dustParticlePhases[idx] + elapsed * dustParticleSpeeds[idx];
+          // Gentle breathing: +-20% around base size
+          const breath = 0.8 + Math.sin(phase) * 0.2 + Math.sin(phase * 1.7) * 0.06;
+          dustSizes.setX(idx, dustBaseOpacities[idx] * breath);
+        }
+        dustSizes.needsUpdate = true;
+      }
+
+      // Global opacity still drifts gently
+      cosmicDust.material.opacity = 0.12 + Math.sin(elapsed * 0.25) * 0.03;
     } catch (e) { /* cosmic dust fallback */ }
+  }
+
+  // ── Radiant stars — slow Cepheid-like pulsing ──
+  if (radiantStars && radiantPulsePhases) {
+    try {
+      const rSizes = radiantStars.geometry.attributes.size;
+      const rCount = rSizes.count;
+      for (let i = 0; i < rCount; i++) {
+        const phase = radiantPulsePhases[i] + elapsed * radiantPulseSpeeds[i];
+        // Smooth sinusoidal pulse: size breathes between 70% and 130%
+        const pulse = 0.7 + Math.sin(phase) * 0.3 + Math.sin(phase * 0.37) * 0.08;
+        rSizes.setX(i, radiantBaseSizes[i] * pulse);
+      }
+      rSizes.needsUpdate = true;
+      // Gentle global opacity sway + follow star field rotation
+      radiantStars.material.opacity = 0.8 + Math.sin(elapsed * 0.4) * 0.15 + b * 0.05;
+      radiantStars.rotation.z += dt * 0.002;
+      radiantStars.rotation.y += dt * 0.0008;
+    } catch (e) { /* radiant stars fallback */ }
   }
 
   // ── Nebula cloud drift + luminosity breathing ──
