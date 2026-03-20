@@ -34,7 +34,6 @@ The teachings distill converging ideas from Buddhism, Hinduism, Stoicism, Sufism
 | **Jump to layer** | Number keys 1–7 / click slider stops | Tap slider stops |
 | **Toggle audio** | Click speaker icon (bottom-left) | Tap speaker icon |
 | **Toggle mic** | Click mic icon (bottom-left) | Tap mic icon (headphones recommended) |
-| **Panel opacity** | Click eye icon (bottom-left) | Tap eye icon — cycles solid → translucent → minimal |
 | **Fullscreen** | Click expand icon (bottom-left) | Tap expand icon (hidden on iOS — use Add to Home Screen) |
 
 ## 6-DOF Volumetric Depth
@@ -80,13 +79,13 @@ The background environment is modeled after Hubble imagery of stellar nurseries 
 - **Lora** base teaching text — clean serif readability at small sizes
 - **Cormorant Garamond** key-phrase display, **Courier New** math notation
 - **Jost** body text, **Cormorant Garamond** display titles
-- **Radial glow shimmer** on explain text (amber/teal/rose, 12s breathing cycle)
+- **Radial glow shimmer** on explain text — Gaussian bell-curve keyframes over a 28s breathing cycle, dual-layer `::before`/`::after` pseudo-elements with 7s phase offset
 - **Blur-reveal layer titles** — scale up from 94% with 6px blur dissolve on layer transitions
-- **Slide-in teaching panels** — translate-Y entrance with 0.7s ease
+- **Frosted glass teaching panel** — `backdrop-filter: blur()` with layer-adaptive opacity (darkens near the bright core, lightens at outer layers). CSS `mask-image` radial gradient fades the panel edges softly into the scene with no visible border
 - **Scroll indicators**: gold chevron arrows with drop-shadow glow, bouncing above/below the panel
 - **Fade masks**: top/bottom inset shadows appear dynamically when content overflows
+- **Layer title readability** — `::before` radial dark vignette + `::after` `backdrop-filter: brightness()` dims the WebGL canvas behind the title text; ensures readability against bright torus geometry at every layer
 - **Touch-responsive navigation**: 44px invisible hit zones on slider stops (WCAG minimum), grow/glow pulse animation on activation
-- **Panel opacity toggle**: eye icon cycles teaching panel background through solid (0.88) → translucent (0.45) → minimal (0.15)
 - **Fullscreen toggle**: Fullscreen API + webkit fallback, icon state syncs with Escape key; auto-hidden on iOS Safari where the API is absent
 - **Auto-orbit resume**: after 4 seconds of no orbit input, the manual camera offset decays smoothly back to zero and the ambient drift takes over
 - **Panel scroll isolation**: `overscroll-behavior: contain` + `touch-action: pan-y` + event isolation prevent text scrolling from triggering layer navigation
@@ -106,6 +105,7 @@ The practice is fractal: Meditate → Let revelation emerge → Ask questions �
 - **6-DOF camera** — auto-orbit + user orbit + parallax bob + zoom Z-offset, all lerped with exponential ease
 - **iOS hardened** — `visualViewport` API sizing, `100dvh` fallback, `viewport-fit=cover`, safe-area insets
 - **Audio** — Web Audio API pipeline (AudioContext → GainNode → destination) with HTML5 Audio fallback; autoplay gate; fade-in; loop; iOS standalone safe
+- **Audio-reactive geometry** — ambient track AnalyserNode + optional microphone input blended into a single normalized breath signal. Smoothed with asymmetric exponential rates (rise 0.015, fall 0.008) to feel like breathing, not a VU meter. Drives: emissive intensity/warmth, rotation speed, camera bob amplitude, particle drift rate, core glow, star brightness, fog warmth. Mic input soft-limited with `tanh()` before blending (ambient 65% / mic 35%) so the ambient track always dominates
 - **Performance** — star twinkle in rolling batches (~350/frame), additive blending, depth-write disabled on particles, `powerPreference: 'high-performance'`
 
 ### Resilience
@@ -121,6 +121,19 @@ The mandala is designed to run unattended without degradation:
 - **CDN preconnect** — `<link rel="preconnect">` hints for jsdelivr and Google Fonts
 - **Audio preload** — `<link rel="preload" as="fetch">` hint for ambient track
 - **Font fallback** — `display=swap` ensures visible text during font load
+
+### Mic Fault Tolerance
+
+The microphone system is designed for zero-disruption operation:
+
+- **getUserMedia constraints**: all browser DSP disabled (`echoCancellation: false`, `noiseSuppression: false`, `autoGainControl: false`) via `exact` constraints with progressive fallback — prevents the browser's AEC from fighting the ambient track
+- **AudioContext state machine**: handles `suspended`, `interrupted` (iOS), and `closed` states; auto-resume on user gesture
+- **Dead-stream detection**: 180 consecutive zero-energy frames triggers automatic mic disable
+- **Track lifecycle listeners**: `ended` and `mute` events trigger graceful cleanup
+- **Every audio API call try/caught**: `createMediaStreamSource`, `createAnalyser`, `getByteFrequencyData` all independently fault-isolated
+- **NaN guards**: `safeBreathNum()` wrapper on all breath calculations
+- **Secure-origin detection**: mic button auto-hidden on insecure origins where `getUserMedia` is unavailable
+- **Page visibility cleanup**: mic resources released when tab is hidden
 
 ## Palette
 
