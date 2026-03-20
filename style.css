@@ -243,7 +243,7 @@ canvas {
     0 0 40px rgba(155, 138, 184, 0.04), 0 0 80px rgba(199, 136, 154, 0.03);
 }
 
-/* Scroll hint arrows — gentle bounce outside panel edges */
+/* Scroll hint arrows — high-contrast bounce outside panel edges */
 .scroll-hint {
   position: absolute;
   left: 50%;
@@ -251,23 +251,25 @@ canvas {
   display: flex;
   justify-content: center;
   pointer-events: none;
-  color: var(--gold-dim);
+  color: #f0d9a0;
   opacity: 0;
   transition: opacity 0.4s var(--ease-out);
   z-index: 25;
+  filter: drop-shadow(0 0 4px rgba(240, 200, 100, 0.7))
+         drop-shadow(0 0 8px rgba(200, 160, 60, 0.35));
 }
 .scroll-hint--up {
   bottom: 100%;
-  margin-bottom: 6px;
+  margin-bottom: 8px;
   animation: hintBounceUp 2.4s ease-in-out infinite;
 }
 .scroll-hint--down {
   top: 100%;
-  margin-top: 6px;
+  margin-top: 8px;
   animation: hintBounceDown 2.4s ease-in-out infinite;
 }
 .scroll-hint.visible {
-  opacity: 0.75;
+  opacity: 1;
 }
 
 @keyframes hintBounceDown {
