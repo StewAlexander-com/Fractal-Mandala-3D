@@ -327,42 +327,81 @@ canvas {
   font-weight: 400;
   font-size: 1.12em;
   line-height: 1.65;
-  color: #f5f2e8;
+  color: #f8f4ea;
   margin: 0.25rem 0 0.85rem 0;
   padding: 0.3em 0.5em;
   position: relative;
   border-radius: 3px;
+  /* Warm luminous haze around each letterform */
+  text-shadow:
+    0 0 8px rgba(240, 200, 100, 0.25),
+    0 0 20px rgba(212, 165, 116, 0.12);
 }
 
 /* Radiating background glow — multi-color, breathes outward */
 .teaching-inner .explain::before {
   content: '';
   position: absolute;
-  inset: -4px -10px;
-  border-radius: 6px;
+  inset: -6px -14px;
+  border-radius: 8px;
   background: radial-gradient(
     ellipse at 30% 50%,
-    rgba(240, 200, 80, 0.14) 0%,
-    rgba(126, 200, 160, 0.08) 40%,
-    rgba(212, 136, 154, 0.06) 70%,
+    rgba(240, 200, 80, 0.28) 0%,
+    rgba(212, 165, 116, 0.16) 30%,
+    rgba(126, 200, 160, 0.10) 55%,
+    rgba(212, 136, 154, 0.07) 75%,
     transparent 100%
   );
-  opacity: 0.3;
-  animation: explainGlow 12s ease-in-out infinite;
+  opacity: 0.5;
+  animation: explainGlow 10s ease-in-out infinite;
+  z-index: -1;
+  pointer-events: none;
+}
+
+/* Secondary layer — warm edge-light that offsets the first for depth */
+.teaching-inner .explain::after {
+  content: '';
+  position: absolute;
+  inset: -3px -8px;
+  border-radius: 6px;
+  background: radial-gradient(
+    ellipse at 70% 40%,
+    rgba(240, 210, 130, 0.18) 0%,
+    rgba(200, 160, 80, 0.08) 50%,
+    transparent 100%
+  );
+  opacity: 0;
+  animation: explainGlow2 10s ease-in-out infinite;
   z-index: -1;
   pointer-events: none;
 }
 
 @keyframes explainGlow {
   0%, 100% {
-    opacity: 0.3;
-    transform: scale(0.97);
-    filter: blur(4px);
+    opacity: 0.45;
+    transform: scale(0.98);
+    filter: blur(6px);
   }
   50% {
     opacity: 1;
-    transform: scale(1.04);
+    transform: scale(1.05);
+    filter: blur(10px);
+  }
+}
+
+@keyframes explainGlow2 {
+  0%, 100% {
+    opacity: 0;
+    transform: scale(1.02);
+    filter: blur(4px);
+  }
+  40% {
+    opacity: 0.7;
+    transform: scale(1.06);
     filter: blur(8px);
+  }
+  80% {
+    opacity: 0;
   }
 }
 
