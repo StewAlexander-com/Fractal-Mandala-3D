@@ -355,7 +355,7 @@ canvas {
     transparent 100%
   );
   opacity: 0.5;
-  animation: explainGlow 28s ease-in-out infinite;
+  animation: explainGlow 28s linear infinite;
   z-index: -1;
   pointer-events: none;
 }
@@ -373,37 +373,97 @@ canvas {
     transparent 100%
   );
   opacity: 0;
-  animation: explainGlow2 28s ease-in-out infinite;
+  animation: explainGlow2 28s linear infinite;
+  animation-delay: -7s;
   z-index: -1;
   pointer-events: none;
 }
 
+/* Primary glow — Gaussian bell-curve breath: slow swell, soft crest, gentle release */
 @keyframes explainGlow {
   0%, 100% {
-    opacity: 0.4;
-    transform: scale(0.99);
+    opacity: 0.15;
+    transform: scale(0.98);
     filter: blur(10px);
   }
+  15% {
+    opacity: 0.3;
+    transform: scale(0.99);
+    filter: blur(11px);
+  }
+  30% {
+    opacity: 0.55;
+    transform: scale(1.0);
+    filter: blur(13px);
+  }
+  42% {
+    opacity: 0.82;
+    transform: scale(1.015);
+    filter: blur(14px);
+  }
   50% {
-    opacity: 0.85;
-    transform: scale(1.03);
+    opacity: 0.95;
+    transform: scale(1.025);
     filter: blur(16px);
+  }
+  58% {
+    opacity: 0.82;
+    transform: scale(1.015);
+    filter: blur(14px);
+  }
+  70% {
+    opacity: 0.55;
+    transform: scale(1.0);
+    filter: blur(13px);
+  }
+  85% {
+    opacity: 0.3;
+    transform: scale(0.99);
+    filter: blur(11px);
   }
 }
 
+/* Secondary glow — same bell shape, slightly offset phase via delay */
 @keyframes explainGlow2 {
   0%, 100% {
     opacity: 0;
-    transform: scale(1.01);
+    transform: scale(1.0);
     filter: blur(8px);
   }
-  45% {
+  15% {
+    opacity: 0.08;
+    transform: scale(1.005);
+    filter: blur(9px);
+  }
+  30% {
+    opacity: 0.22;
+    transform: scale(1.01);
+    filter: blur(11px);
+  }
+  42% {
+    opacity: 0.4;
+    transform: scale(1.02);
+    filter: blur(12px);
+  }
+  50% {
     opacity: 0.5;
-    transform: scale(1.04);
+    transform: scale(1.025);
     filter: blur(14px);
   }
+  58% {
+    opacity: 0.4;
+    transform: scale(1.02);
+    filter: blur(12px);
+  }
+  70% {
+    opacity: 0.22;
+    transform: scale(1.01);
+    filter: blur(11px);
+  }
   85% {
-    opacity: 0;
+    opacity: 0.08;
+    transform: scale(1.005);
+    filter: blur(9px);
   }
 }
 
