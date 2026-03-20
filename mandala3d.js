@@ -542,6 +542,8 @@ function buildNebulaBackground() {
     new THREE.Color(0xffb07a), // K-type orange
     new THREE.Color(0xf0d9b5), // warm white
     new THREE.Color(0xffffff), // pure white (overexposed)
+    new THREE.Color(0xc8e0f0), // cool blue-white (rare B-type)
+    new THREE.Color(0xd0f0e8), // mint-white (reflection nebula tint)
   ];
 
   const maxField = LAYER_COUNT * LAYER_SPACING + 90;
@@ -639,13 +641,15 @@ function buildNebulaBackground() {
   ctx.fillRect(0, 0, 256, 256);
   const cloudTexture = new THREE.CanvasTexture(cloudCanvas);
 
-  // Inner nebula: bright, dense, warm-toned (H-II emission)
+  // Inner nebula: bright, dense, warm-toned (H-II emission) + cool hints
   const innerClouds = [
     { color: 0xffccaa, opacity: 0.09 },   // warm emission glow
     { color: 0xeebb99, opacity: 0.07 },   // amber gas
     { color: 0xddaa88, opacity: 0.06 },   // dusty gold
     { color: 0xccbbdd, opacity: 0.05 },   // reflection nebula blue-violet
     { color: 0xffddcc, opacity: 0.08 },   // hot hydrogen pink-white
+    { color: 0x9ec8e8, opacity: 0.035 },  // light blue reflection nebula
+    { color: 0xa8e0cc, opacity: 0.03 },   // soft mint — ionised oxygen glow
   ];
   // Mid-field: subtler, more colour variety
   const midClouds = [
@@ -654,12 +658,15 @@ function buildNebulaBackground() {
     { color: 0x7eb4d4, opacity: 0.03 },   // blue mist
     { color: 0xd4a574, opacity: 0.025 },  // warm gold haze
     { color: 0x8b5e3c, opacity: 0.03 },   // amber dust
+    { color: 0x88c8e0, opacity: 0.025 },  // cool blue haze
+    { color: 0x90d8c4, opacity: 0.02 },   // minty green wisp
   ];
-  // Outer: dark absorption nebula wisps
+  // Outer: dark absorption nebula wisps + faint cool tones
   const outerClouds = [
     { color: 0x3e2a55, opacity: 0.04 },   // deep indigo
     { color: 0x2a1f3a, opacity: 0.03 },   // near-black violet
     { color: 0x4a3528, opacity: 0.025 },  // dark brown dust
+    { color: 0x2a4555, opacity: 0.02 },   // dark teal wisp
   ];
 
   // Place clouds in 3 radial zones
@@ -746,6 +753,8 @@ function buildNebulaBackground() {
       new THREE.Color(0x5c4a3a),  // warm brown
       new THREE.Color(0x6a4a6e),  // rose-violet (luminous accent)
       new THREE.Color(0x8a6a40),  // warm amber glow
+      new THREE.Color(0x2a4a60),  // cool blue dust
+      new THREE.Color(0x2a5a4a),  // dark mint dust
     ];
 
     // Per-particle animation data
@@ -825,11 +834,11 @@ function buildNebulaBackground() {
       { r: 0.95, g: 0.30, b: 0.20 },  // warm red
       { r: 0.85, g: 0.18, b: 0.25 },  // crimson
       { r: 1.0,  g: 0.35, b: 0.18 },  // red-orange
-      // Blue-shift stars (12) — sapphire to electric cyan
+      // Blue-shift stars (12) — sapphire to electric cyan to icy mint
       { r: 0.20, g: 0.45, b: 1.0  },  // deep blue
-      { r: 0.30, g: 0.55, b: 0.95 },  // royal blue
+      { r: 0.55, g: 0.80, b: 1.0  },  // light icy blue
       { r: 0.15, g: 0.60, b: 1.0  },  // blue-cyan
-      { r: 0.25, g: 0.40, b: 0.90 },  // sapphire
+      { r: 0.40, g: 0.90, b: 0.75 },  // soft mint-cyan
       // Yellow radiant stars (12) — amber to brilliant gold
       { r: 1.0,  g: 0.85, b: 0.20 },  // rich gold
       { r: 1.0,  g: 0.78, b: 0.15 },  // deep amber
