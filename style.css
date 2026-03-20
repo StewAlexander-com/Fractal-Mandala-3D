@@ -28,7 +28,7 @@
   --lavender:   #a088c0;
   --blue-star:  #a0d4f0;
   --teal-glow:  #7ec8a0;
-  --panel-bg:   rgba(8, 6, 14, 0.88);
+  --panel-bg:   rgba(8, 6, 14, 0.72);
   --panel-border: rgba(155, 138, 184, 0.12);
   --font-display: 'Cormorant Garamond', Georgia, serif;
   --font-body: 'Jost', 'Helvetica Neue', sans-serif;
@@ -895,11 +895,15 @@ canvas {
   height: 18px;
 }
 /* Panel opacity states — applied to .teaching-panel via JS */
+/* Default (frosted): 0.72 — set via --panel-bg */
+.teaching-panel.panel-solid {
+  background: rgba(8, 6, 14, 0.90);
+}
 .teaching-panel.panel-translucent {
-  background: rgba(8, 6, 14, 0.45);
+  background: rgba(8, 6, 14, 0.40);
 }
 .teaching-panel.panel-minimal {
-  background: rgba(8, 6, 14, 0.15);
+  background: rgba(8, 6, 14, 0.12);
   border-color: rgba(155, 138, 184, 0.06);
 }
 

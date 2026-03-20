@@ -1823,7 +1823,8 @@ const panelOpacityToggle = $('panelOpacityToggle');
 // Sync icon when user exits fullscreen via Escape or browser chrome
 document.addEventListener('fullscreenchange', updateFsIcon);
 document.addEventListener('webkitfullscreenchange', updateFsIcon);
-const PANEL_STATES = ['solid', 'translucent', 'minimal'];
+// States cycle: frosted (default 0.72) → solid (0.90 cap) → translucent → minimal
+const PANEL_STATES = ['frosted', 'solid', 'translucent', 'minimal'];
 let panelStateIndex = 0;
 
 function handlePanelOpacityToggle(e) {
@@ -1833,14 +1834,15 @@ function handlePanelOpacityToggle(e) {
 
   // Remove all panel state classes
   if (teachingPanel) {
-    teachingPanel.classList.remove('panel-translucent', 'panel-minimal');
+    teachingPanel.classList.remove('panel-solid', 'panel-translucent', 'panel-minimal');
+    if (state === 'solid')       teachingPanel.classList.add('panel-solid');
     if (state === 'translucent') teachingPanel.classList.add('panel-translucent');
     if (state === 'minimal')     teachingPanel.classList.add('panel-minimal');
   }
 
   // Visual feedback on the button
   if (panelOpacityToggle) {
-    panelOpacityToggle.classList.toggle('active', state !== 'solid');
+    panelOpacityToggle.classList.toggle('active', state !== 'frosted');
   }
 }
 
