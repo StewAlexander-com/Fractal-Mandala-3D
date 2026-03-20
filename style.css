@@ -157,6 +157,11 @@ canvas {
 
 .layer-title.visible {
   opacity: 1;
+  animation: titleReveal 0.8s var(--ease-out) both;
+}
+@keyframes titleReveal {
+  from { opacity: 0; transform: translate(-50%, -50%) scale(0.94); filter: blur(6px); }
+  to   { opacity: 1; transform: translate(-50%, -50%) scale(1);    filter: blur(0);   }
 }
 
 .layer-number {
@@ -178,6 +183,7 @@ canvas {
   letter-spacing: 0.06em;
   line-height: 1.15;
   text-wrap: balance;
+  text-shadow: 0 0 30px rgba(240, 200, 80, 0.35), 0 0 60px rgba(212, 165, 116, 0.15);
 }
 
 .layer-subtitle {
@@ -223,6 +229,11 @@ canvas {
   opacity: 1;
   pointer-events: auto;
   transform: translateY(0);
+  animation: panelSlideIn 0.7s var(--ease-out) both;
+}
+@keyframes panelSlideIn {
+  from { opacity: 0; transform: translateY(16px); }
+  to   { opacity: 1; transform: translateY(0);    }
 }
 
 /* Subtle scroll-fade indicators — inset shadows */

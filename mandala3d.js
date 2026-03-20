@@ -324,11 +324,11 @@ function buildLayers() {
     const torusMat = new THREE.MeshStandardMaterial({
       color: layer.color,
       emissive: layer.emissive,
-      emissiveIntensity: 0.3,
-      metalness: 0.6,
-      roughness: 0.4,
+      emissiveIntensity: 0.55,
+      metalness: 0.7,
+      roughness: 0.3,
       transparent: true,
-      opacity: 0.7,
+      opacity: 0.8,
     });
     const torus = new THREE.Mesh(torusGeo, torusMat);
     torus.rotation.x = Math.PI / 2;
@@ -350,15 +350,18 @@ function buildLayers() {
     torus3.rotation.z = Math.PI / 2 + 0.2;
     group.add(torus3);
 
-    // Sacred geometry wireframe at center
+    // Sacred geometry wireframe at center — glowing signature of each layer
     const wireGeo = createSacredGeometry(layer.geometry, layer.n, torusR * 0.6);
     if (wireGeo) {
       const wireMat = new THREE.LineBasicMaterial({
-        color: layer.emissive,
+        color: new THREE.Color(layer.emissive).lerp(new THREE.Color(0xffffff), 0.3),
         transparent: true,
-        opacity: 0.35,
+        opacity: 0.6,
+        blending: THREE.AdditiveBlending,
+        depthWrite: false,
       });
       const wire = new THREE.LineSegments(wireGeo, wireMat);
+      wire.userData.baseOpacity = 0.6;
       group.add(wire);
     }
 
@@ -371,16 +374,32 @@ function buildLayers() {
     orbitalGroups.push(group);
   });
 
-  // Core glow sphere
-  const coreGeo = new THREE.SphereGeometry(3, 32, 32);
+  // Core glow — layered: inner hot white + outer warm halo
+  const coreGeo = new THREE.SphereGeometry(3.5, 32, 32);
   const coreMat = new THREE.MeshBasicMaterial({
-    color: 0xf0d9b5,
+    color: 0xfff0dd,
     transparent: true,
-    opacity: 0.15,
+    opacity: 0.25,
+    blending: THREE.AdditiveBlending,
+    depthWrite: false,
   });
   coreGlow = new THREE.Mesh(coreGeo, coreMat);
   coreGlow.position.z = 0;
   scene.add(coreGlow);
+
+  // Outer halo — larger, softer
+  const haloGeo = new THREE.SphereGeometry(7, 32, 32);
+  const haloMat = new THREE.MeshBasicMaterial({
+    color: 0xd4a574,
+    transparent: true,
+    opacity: 0.08,
+    blending: THREE.AdditiveBlending,
+    depthWrite: false,
+  });
+  const coreHalo = new THREE.Mesh(haloGeo, haloMat);
+  coreHalo.position.z = 0;
+  scene.add(coreHalo);
+  coreGlow.userData.halo = coreHalo;
 
   // Connecting spiral paths
   buildSpirals();
@@ -767,10 +786,10 @@ function createParticleCloud(layer, torusR) {
 
   const mat = new THREE.PointsMaterial({
     color: layer.particleColor,
-    size: 0.18,
+    size: 0.28,
     map: starGlowTexture,
     transparent: true,
-    opacity: 0.5,
+    opacity: 0.65,
     blending: THREE.AdditiveBlending,
     depthWrite: false,
     sizeAttenuation: true,
@@ -800,9 +819,11 @@ function buildSpirals() {
     const curve = new THREE.CatmullRomCurve3(pts);
     const curveGeo = new THREE.BufferGeometry().setFromPoints(curve.getPoints(400));
     const curveMat = new THREE.LineBasicMaterial({
-      color: 0x4a3f32,
+      color: 0x8a7562,
       transparent: true,
-      opacity: 0.06,
+      opacity: 0.12,
+      blending: THREE.AdditiveBlending,
+      depthWrite: false,
     });
     scene.add(new THREE.Line(curveGeo, curveMat));
   }
@@ -1348,12 +1369,18 @@ function animate() {
     });
   });
 
-  // Core breathing
+  // Core breathing — pulsing heart of the mandala
   if (coreGlow) {
-    const breathe = 0.12 + Math.sin(elapsed * 0.5) * 0.05;
+    const breathe = 0.2 + Math.sin(elapsed * 0.5) * 0.1;
     coreGlow.material.opacity = breathe;
-    const s = 1 + Math.sin(elapsed * 0.5) * 0.1;
+    const s = 1 + Math.sin(elapsed * 0.5) * 0.15;
     coreGlow.scale.set(s, s, s);
+    // Outer halo breathes in counter-phase
+    if (coreGlow.userData.halo) {
+      const hs = 1 + Math.sin(elapsed * 0.35) * 0.2;
+      coreGlow.userData.halo.scale.set(hs, hs, hs);
+      coreGlow.userData.halo.material.opacity = 0.06 + Math.sin(elapsed * 0.35 + 1) * 0.03;
+    }
   }
 
   // ── Per-star twinkle — individual shimmer at different rates ──
