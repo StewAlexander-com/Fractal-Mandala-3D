@@ -540,6 +540,11 @@ function buildNebulaBackground() {
     new THREE.Color(0xffeedd), // F-type yellow-white
     new THREE.Color(0xffd2a1), // G-type gold
     new THREE.Color(0xffb07a), // K-type orange
+    new THREE.Color(0xff8866), // late K-type deep orange
+    new THREE.Color(0xe86840), // M-type red dwarf
+    new THREE.Color(0xcc5533), // cool M-type ruddy
+    new THREE.Color(0xb84422), // late M-type deep red-brown
+    new THREE.Color(0xd45a30), // carbon star amber-red
     new THREE.Color(0xf0d9b5), // warm white
     new THREE.Color(0xffffff), // pure white (overexposed)
     new THREE.Color(0xc8e0f0), // cool blue-white (rare B-type)
@@ -561,30 +566,45 @@ function buildNebulaBackground() {
 
     // Stars near center are hotter (bluer, brighter); edges are cooler
     const distNorm = Math.min(1, radius / 160);  // 0=center, 1=edge
-    const col = starPalette[Math.floor(Math.random() * starPalette.length)];
     const roll = Math.random();
+
+    // Ruddy palette indices: 6-10 are the M-type / carbon star entries
+    // Dim tiers bias toward ruddy colors (astrophysically: M-dwarfs dominate
+    // the faint end of the luminosity function)
+    const ruddyStart = 6; // index of first ruddy entry
+    const ruddyEnd = 11;  // index past last ruddy entry
+    let col;
 
     // Luminosity tiers — center-biased brightness
     const centerBoost = 1.0 + (1.0 - distNorm) * 1.5;  // up to 2.5× at center
     let brightness, size;
     if (roll < 0.03) {
-      // Supergiant stars (3%) — blazing beacons
+      // Supergiant stars (3%) — blazing beacons, any colour
+      col = starPalette[Math.floor(Math.random() * starPalette.length)];
       brightness = (3.5 + Math.random() * 2.0) * centerBoost;
       size = 2.5 + Math.random() * 2.5;
     } else if (roll < 0.12) {
-      // Bright giants (9%)
+      // Bright giants (9%) — warm to hot colours
+      col = starPalette[Math.floor(Math.random() * starPalette.length)];
       brightness = (2.0 + Math.random() * 1.5) * centerBoost;
       size = 1.2 + Math.random() * 1.5;
     } else if (roll < 0.35) {
-      // Main sequence bright (23%)
+      // Main sequence bright (23%) — full palette
+      col = starPalette[Math.floor(Math.random() * starPalette.length)];
       brightness = (1.2 + Math.random() * 1.0) * centerBoost;
       size = 0.5 + Math.random() * 0.8;
     } else if (roll < 0.65) {
-      // Main sequence dim (30%)
+      // Main sequence dim (30%) — 40% chance ruddy
+      col = Math.random() < 0.4
+        ? starPalette[ruddyStart + Math.floor(Math.random() * (ruddyEnd - ruddyStart))]
+        : starPalette[Math.floor(Math.random() * starPalette.length)];
       brightness = (0.6 + Math.random() * 0.6) * centerBoost * 0.7;
       size = 0.2 + Math.random() * 0.5;
     } else {
-      // Red/brown dwarfs + dust (35%)
+      // Red/brown dwarfs (35%) — 70% ruddy
+      col = Math.random() < 0.7
+        ? starPalette[ruddyStart + Math.floor(Math.random() * (ruddyEnd - ruddyStart))]
+        : starPalette[Math.floor(Math.random() * starPalette.length)];
       brightness = (0.3 + Math.random() * 0.5) * centerBoost * 0.5;
       size = 0.1 + Math.random() * 0.3;
     }
