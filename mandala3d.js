@@ -1831,9 +1831,9 @@ function updatePanelOpacity(layerIndex) {
   const depth = layerIndex / (LAYER_COUNT - 1); // 0 = outer, 1 = core
   const alpha = Math.min(PANEL_BASE_ALPHA + depth * PANEL_DEPTH_BOOST, 0.90);
   // Radial gradient: full alpha in center where text lives, fades at edges
-  const edgeAlpha = (alpha * 0.15).toFixed(2);
+  const edgeAlpha = (alpha * 0.10).toFixed(2);
   teachingPanel.style.background =
-    `radial-gradient(ellipse 85% 80% at 50% 50%, rgba(8,6,14,${alpha.toFixed(2)}) 40%, rgba(8,6,14,${edgeAlpha}) 100%)`;
+    `radial-gradient(ellipse at 50% 50%, rgba(8,6,14,${alpha.toFixed(2)}) 30%, rgba(8,6,14,${edgeAlpha}) 90%, transparent 100%)`;
 }
 
 // Enter button
