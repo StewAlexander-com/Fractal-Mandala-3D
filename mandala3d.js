@@ -188,6 +188,9 @@ let starGlowTexture; // shared radial glow for all point materials
 // User camera controls
 let userOrbitAngle = 0;       // radians — horizontal orbit offset from swipe/drag
 let targetOrbitAngle = 0;
+let lastOrbitInputTime = 0;   // timestamp of last user orbit interaction
+const ORBIT_IDLE_DELAY = 4;   // seconds before auto-orbit resumes
+const ORBIT_DECAY_RATE = 0.3; // how fast user orbit decays back to 0
 let userZoom = 1;             // 1 = default, <1 = zoomed in, >1 = zoomed out
 let targetZoom = 1;
 const ZOOM_MIN = 0.55;
@@ -1150,6 +1153,7 @@ document.addEventListener('mousemove', (e) => {
   const dx = e.clientX - mouseLastX;
   mouseLastX = e.clientX;
   targetOrbitAngle += dx * 0.005;
+  lastOrbitInputTime = clock.getElapsedTime();
 });
 
 document.addEventListener('mouseup', () => {
@@ -1226,6 +1230,7 @@ if (canvas) canvas.addEventListener('touchmove', (e) => {
 
   if (touch.intent === 'orbit') {
     targetOrbitAngle += dx * 0.006;
+    lastOrbitInputTime = clock.getElapsedTime();
   } else if (touch.intent === 'layer') {
     handleLayerScroll(-dy * 1.5);
   }
@@ -1249,8 +1254,10 @@ document.addEventListener('keydown', (e) => {
     goToLayer(Math.max(0, currentLayer - 1));
   } else if (e.key === 'ArrowLeft') {
     targetOrbitAngle -= 0.3;
+    lastOrbitInputTime = clock.getElapsedTime();
   } else if (e.key === 'ArrowRight') {
     targetOrbitAngle += 0.3;
+    lastOrbitInputTime = clock.getElapsedTime();
   } else if (e.key === '+' || e.key === '=') {
     targetZoom = Math.max(ZOOM_MIN, targetZoom - 0.1);
   } else if (e.key === '-' || e.key === '_') {
@@ -1792,13 +1799,55 @@ function handleFsToggle(e) {
   }
 }
 
-if (fsToggle) {
+// ─── PANEL OPACITY TOGGLE ───
+// Cycles teaching panel background: solid → translucent → minimal → solid
+const panelOpacityToggle = $('panelOpacityToggle');
+
+// Hide fullscreen button on platforms where the API doesn't work.
+// iOS Safari has no Fullscreen API for non-video elements; the button
+// would do nothing. Users can "Add to Home Screen" for a fullscreen PWA.
+(function initFsToggle() {
+  if (!fsToggle) return;
+  const el = document.documentElement;
+  const hasFullscreen = !!(el.requestFullscreen || el.webkitRequestFullscreen);
+  if (!hasFullscreen) {
+    fsToggle.style.display = 'none';
+    // Shift remaining buttons left to fill the gap
+    if (micToggle) micToggle.style.left = 'calc(clamp(12px, 2vw, 24px) + 54px)';
+    if (panelOpacityToggle) panelOpacityToggle.style.left = 'calc(clamp(12px, 2vw, 24px) + 108px)';
+    return;
+  }
   fsToggle.addEventListener('click', handleFsToggle);
   fsToggle.addEventListener('touchend', handleFsToggle);
-}
+})();
 // Sync icon when user exits fullscreen via Escape or browser chrome
 document.addEventListener('fullscreenchange', updateFsIcon);
 document.addEventListener('webkitfullscreenchange', updateFsIcon);
+const PANEL_STATES = ['solid', 'translucent', 'minimal'];
+let panelStateIndex = 0;
+
+function handlePanelOpacityToggle(e) {
+  if (e) e.preventDefault();
+  panelStateIndex = (panelStateIndex + 1) % PANEL_STATES.length;
+  const state = PANEL_STATES[panelStateIndex];
+
+  // Remove all panel state classes
+  if (teachingPanel) {
+    teachingPanel.classList.remove('panel-translucent', 'panel-minimal');
+    if (state === 'translucent') teachingPanel.classList.add('panel-translucent');
+    if (state === 'minimal')     teachingPanel.classList.add('panel-minimal');
+  }
+
+  // Visual feedback on the button
+  if (panelOpacityToggle) {
+    panelOpacityToggle.classList.toggle('active', state !== 'solid');
+  }
+}
+
+if (panelOpacityToggle) {
+  panelOpacityToggle.addEventListener('click', handlePanelOpacityToggle);
+  panelOpacityToggle.addEventListener('touchend', handlePanelOpacityToggle);
+}
 
 // Enter button
 function handleEnter(e) {
@@ -1862,6 +1911,15 @@ function animate() {
   const ctrlLerp = 1 - Math.exp(-8 * dt);          // smooth ~8 Hz exponential ease
   userOrbitAngle += (targetOrbitAngle - userOrbitAngle) * ctrlLerp;
   userZoom       += (targetZoom       - userZoom)       * ctrlLerp;
+
+  // ── Auto-orbit resume: decay user offset after idle ──
+  // After ORBIT_IDLE_DELAY seconds of no user orbit input, gently
+  // ease targetOrbitAngle back toward 0 so the auto-drift takes over.
+  const idleTime = elapsed - lastOrbitInputTime;
+  if (idleTime > ORBIT_IDLE_DELAY && Math.abs(targetOrbitAngle) > 0.001) {
+    targetOrbitAngle *= (1 - ORBIT_DECAY_RATE * dt);
+    if (Math.abs(targetOrbitAngle) < 0.001) targetOrbitAngle = 0;
+  }
 
   // Camera Z interpolation (layer navigation)
   const lerpSpeed = isTransitioning ? 1.8 : 2.5;

@@ -304,6 +304,7 @@ canvas {
 .teaching-panel::-webkit-scrollbar-thumb { background: var(--text-faint); border-radius: 2px; }
 
 .teaching-inner {
+  font-family: 'Lora', Georgia, serif;
   font-size: clamp(1rem, 1.8vmin, 1.18rem);
   line-height: 1.75;
 }
@@ -314,6 +315,7 @@ canvas {
 }
 
 .teaching-inner .key-phrase {
+  font-family: var(--font-display);
   color: var(--gold);
   font-weight: 500;
   font-size: 1.1em;
@@ -472,13 +474,13 @@ canvas {
 }
 
 .teaching-inner .math {
-  font-family: 'Courier New', monospace;
+  font-family: 'Courier New', 'Menlo', monospace;
   color: var(--blue-star);
   font-size: 1.05em;
+  letter-spacing: 0.02em;
 }
 
 .teaching-inner .latin {
-  font-family: var(--font-display);
   font-style: italic;
   color: var(--rose);
   font-size: 1.1em;
@@ -486,7 +488,6 @@ canvas {
 
 .teaching-inner .symbol {
   color: var(--lavender);
-  font-family: var(--font-display);
   font-size: 1.2em;
   margin-right: 0.5rem;
 }
@@ -854,6 +855,52 @@ canvas {
 }
 .mic-modal-deny:hover {
   color: var(--text-secondary);
+}
+
+/* ═══ PANEL OPACITY TOGGLE ═══ */
+.panel-opacity-toggle {
+  position: absolute;
+  bottom: clamp(12px, 2vh, 24px);
+  left: calc(clamp(12px, 2vw, 24px) + 162px);  /* right of mic toggle */
+  width: 44px;
+  height: 44px;
+  border: 1px solid var(--text-faint);
+  border-radius: 50%;
+  background: rgba(6, 5, 10, 0.5);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  color: var(--text-muted);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  transition: color 0.3s var(--ease-out), border-color 0.3s var(--ease-out);
+  z-index: 25;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+  user-select: none;
+  -webkit-user-select: none;
+}
+.panel-opacity-toggle:hover {
+  color: var(--gold);
+  border-color: var(--gold-dim);
+}
+.panel-opacity-toggle.active {
+  color: var(--gold);
+  border-color: var(--gold-dim);
+}
+.panel-opacity-toggle .panel-opacity-icon {
+  width: 18px;
+  height: 18px;
+}
+/* Panel opacity states — applied to .teaching-panel via JS */
+.teaching-panel.panel-translucent {
+  background: rgba(8, 6, 14, 0.45);
+}
+.teaching-panel.panel-minimal {
+  background: rgba(8, 6, 14, 0.15);
+  border-color: rgba(155, 138, 184, 0.06);
 }
 
 /* ═══ FULLSCREEN TOGGLE ═══ */
