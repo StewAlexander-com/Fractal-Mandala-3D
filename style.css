@@ -153,11 +153,12 @@ canvas {
   position: absolute;
   top: 50%;
   left: 50%;
-  transform: translate(-50%, -50%);
+  transform: translate(-50%, -46%) scale(0.98);
   text-align: center;
   pointer-events: none;
   opacity: 0;
-  transition: opacity 1.8s cubic-bezier(0.4, 0, 0.2, 1), transform 1.8s cubic-bezier(0.4, 0, 0.2, 1), filter 1.8s cubic-bezier(0.4, 0, 0.2, 1);
+  filter: blur(4px);
+  transition: opacity 1.8s cubic-bezier(0.25, 0.1, 0.25, 1), transform 1.8s cubic-bezier(0.25, 0.1, 0.25, 1), filter 1.8s cubic-bezier(0.25, 0.1, 0.25, 1);
   z-index: 20;
   text-shadow:
     0 2px 20px rgba(6, 5, 10, 0.9),
@@ -210,22 +211,18 @@ canvas {
   );
 }
 
-/* When title loses .visible, it dissolves: drifts up, disperses — wave receding into ocean */
-.layer-title:not(.visible) {
-  opacity: 0;
-  transform: translate(-50%, -58%) scale(1.04);
-  filter: blur(6px);
-}
-
+/* Visible: settled at center, sharp, fully opaque */
 .layer-title.visible {
   opacity: 1;
   transform: translate(-50%, -50%) scale(1);
   filter: blur(0);
-  animation: titleReveal 1.0s var(--ease-out) both;
 }
-@keyframes titleReveal {
-  from { opacity: 0; transform: translate(-50%, -46%) scale(0.94); filter: blur(6px); }
-  to   { opacity: 1; transform: translate(-50%, -50%) scale(1);    filter: blur(0);   }
+
+/* Dissolve out: drifts up, disperses — wave receding into ocean */
+.layer-title.dissolve-out {
+  opacity: 0;
+  transform: translate(-50%, -56%) scale(1.03);
+  filter: blur(6px);
 }
 
 .layer-number {

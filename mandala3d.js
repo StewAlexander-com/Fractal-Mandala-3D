@@ -1314,7 +1314,13 @@ function showLayerTitle(index) {
   if (layerNumber)   layerNumber.textContent = `layer ${LAYER_COUNT - index}`;
   if (layerName)     layerName.textContent = layer.name;
   if (layerSubtitle) layerSubtitle.textContent = layer.subtitle;
-  if (layerTitle)    layerTitle.classList.add('visible');
+  if (layerTitle) {
+    layerTitle.classList.remove('dissolve-out');
+    // Force reflow so the base state (below-center, blurred) applies
+    // before the transition to .visible begins
+    void layerTitle.offsetHeight;
+    layerTitle.classList.add('visible');
+  }
   if (teachingPanel) teachingPanel.classList.remove('visible');
   // Hide scroll-hint chevrons while the title is showing — they can overlap it
   if (scrollHintUp)   scrollHintUp.classList.remove('visible');
@@ -1325,8 +1331,11 @@ function showLayerTitle(index) {
 
   // Phase 1: Title holds for 2.4s
   showLayerTitle._timer = setTimeout(() => {
-    // Phase 2: Title begins dissolving — the wave recedes
-    if (layerTitle) layerTitle.classList.remove('visible');
+    // Phase 2: Title dissolves upward — the wave recedes
+    if (layerTitle) {
+      layerTitle.classList.remove('visible');
+      layerTitle.classList.add('dissolve-out');
+    }
 
     // Phase 3: Teaching content injected immediately but panel
     // won't become visible until the wave trough passes.
