@@ -374,11 +374,11 @@ canvas {
 /* Staggered reveal — each child fades in like a breath */
 .teaching-inner .stagger-in {
   opacity: 0;
-  transform: translateY(6px);
-  animation: staggerFadeIn 0.8s var(--ease-out) forwards;
+  transform: translateY(8px);
+  animation: staggerFadeIn 1.1s var(--ease-out) forwards;
 }
 @keyframes staggerFadeIn {
-  from { opacity: 0; transform: translateY(6px); }
+  from { opacity: 0; transform: translateY(8px); }
   to   { opacity: 1; transform: translateY(0); }
 }
 
@@ -386,14 +386,14 @@ canvas {
 .communal-presence {
   display: block;
   font-family: 'Jost', sans-serif;
-  font-size: 0.68em;
+  font-size: 0.78em;
   letter-spacing: 0.08em;
-  color: rgba(160, 145, 175, 0.28);
+  color: rgba(175, 162, 190, 0.48);
   text-align: center;
   margin-top: 1.5rem;
   padding-top: 0.8rem;
   line-height: 1.8;
-  border-top: 1px solid rgba(160, 145, 175, 0.08);
+  border-top: 1px solid rgba(160, 145, 175, 0.12);
 }
 
 .teaching-inner p {
