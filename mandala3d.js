@@ -1340,7 +1340,7 @@ function showLayerTitle(index) {
         const children = teachingInner.children;
         for (let i = 0; i < children.length; i++) {
           children[i].classList.add('stagger-in');
-          children[i].style.animationDelay = `${i * 420}ms`;
+          children[i].style.animationDelay = `${i * 800}ms`;
         }
       }
       if (teachingPanel) { teachingPanel.scrollTop = 0; teachingPanel.classList.add('visible'); }
