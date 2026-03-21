@@ -382,17 +382,17 @@ canvas {
   to   { opacity: 1; transform: translateY(0); }
 }
 
-/* Communal presence — faint visitor echo */
+/* Communal presence — lineage of minds who sat here */
 .communal-presence {
   display: block;
   font-family: 'Jost', sans-serif;
-  font-size: 0.72em;
-  letter-spacing: 0.12em;
-  text-transform: lowercase;
-  color: rgba(160, 145, 175, 0.3);
+  font-size: 0.68em;
+  letter-spacing: 0.08em;
+  color: rgba(160, 145, 175, 0.28);
   text-align: center;
   margin-top: 1.5rem;
   padding-top: 0.8rem;
+  line-height: 1.8;
   border-top: 1px solid rgba(160, 145, 175, 0.08);
 }
 

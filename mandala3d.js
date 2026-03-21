@@ -1273,17 +1273,27 @@ function hideSliderTooltip() {
   if (sliderTooltip) sliderTooltip.classList.remove('visible');
 }
 
-// ─── COMMUNAL PRESENCE — track reflections per layer ───
-function trackReflection(layerIndex) {
-  try {
-    const key = 'mandala_reflections';
-    const data = JSON.parse(localStorage.getItem(key) || '{}');
-    data[layerIndex] = (data[layerIndex] || 0) + 1;
-    localStorage.setItem(key, JSON.stringify(data));
-    return data[layerIndex];
-  } catch {
-    return 1;
-  }
+// ─── COMMUNAL PRESENCE — lineage of minds who sat here ───
+const LINEAGE = [
+  // Layer 1 — Meta-Recognition
+  ['Dōgen', 'Śaṅkara', 'Rumi', 'Desmond Tutu', 'David Bohm'],
+  // Layer 2 — Structural Insights
+  ['Heraclitus', 'The Buddha', 'William Blake', 'Kant', 'Niels Bohr'],
+  // Layer 3 — Key Distinctions
+  ['Epictetus', 'Einstein', 'Bhagavad Gītā', 'Aaron Beck', 'Spinoza'],
+  // Layer 4 — Three Acceptances
+  ['Nietzsche', 'Marcus Aurelius', 'Meister Eckhart', 'Huizinga', 'Ibn Arabi'],
+  // Layer 5 — The Practice
+  ['Lao Tzu', 'Tagore', 'Jalāl ad-Dīn Rūmī', 'Patañjali', 'Karl Popper'],
+  // Layer 6 — The Second Arrow
+  ['The Buddha', 'Epictetus', 'Rumi', 'Kristin Neff', 'Viktor Frankl'],
+  // Layer 7 — Core Awareness
+  ['Whitehead', 'Thich Nhat Hanh', 'Benjamin Lee Whorf', 'Nāgārjuna', 'Ilya Prigogine'],
+];
+
+function getLineage(layerIndex) {
+  const names = LINEAGE[layerIndex] || [];
+  return names.join(' \u00b7 ');
 }
 
 function goToLayer(index) {
@@ -1321,10 +1331,10 @@ function showLayerTitle(index) {
     const breathDuration = prefersReducedMotion ? 200 : 1400;
     showLayerTitle._breathTimer = setTimeout(() => {
       if (teachingInner) {
-        // Inject content + communal presence footer
-        const visits = trackReflection(index);
+        // Inject content + lineage footer
+        const lineage = getLineage(index);
         teachingInner.innerHTML = layer.content
-          + `<p class="communal-presence">${visits} reflection${visits !== 1 ? 's' : ''} at this layer</p>`;
+          + `<p class="communal-presence">also sat here: ${lineage} \u00b7 you</p>`;
 
         // Phase 3: Stagger children — each element fades in sequentially
         const children = teachingInner.children;
