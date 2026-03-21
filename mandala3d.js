@@ -1328,7 +1328,7 @@ function showLayerTitle(index) {
     if (layerTitle) layerTitle.classList.remove('visible');
 
     // Phase 2: The breath — geometry holds, nothing else
-    const breathDuration = prefersReducedMotion ? 200 : 1400;
+    const breathDuration = prefersReducedMotion ? 200 : 800;
     showLayerTitle._breathTimer = setTimeout(() => {
       if (teachingInner) {
         // Inject content + lineage footer
