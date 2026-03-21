@@ -1273,6 +1273,19 @@ function hideSliderTooltip() {
   if (sliderTooltip) sliderTooltip.classList.remove('visible');
 }
 
+// ─── COMMUNAL PRESENCE — track reflections per layer ───
+function trackReflection(layerIndex) {
+  try {
+    const key = 'mandala_reflections';
+    const data = JSON.parse(localStorage.getItem(key) || '{}');
+    data[layerIndex] = (data[layerIndex] || 0) + 1;
+    localStorage.setItem(key, JSON.stringify(data));
+    return data[layerIndex];
+  } catch {
+    return 1;
+  }
+}
+
 function goToLayer(index) {
   if (index < 0 || index >= LAYER_COUNT || isTransitioning) return;
   targetLayer = index;
@@ -1298,12 +1311,32 @@ function showLayerTitle(index) {
   if (scrollHintDown) scrollHintDown.classList.remove('visible');
 
   clearTimeout(showLayerTitle._timer);
+  clearTimeout(showLayerTitle._breathTimer);
+
+  // Phase 1: Title shows for 2.4s, then fades out
   showLayerTitle._timer = setTimeout(() => {
     if (layerTitle) layerTitle.classList.remove('visible');
-    if (teachingInner) teachingInner.innerHTML = layer.content;
-    if (teachingPanel) { teachingPanel.scrollTop = 0; teachingPanel.classList.add('visible'); }
-    updatePanelOpacity(index);
-    updateScrollFades();
+
+    // Phase 2: The breath — geometry holds, nothing else
+    const breathDuration = prefersReducedMotion ? 200 : 1400;
+    showLayerTitle._breathTimer = setTimeout(() => {
+      if (teachingInner) {
+        // Inject content + communal presence footer
+        const visits = trackReflection(index);
+        teachingInner.innerHTML = layer.content
+          + `<p class="communal-presence">${visits} reflection${visits !== 1 ? 's' : ''} at this layer</p>`;
+
+        // Phase 3: Stagger children — each element fades in sequentially
+        const children = teachingInner.children;
+        for (let i = 0; i < children.length; i++) {
+          children[i].classList.add('stagger-in');
+          children[i].style.animationDelay = `${i * 180}ms`;
+        }
+      }
+      if (teachingPanel) { teachingPanel.scrollTop = 0; teachingPanel.classList.add('visible'); }
+      updatePanelOpacity(index);
+      updateScrollFades();
+    }, breathDuration);
   }, 2400);
 }
 

@@ -371,6 +371,31 @@ canvas {
   line-height: 1.75;
 }
 
+/* Staggered reveal — each child fades in like a breath */
+.teaching-inner .stagger-in {
+  opacity: 0;
+  transform: translateY(6px);
+  animation: staggerFadeIn 0.8s var(--ease-out) forwards;
+}
+@keyframes staggerFadeIn {
+  from { opacity: 0; transform: translateY(6px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* Communal presence — faint visitor echo */
+.communal-presence {
+  display: block;
+  font-family: 'Jost', sans-serif;
+  font-size: 0.72em;
+  letter-spacing: 0.12em;
+  text-transform: lowercase;
+  color: rgba(160, 145, 175, 0.3);
+  text-align: center;
+  margin-top: 1.5rem;
+  padding-top: 0.8rem;
+  border-top: 1px solid rgba(160, 145, 175, 0.08);
+}
+
 .teaching-inner p {
   margin-bottom: 0.7rem;
   max-width: 60ch;
