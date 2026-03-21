@@ -380,15 +380,19 @@ canvas {
   line-height: 1.75;
 }
 
-/* Staggered reveal — each child fades in like a breath */
+/* Organic reveal — each element surfaces like a discovery */
 .teaching-inner .stagger-in {
+  --drift: 8px;
   opacity: 0;
-  transform: translateY(8px);
-  animation: staggerFadeIn 1.8s var(--ease-out) forwards;
+  transform: translateY(var(--drift));
+  animation: discoverFadeIn 2.2s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
-@keyframes staggerFadeIn {
-  from { opacity: 0; transform: translateY(8px); }
-  to   { opacity: 1; transform: translateY(0); }
+@keyframes discoverFadeIn {
+  0%   { opacity: 0;    transform: translateY(var(--drift)); filter: blur(2px); }
+  45%  { opacity: 0.85; transform: translateY(1px);          filter: blur(0);   }
+  70%  { opacity: 1;    transform: translateY(0);            filter: blur(0);   }
+  85%  { opacity: 1;    filter: brightness(1.12); }
+  100% { opacity: 1;    transform: translateY(0);            filter: brightness(1); }
 }
 
 /* Communal presence — lineage of minds who sat here */

@@ -1336,11 +1336,18 @@ function showLayerTitle(index) {
         teachingInner.innerHTML = layer.content
           + `<p class="communal-presence">also sat here: ${lineage} \u00b7 you</p>`;
 
-        // Phase 3: Stagger children — each element fades in sequentially
+        // Phase 3: Organic reveal — decelerating rhythm, like discoveries surfacing
         const children = teachingInner.children;
+        let cumulative = 0;
         for (let i = 0; i < children.length; i++) {
+          // Each gap grows: 600, 720, 840... thoughts arrive slower as you go deeper
+          const gap = 600 + i * 120;
+          cumulative += i === 0 ? 0 : gap;
           children[i].classList.add('stagger-in');
-          children[i].style.animationDelay = `${i * 800}ms`;
+          children[i].style.animationDelay = `${cumulative}ms`;
+          // Vary the rise distance slightly — organic, not mechanical
+          const drift = 6 + (i % 3) * 4; // 6px, 10px, 14px, 6px...
+          children[i].style.setProperty('--drift', `${drift}px`);
         }
       }
       if (teachingPanel) { teachingPanel.scrollTop = 0; teachingPanel.classList.add('visible'); }
