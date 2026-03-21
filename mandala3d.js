@@ -1323,12 +1323,15 @@ function showLayerTitle(index) {
   clearTimeout(showLayerTitle._timer);
   clearTimeout(showLayerTitle._breathTimer);
 
-  // Phase 1: Title shows for 2.4s, then fades out
+  // Phase 1: Title holds for 2.4s
   showLayerTitle._timer = setTimeout(() => {
+    // Phase 2: Title begins dissolving — the wave recedes
     if (layerTitle) layerTitle.classList.remove('visible');
 
-    // Phase 2: The breath — geometry holds, nothing else
-    const breathDuration = prefersReducedMotion ? 200 : 800;
+    // Phase 3: Teaching content injected immediately but panel
+    // won't become visible until the wave trough passes.
+    // The breath lives inside the crossfade overlap, not as a gap.
+    const breathDuration = prefersReducedMotion ? 100 : 500;
     showLayerTitle._breathTimer = setTimeout(() => {
       if (teachingInner) {
         // Inject content + lineage footer

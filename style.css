@@ -157,7 +157,7 @@ canvas {
   text-align: center;
   pointer-events: none;
   opacity: 0;
-  transition: opacity 1.4s var(--ease-out), transform 1.4s var(--ease-out), filter 1.4s var(--ease-out);
+  transition: opacity 1.8s cubic-bezier(0.4, 0, 0.2, 1), transform 1.8s cubic-bezier(0.4, 0, 0.2, 1), filter 1.8s cubic-bezier(0.4, 0, 0.2, 1);
   z-index: 20;
   text-shadow:
     0 2px 20px rgba(6, 5, 10, 0.9),
@@ -210,11 +210,11 @@ canvas {
   );
 }
 
-/* When title loses .visible, it dissolves: drifts up, softens, fades — wave receding */
+/* When title loses .visible, it dissolves: drifts up, disperses — wave receding into ocean */
 .layer-title:not(.visible) {
   opacity: 0;
-  transform: translate(-50%, -54%) scale(1.02);
-  filter: blur(4px);
+  transform: translate(-50%, -58%) scale(1.04);
+  filter: blur(6px);
 }
 
 .layer-title.visible {
@@ -307,11 +307,13 @@ canvas {
   opacity: 1;
   pointer-events: auto;
   transform: translateY(0);
-  animation: panelSlideIn 1.4s var(--ease-out) both;
+  animation: panelSlideIn 2.0s cubic-bezier(0.22, 1, 0.36, 1) both;
 }
 @keyframes panelSlideIn {
-  from { opacity: 0; transform: translateY(24px); filter: blur(2px); }
-  to   { opacity: 1; transform: translateY(0);    filter: blur(0);   }
+  0%   { opacity: 0;   transform: translateY(28px); filter: blur(3px); }
+  30%  { opacity: 0.3; transform: translateY(16px); filter: blur(1px); }
+  60%  { opacity: 0.7; transform: translateY(6px);  filter: blur(0);   }
+  100% { opacity: 1;   transform: translateY(0);    filter: blur(0);   }
 }
 
 /* Subtle scroll-fade indicators — inset shadows */
