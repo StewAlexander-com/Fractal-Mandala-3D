@@ -1,8 +1,12 @@
 {
+  "id": "https://stewalexander-com.github.io/Fractal-Mandala-3D/",
   "name": "The Fractal Mandala",
   "short_name": "Fractal Mandala",
-  "description": "Seven layers of sacred geometry. One interactive journey inward.",
+  "description": "Seven layers of sacred geometry. One interactive journey inward. Interactive 3D WebGL meditation — quantum orbital shells, nebula star field, ambient audio.",
+  "categories": ["lifestyle", "entertainment", "education"],
+  "lang": "en-US",
   "start_url": "./",
+  "scope": "./",
   "display": "standalone",
   "orientation": "any",
   "background_color": "#06050a",
