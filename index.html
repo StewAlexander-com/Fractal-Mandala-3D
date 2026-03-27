@@ -151,7 +151,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,300;1,400&family=Jost:wght@300;400;500&family=Lora:ital,wght@0,400;0,500;1,400;1,500&display=swap" rel="stylesheet">
 <!-- Preload audio hint — browser can start fetching before user enters -->
 <link rel="preload" href="ambient-meditation.mp3" as="audio" crossorigin type="audio/mpeg">
-<link rel="stylesheet" href="style.css?v=welcome-lede-flex-center">
+<link rel="stylesheet" href="style.css?v=exit-toggle">
 </head>
 <body>
 
@@ -280,10 +280,14 @@
     </svg>
   </button>
 
-  <!-- Attribution -->
-  <div class="attribution">
-    <a href="https://www.perplexity.ai/computer" target="_blank" rel="noopener noreferrer">Created with Perplexity Computer</a>
-  </div>
+  <!-- Exit to welcome splash (same control sizing as bottom-left icons) -->
+  <button type="button" class="exit-toggle" id="exitBtn" title="Exit to welcome screen" aria-label="Exit to welcome screen">
+    <svg class="exit-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true">
+      <path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4"/>
+      <polyline points="16 17 21 12 16 7"/>
+      <line x1="21" y1="12" x2="9" y2="12"/>
+    </svg>
+  </button>
 </div>
 </main>
 
@@ -327,6 +331,6 @@ window.addEventListener('unhandledrejection', function(e) {
     </div>
   </div>
 </noscript>
-<script type="module" src="mandala3d.js?v=welcome-lede-flex-center"></script>
+<script type="module" src="mandala3d.js?v=exit-toggle"></script>
 </body>
 </html>

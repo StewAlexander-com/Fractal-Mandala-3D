@@ -256,6 +256,7 @@ const micToggle      = $('micToggle');
 const micModal       = $('micModal');
 const micAllow       = $('micAllow');
 const micDeny        = $('micDeny');
+const exitBtn        = $('exitBtn');
 
 // Accessibility: allow pinch-zoom on the welcome overlay before entering.
 // We keep canvas touch handling strict after entering for gesture controls.
@@ -2214,15 +2215,66 @@ function handleEnter(e) {
   if (e) e.preventDefault();
   entered = true;
   if (welcome) welcome.classList.add('hidden');
+  if (exitBtn) exitBtn.classList.add('visible');
   if (canvas) {
     try { canvas.style.touchAction = 'none'; } catch (_) {}
   }
   goToLayer(0);
   initAudio();  // user gesture — safe to start audio
 }
+
+function resetToSplash() {
+  clearTimeout(showLayerTitle._timer);
+  clearTimeout(showLayerTitle._breathTimer);
+  hideSliderTooltip();
+  if (layerTitle) layerTitle.classList.remove('visible', 'dissolve-out');
+  if (teachingPanel) {
+    teachingPanel.classList.remove('visible');
+    teachingPanel.scrollTop = 0;
+  }
+  if (teachingInner) teachingInner.innerHTML = '';
+  visitedLayers.clear();
+  targetLayer = 0;
+  currentLayer = 0;
+  const targetZ = (LAYER_COUNT - 1) * LAYER_SPACING;
+  targetCameraZ = targetZ + 6;
+  cameraZ = targetCameraZ;
+  isTransitioning = false;
+  userOrbitAngle = 0;
+  targetOrbitAngle = 0;
+  userZoom = 1;
+  targetZoom = 1;
+  updateSliderPosition(0);
+  entered = false;
+  if (welcome) welcome.classList.remove('hidden');
+  if (exitBtn) exitBtn.classList.remove('visible');
+  if (canvas) {
+    try { canvas.style.touchAction = 'pinch-zoom'; } catch (_) {}
+  }
+  try {
+    if (document.fullscreenElement || document.webkitFullscreenElement) {
+      (document.exitFullscreen || document.webkitExitFullscreen).call(document);
+    }
+  } catch (_) { /* ignore */ }
+  if (micActive) disableMic();
+}
+
+let lastExitTime = 0;
+function handleExitToSplash(e) {
+  if (e) e.preventDefault();
+  const now = Date.now();
+  if (now - lastExitTime < 320) return;
+  lastExitTime = now;
+  resetToSplash();
+}
+
 if (enterBtn) {
   enterBtn.addEventListener('click', handleEnter);
   enterBtn.addEventListener('touchend', handleEnter);
+}
+if (exitBtn) {
+  exitBtn.addEventListener('click', handleExitToSplash);
+  exitBtn.addEventListener('touchend', handleExitToSplash);
 }
 
 // ─── ROBUST RESIZE — works with iOS safe-area, dynamic toolbar, notch ───
