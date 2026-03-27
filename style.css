@@ -91,6 +91,12 @@ canvas {
   -webkit-backdrop-filter: blur(10px);
   z-index: 100;
   transition: opacity 1.2s var(--ease-out), visibility 1.2s;
+  /* Mobile resilience: if content grows (e.g. expanded convergence list),
+     allow the overlay itself to scroll without affecting the canvas. */
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+  padding: 5vh 0;
 }
 
 .welcome.hidden {
@@ -146,6 +152,110 @@ canvas {
   background: var(--gold-dim);
   color: #0a0908;
   border-color: var(--gold);
+}
+
+.welcome-convergence-details {
+  margin-top: 1.35rem;
+  width: min(900px, calc(100vw - 2.4rem));
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.welcome-convergence-summary {
+  font-family: var(--font-display);
+  font-weight: 300;
+  font-size: clamp(0.92rem, 1.5vmin, 1.08rem);
+  letter-spacing: 0.08em;
+  color: rgba(200, 188, 166, 0.9);
+  text-align: center;
+  cursor: pointer;
+  user-select: none;
+  /* Make it a comfortable tap target on phones */
+  padding: 0.6rem 0.8rem;
+  list-style: none;
+  outline: none;
+}
+
+/* Hide default marker */
+.welcome-convergence-details > summary::-webkit-details-marker { display: none; }
+.welcome-convergence-details > summary::marker { content: ""; }
+
+/* Subtle affordance */
+.welcome-convergence-summary::after {
+  content: " ▾";
+  opacity: 0.75;
+}
+.welcome-convergence-details[open] .welcome-convergence-summary::after {
+  content: " ▴";
+}
+
+.welcome-convergence-summary:hover {
+  color: rgba(240, 234, 216, 0.92);
+}
+
+.welcome-convergence-summary:focus-visible {
+  box-shadow: 0 0 0 2px rgba(240, 200, 80, 0.25);
+  border-radius: 6px;
+}
+
+.welcome-convergence {
+  margin-top: 0.85rem;
+  padding: 0 1.6rem;
+  max-width: min(880px, calc(100vw - 2.4rem));
+  list-style: disc;
+  text-align: left;
+  color: rgba(240, 234, 216, 0.92);
+  font-family: 'Lora', serif;
+  font-size: clamp(0.85rem, 1.45vmin, 1.05rem);
+  line-height: 1.55;
+  opacity: 0.95;
+}
+
+/* When expanded, keep the list usable on small screens */
+.welcome-convergence-details[open] .welcome-convergence {
+  max-height: min(48vh, 420px);
+  overflow: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+  padding-bottom: 0.35rem;
+}
+
+/* Center the bullet block while keeping the text left-aligned */
+.welcome-convergence {
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.welcome-convergence strong {
+  font-family: var(--font-display);
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  color: rgba(248, 244, 230, 0.98);
+}
+
+@media (max-height: 760px) {
+  .welcome-convergence-details {
+    margin-top: 1.1rem;
+  }
+  .welcome-convergence {
+    max-width: min(760px, calc(100vw - 2.0rem));
+    font-size: clamp(0.82rem, 1.35vmin, 0.98rem);
+    line-height: 1.48;
+  }
+}
+
+@media (max-width: 520px) {
+  .welcome-instruction {
+    margin-top: 1.5rem;
+    padding: 0 1.2rem;
+    text-align: center;
+  }
+  .welcome-convergence-details {
+    width: min(900px, calc(100vw - 1.6rem));
+  }
+  .welcome-convergence {
+    padding: 0 1.2rem;
+  }
 }
 
 /* ═══ LAYER TITLE ═══ */
