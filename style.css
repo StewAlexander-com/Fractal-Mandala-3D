@@ -168,7 +168,7 @@ canvas {
   /* About the same size as the instruction line */
   font-size: clamp(0.85rem, 1.5vmin, 1rem);
   letter-spacing: 0.04em;
-  color: rgba(214, 214, 214, 0.86);
+  color: #f0f5f9;
   text-align: center;
   cursor: pointer;
   user-select: none;
@@ -192,7 +192,7 @@ canvas {
 }
 
 .welcome-convergence-summary:hover {
-  color: rgba(234, 234, 234, 0.94);
+  color: #f0f5f9;
 }
 
 .welcome-convergence-summary:focus-visible {
@@ -202,11 +202,12 @@ canvas {
 
 .welcome-convergence {
   margin-top: 0.85rem;
-  padding: 0 1.6rem;
+  /* Align bullet dots under the 'A' in the centered summary line */
+  padding: 0 1.2rem 0 2.6rem;
   max-width: min(880px, calc(100vw - 2.4rem));
   list-style: disc;
   text-align: left;
-  color: rgba(240, 234, 216, 0.92);
+  color: #f0f5f9;
   font-family: 'Lora', serif;
   font-size: clamp(0.85rem, 1.45vmin, 1.05rem);
   line-height: 1.55;
@@ -256,7 +257,7 @@ canvas {
     width: min(900px, calc(100vw - 1.6rem));
   }
   .welcome-convergence {
-    padding: 0 1.2rem;
+    padding: 0 1.0rem 0 2.2rem;
   }
 }
 
