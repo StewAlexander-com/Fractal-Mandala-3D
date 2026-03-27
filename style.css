@@ -213,8 +213,8 @@ canvas {
   text-align: left;
   color: #dbe7f0;
   font-family: 'Lora', serif;
-  font-size: clamp(0.85rem, 1.45vmin, 1.05rem);
-  line-height: 1.55;
+  font-size: clamp(0.92rem, 1.55vmin, 1.12rem);
+  line-height: 1.6;
   opacity: 0.95;
 }
 
@@ -243,8 +243,8 @@ canvas {
   }
   .welcome-convergence {
     max-width: min(760px, calc(100vw - 2.0rem));
-    font-size: clamp(0.82rem, 1.35vmin, 0.98rem);
-    line-height: 1.48;
+    font-size: clamp(0.9rem, 1.5vmin, 1.06rem);
+    line-height: 1.55;
   }
 }
 
@@ -259,6 +259,8 @@ canvas {
   }
   .welcome-convergence {
     padding: 0 1.0rem 0 1.25rem;
+    font-size: clamp(0.98rem, 2.0vmin, 1.18rem);
+    line-height: 1.62;
   }
 }
 
