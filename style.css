@@ -236,7 +236,7 @@ canvas {
   font-size: 1.1em;
   letter-spacing: 0.02em;
   /* Slight gold tint to pop against the nebula */
-  color: #cbbd86;
+  color: #f1dd9a;
 }
 
 @media (max-height: 760px) {
@@ -263,6 +263,11 @@ canvas {
     padding: 0 1.0rem 0 1.25rem;
     font-size: clamp(0.98rem, 2.0vmin, 1.18rem);
     line-height: 1.62;
+  }
+
+  /* iPhone-size: make the bold labels a touch larger */
+  .welcome-convergence strong {
+    font-size: 1.16em;
   }
 }
 
