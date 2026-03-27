@@ -151,7 +151,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,300;1,400&family=Jost:wght@300;400;500&family=Lora:ital,wght@0,400;0,500;1,400;1,500&display=swap" rel="stylesheet">
 <!-- Preload audio hint — browser can start fetching before user enters -->
 <link rel="preload" href="ambient-meditation.mp3" as="audio" crossorigin type="audio/mpeg">
-<link rel="stylesheet" href="style.css?v=engine-error-ui">
+<link rel="stylesheet" href="style.css?v=es-module-shims">
 </head>
 <body>
 
@@ -292,6 +292,8 @@
 </div>
 </main>
 
+<!-- Import maps polyfill: bare "three" + addons resolve in Arc (Gecko), older Safari, etc. -->
+<script src="https://cdn.jsdelivr.net/npm/es-module-shims@2.8.0/dist/es-module-shims.js"></script>
 <!-- Three.js — primary CDN with preconnect warming -->
 <script type="importmap">
 {
@@ -396,6 +398,6 @@
     </div>
   </div>
 </noscript>
-<script type="module" src="mandala3d.js?v=exit-toggle"></script>
+<script type="module" src="mandala3d.js?v=es-module-shims"></script>
 </body>
 </html>
