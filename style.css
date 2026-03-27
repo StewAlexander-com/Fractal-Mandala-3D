@@ -35,9 +35,17 @@
   --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
 }
 
+/* iOS standalone / PWA: -webkit-fill-available fixes undersized 100% height chain */
+html {
+  height: 100%;
+  height: -webkit-fill-available;
+}
+
 html, body {
   width: 100%;
-  height: 100%;
+  min-height: 100%;
+  min-height: 100dvh;
+  min-height: -webkit-fill-available;
   overflow: hidden;
   background: var(--bg);
   color: var(--text-warm);
@@ -66,6 +74,9 @@ canvas {
   position: relative;
   width: 100%;
   height: 100%;
+  min-height: 100%;
+  min-height: 100dvh;
+  min-height: -webkit-fill-available;
   margin: 0;
   padding: 0;
 }
@@ -74,6 +85,10 @@ canvas {
 .hud {
   position: fixed;
   inset: 0;
+  width: 100%;
+  height: 100%;
+  min-height: 100dvh;
+  min-height: -webkit-fill-available;
   /* Respect notch / dynamic island safe areas */
   padding:
     env(safe-area-inset-top, 0px)
@@ -82,6 +97,7 @@ canvas {
     env(safe-area-inset-left, 0px);
   pointer-events: none;
   z-index: 10;
+  box-sizing: border-box;
 }
 
 .hud > * {
@@ -93,6 +109,8 @@ canvas {
 .welcome {
   position: absolute;
   inset: 0;
+  width: 100%;
+  height: 100%;
   display: grid;
   grid-template-rows: 1fr auto;
   grid-template-columns: minmax(0, 1fr);
@@ -111,6 +129,17 @@ canvas {
   padding: 0;
   /* Encourage browser pinch-zoom on the welcome overlay */
   touch-action: pan-y pinch-zoom;
+}
+
+/* Home-screen PWA on iPhone: extra guard so the overlay matches the visual viewport */
+@media (display-mode: standalone) {
+  .welcome {
+    height: 100%;
+    min-height: 100%;
+    min-height: 100dvh;
+    min-height: 100svh;
+    min-height: -webkit-fill-available;
+  }
 }
 
 /* Centered hero block (title → details); scrolls inside top grid row */
@@ -1233,10 +1262,10 @@ canvas {
 .fs-toggle.is-fs .fs-enter { display: none; }
 .fs-toggle.is-fs .fs-exit  { display: block; }
 
-/* ═══ EXIT (welcome splash) — matches audio/fs/mic: 44×44 circle, bottom-right ═══ */
+/* ═══ EXIT (welcome splash) — same bottom offset as audio/fs/mic (do not add extra safe-area on bottom or it floats above the row on iPhone) ═══ */
 .exit-toggle {
   position: absolute;
-  bottom: max(clamp(12px, 2vh, 24px), env(safe-area-inset-bottom, 0px));
+  bottom: clamp(12px, 2vh, 24px);
   right: max(clamp(12px, 2vw, 24px), env(safe-area-inset-right, 0px));
   width: 44px;
   height: 44px;
@@ -1406,8 +1435,8 @@ canvas {
   .mic-toggle {
     left: calc(8px + 92px);
   }
+  /* Keep exit on same baseline as other HUD icons — only inset from rounded corner / notch on X axis */
   .exit-toggle {
-    bottom: max(8px, env(safe-area-inset-bottom, 0px));
     right: max(8px, env(safe-area-inset-right, 0px));
   }
 
@@ -1462,7 +1491,8 @@ canvas {
 
 .audio-toggle:focus-visible,
 .mic-toggle:focus-visible,
-.fs-toggle:focus-visible {
+.fs-toggle:focus-visible,
+.exit-toggle:focus-visible {
   outline: 2px solid rgba(200, 184, 138, 0.8);
   outline-offset: 4px;
   box-shadow: 0 0 12px 2px rgba(200, 184, 138, 0.15);
