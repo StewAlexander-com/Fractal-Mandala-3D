@@ -163,12 +163,12 @@ canvas {
 }
 
 .welcome-convergence-summary {
-  font-family: Menlo, Consolas, "Liberation Mono", monospace;
+  /* Match the instruction line: same font + size, different color */
+  font-family: var(--font-body);
   font-weight: 400;
-  /* Match the instruction line size (optically, monospace reads larger) */
-  font-size: clamp(0.82rem, 1.4vmin, 0.98rem);
-  letter-spacing: 0.04em;
-  color: #f0f5f9;
+  font-size: clamp(0.85rem, 1.5vmin, 1rem);
+  letter-spacing: 0.1em;
+  color: #dbe7f0;
   text-align: center;
   cursor: pointer;
   user-select: none;
@@ -192,7 +192,7 @@ canvas {
 }
 
 .welcome-convergence-summary:hover {
-  color: #f0f5f9;
+  color: #dbe7f0;
 }
 
 .welcome-convergence-summary:focus-visible {
@@ -207,7 +207,7 @@ canvas {
   max-width: min(880px, calc(100vw - 2.4rem));
   list-style: disc;
   text-align: left;
-  color: #f0f5f9;
+  color: #dbe7f0;
   font-family: 'Lora', serif;
   font-size: clamp(0.85rem, 1.45vmin, 1.05rem);
   line-height: 1.55;
@@ -233,7 +233,7 @@ canvas {
   font-family: var(--font-display);
   font-weight: 600;
   letter-spacing: 0.02em;
-  color: rgba(248, 244, 230, 0.98);
+  color: #b9cddd;
 }
 
 @media (max-height: 760px) {
