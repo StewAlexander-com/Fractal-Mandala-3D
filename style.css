@@ -153,6 +153,31 @@ canvas {
   opacity: 0.85;
 }
 
+/* Shown only when the inline script detects a failed 3D/module load */
+.welcome-engine-error {
+  display: none;
+  max-width: min(32rem, calc(100vw - 2rem));
+  margin: 1rem auto 0;
+  padding: 0 1.2rem;
+  font-family: var(--font-body);
+  font-size: clamp(0.82rem, 1.5vmin, 0.98rem);
+  line-height: 1.55;
+  color: var(--text-secondary);
+  text-align: center;
+  white-space: pre-line;
+}
+
+.welcome-engine-error:not([hidden]) {
+  display: block;
+}
+
+.welcome.welcome--engine-error .welcome-instruction,
+.welcome.welcome--engine-error .enter-btn,
+.welcome.welcome--engine-error .welcome-convergence-details,
+.welcome.welcome--engine-error .welcome-lede {
+  display: none !important;
+}
+
 /* Flex + full-width inner: fixes Safari/WebKit where text-align on <p> stayed left */
 .welcome-lede {
   flex-shrink: 0;

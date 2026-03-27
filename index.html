@@ -151,7 +151,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,300;1,400&family=Jost:wght@300;400;500&family=Lora:ital,wght@0,400;0,500;1,400;1,500&display=swap" rel="stylesheet">
 <!-- Preload audio hint — browser can start fetching before user enters -->
 <link rel="preload" href="ambient-meditation.mp3" as="audio" crossorigin type="audio/mpeg">
-<link rel="stylesheet" href="style.css?v=exit-toggle">
+<link rel="stylesheet" href="style.css?v=engine-error-ui">
 </head>
 <body>
 
@@ -202,6 +202,7 @@
     <div class="welcome-stack">
     <h1 class="welcome-title">The Fractal Mandala</h1>
     <p class="welcome-sub">of Presence &amp; Liberation</p>
+    <p class="welcome-engine-error" id="welcomeEngineError" hidden aria-live="polite"></p>
     <p class="welcome-instruction">scroll or use arrow keys to move through the layers</p>
     <button class="enter-btn" id="enterBtn">enter the mandala</button>
     <details class="welcome-convergence-details">
@@ -301,26 +302,90 @@
 }
 </script>
 
-<!-- Global error handler: if Three.js CDN or module fails, show graceful message -->
+<!-- Global error handler: import maps / module vs network vs other engine failures -->
 <script>
-window.addEventListener('error', function(e) {
-  // Module resolution failure or network error on critical script
-  if (e.filename && (e.filename.indexOf('three') !== -1 || e.filename.indexOf('mandala3d') !== -1)) {
-    var w = document.getElementById('welcome');
-    if (w) {
-      w.classList.remove('hidden');
-      var s = w.querySelector('.welcome-sub');
-      if (s) s.textContent = 'unable to load 3D engine \u2014 check your connection';
-      var b = w.querySelector('.enter-btn');
-      if (b) b.style.display = 'none';
-    }
+(function () {
+  function pathFromEvent(ev) {
+    var fn = (ev && ev.filename) ? String(ev.filename) : '';
+    if (fn) return fn.toLowerCase();
+    var t = ev && ev.target;
+    if (t && t.src) return String(t.src).toLowerCase();
+    return '';
   }
-});
-// Catch unhandled promise rejections (dynamic import failures, etc.)
-window.addEventListener('unhandledrejection', function(e) {
-  console.warn('Unhandled rejection:', e.reason);
-  e.preventDefault();  // prevent console noise from non-critical async failures
-});
+
+  function isEngineScriptPath(p) {
+    return p.indexOf('mandala3d') !== -1 || p.indexOf('three.module') !== -1
+      || /(^|\/)three(\.module)?\.js/.test(p) || p.indexOf('/three@') !== -1;
+  }
+
+  function isImportMapOrBareSpecifierError(msg) {
+    if (!msg) return false;
+    var m = String(msg).toLowerCase();
+    return m.indexOf('bare specifier') !== -1
+      || m.indexOf('not remapped') !== -1
+      || m.indexOf('import map') !== -1
+      || m.indexOf('importmap') !== -1
+      || m.indexOf('relative module specifiers') !== -1;
+  }
+
+  function messageFromReason(reason) {
+    if (!reason) return '';
+    if (typeof reason === 'string') return reason;
+    if (reason.message) return String(reason.message);
+    try { return String(reason); } catch (x) { return ''; }
+  }
+
+  var IMPORT_MAP_EXPLAINED =
+    'This experience uses WebGL and loads Three.js using JavaScript import maps (ES modules). Your browser could not resolve the module name "three". That usually means import maps are not supported in this browser or engine build.\n\n' +
+    'Browsers that support this stack: Chrome 89+, Edge 89+, Safari 16.4+, Firefox 108+, and current Chromium-based browsers. Some Firefox-based or older builds (including certain Arc versions on Gecko) may not implement import maps fully—try the latest Chrome, Edge, or Firefox if you see this message.\n\n' +
+    'If you are offline, a network error can look similar; try again when connected.';
+
+  var NETWORK_OR_GENERIC =
+    'Unable to load the 3D engine. Check your network connection, disable extensions that block scripts or CDNs, and reload the page.';
+
+  function showEngineFailure(kind) {
+    var w = document.getElementById('welcome');
+    if (!w) return;
+    w.classList.remove('hidden');
+    w.classList.add('welcome--engine-error');
+    var sub = w.querySelector('.welcome-sub');
+    if (sub) sub.textContent = '3D engine unavailable';
+    var errEl = document.getElementById('welcomeEngineError');
+    if (errEl) {
+      errEl.hidden = false;
+      errEl.textContent = kind === 'importmap' ? IMPORT_MAP_EXPLAINED : NETWORK_OR_GENERIC;
+    }
+    var b = w.querySelector('.enter-btn');
+    if (b) b.style.display = 'none';
+  }
+
+  window.addEventListener('error', function (e) {
+    var msg = (e && e.message) ? String(e.message) : '';
+    if (e && e.error && e.error.message) msg += ' ' + e.error.message;
+    var p = pathFromEvent(e);
+    var importErr = isImportMapOrBareSpecifierError(msg);
+    var enginePath = isEngineScriptPath(p);
+
+    if (importErr) {
+      showEngineFailure('importmap');
+      return;
+    }
+    if (enginePath) {
+      showEngineFailure('network');
+    }
+  });
+
+  window.addEventListener('unhandledrejection', function (e) {
+    var msg = messageFromReason(e.reason);
+    if (isImportMapOrBareSpecifierError(msg)) {
+      showEngineFailure('importmap');
+      e.preventDefault();
+      return;
+    }
+    console.warn('Unhandled rejection:', e.reason);
+    e.preventDefault();
+  });
+})();
 </script>
 <noscript>
   <div style="position:fixed;inset:0;z-index:9999;display:flex;align-items:center;justify-content:center;background:#06050a;color:#c8b88a;font-family:system-ui,sans-serif;text-align:center;padding:2rem;">
