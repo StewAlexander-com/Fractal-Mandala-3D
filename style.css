@@ -165,8 +165,8 @@ canvas {
 .welcome-convergence-summary {
   font-family: Menlo, Consolas, "Liberation Mono", monospace;
   font-weight: 400;
-  /* About the same size as the instruction line */
-  font-size: clamp(0.85rem, 1.5vmin, 1rem);
+  /* Match the instruction line size (optically, monospace reads larger) */
+  font-size: clamp(0.82rem, 1.4vmin, 0.98rem);
   letter-spacing: 0.04em;
   color: #f0f5f9;
   text-align: center;
@@ -203,7 +203,7 @@ canvas {
 .welcome-convergence {
   margin-top: 0.85rem;
   /* Align bullet dots under the 'A' in the centered summary line */
-  padding: 0 1.2rem 0 2.6rem;
+  padding: 0 1.2rem 0 3.2rem;
   max-width: min(880px, calc(100vw - 2.4rem));
   list-style: disc;
   text-align: left;
@@ -257,7 +257,7 @@ canvas {
     width: min(900px, calc(100vw - 1.6rem));
   }
   .welcome-convergence {
-    padding: 0 1.0rem 0 2.2rem;
+    padding: 0 1.0rem 0 2.7rem;
   }
 }
 
