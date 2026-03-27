@@ -257,6 +257,12 @@ const micModal       = $('micModal');
 const micAllow       = $('micAllow');
 const micDeny        = $('micDeny');
 
+// Accessibility: allow pinch-zoom on the welcome overlay before entering.
+// We keep canvas touch handling strict after entering for gesture controls.
+if (canvas) {
+  try { canvas.style.touchAction = 'pinch-zoom'; } catch (_) {}
+}
+
 // ─── SCROLL FADE INDICATORS + HINT ARROWS ───
 const scrollHintUp   = $('scrollHintUp');
 const scrollHintDown = $('scrollHintDown');
@@ -2208,6 +2214,9 @@ function handleEnter(e) {
   if (e) e.preventDefault();
   entered = true;
   if (welcome) welcome.classList.add('hidden');
+  if (canvas) {
+    try { canvas.style.touchAction = 'none'; } catch (_) {}
+  }
   goToLayer(0);
   initAudio();  // user gesture — safe to start audio
 }

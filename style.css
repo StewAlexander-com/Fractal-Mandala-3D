@@ -97,6 +97,8 @@ canvas {
   overscroll-behavior: contain;
   -webkit-overflow-scrolling: touch;
   padding: 5vh 0;
+  /* Encourage browser pinch-zoom on the welcome overlay */
+  touch-action: pan-y pinch-zoom;
 }
 
 .welcome.hidden {
