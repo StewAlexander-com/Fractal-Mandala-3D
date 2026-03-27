@@ -160,6 +160,8 @@ canvas {
   width: min(900px, calc(100vw - 2.4rem));
   margin-left: auto;
   margin-right: auto;
+  /* Center the block, but allow inner content to left-align */
+  text-align: center;
 }
 
 .welcome-convergence-summary {
@@ -202,10 +204,12 @@ canvas {
 
 .welcome-convergence {
   margin-top: 0.85rem;
-  /* Align bullet dots under the 'A' in the centered summary line */
-  padding: 0 1.2rem 0 3.2rem;
+  /* Center the whole list block; keep text left-aligned within it */
+  display: inline-block;
+  padding: 0 1.2rem 0 1.35rem;
   max-width: min(880px, calc(100vw - 2.4rem));
   list-style: disc;
+  list-style-position: outside;
   text-align: left;
   color: #dbe7f0;
   font-family: 'Lora', serif;
@@ -223,17 +227,14 @@ canvas {
   padding-bottom: 0.35rem;
 }
 
-/* Center the bullet block while keeping the text left-aligned */
-.welcome-convergence {
-  margin-left: auto;
-  margin-right: auto;
-}
+/* (Centering handled via details text-align + inline-block list) */
 
 .welcome-convergence strong {
   font-family: var(--font-display);
   font-weight: 600;
   letter-spacing: 0.02em;
-  color: #b9cddd;
+  /* Slight gold tint to pop against the nebula */
+  color: #cbbd86;
 }
 
 @media (max-height: 760px) {
@@ -257,7 +258,7 @@ canvas {
     width: min(900px, calc(100vw - 1.6rem));
   }
   .welcome-convergence {
-    padding: 0 1.0rem 0 2.7rem;
+    padding: 0 1.0rem 0 1.25rem;
   }
 }
 
