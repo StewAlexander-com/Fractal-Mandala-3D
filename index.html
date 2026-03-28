@@ -154,7 +154,7 @@
 <!-- Preload audio hint — browser can start fetching before user enters -->
 <link rel="preload" href="ambient-meditation.mp3" as="audio" crossorigin type="audio/mpeg">
 <link rel="preload" href="ambient-ocean-wave.mp3" as="audio" crossorigin type="audio/mpeg">
-<link rel="stylesheet" href="style.css?v=mandala-panel-darker-v1">
+<link rel="stylesheet" href="style.css?v=mandala-panel-toggle-v1">
 </head>
 <body>
 
@@ -166,6 +166,12 @@
     </symbol>
     <symbol id="mandala-chevron-down" viewBox="0 0 20 10">
       <path d="M2 1L10 8L18 1" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
+    </symbol>
+    <symbol id="mandala-panel-hide" viewBox="0 0 24 24">
+      <path d="M6 10l6 5 6-5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+    </symbol>
+    <symbol id="mandala-panel-show" viewBox="0 0 24 24">
+      <path d="M6 14l6-5 6 5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
     </symbol>
   </defs>
 </svg>
@@ -184,6 +190,10 @@
 
   <!-- Teaching panel -->
   <div class="teaching-wrap" id="teachingWrap">
+    <button type="button" class="teaching-panel-toggle" id="teachingPanelToggle" aria-expanded="true" aria-controls="teachingPanel" aria-label="Hide key ideas panel" title="Hide key ideas">
+      <svg class="teaching-panel-toggle__icon teaching-panel-toggle__icon--hide" width="20" height="20" viewBox="0 0 24 24" aria-hidden="true"><use href="#mandala-panel-hide"/></svg>
+      <svg class="teaching-panel-toggle__icon teaching-panel-toggle__icon--show" width="20" height="20" viewBox="0 0 24 24" aria-hidden="true"><use href="#mandala-panel-show"/></svg>
+    </button>
     <div class="teaching-panel" id="teachingPanel">
       <div class="teaching-inner" id="teachingInner" tabindex="0" role="region" aria-label="Layer teaching content"></div>
     </div>
@@ -421,6 +431,6 @@
   </div>
 </noscript>
 <!-- Runtime: ontology.js (data) · genesis.js (initial relation) · mandala3d.js (dynamics + UI) -->
-<script type="module" src="mandala3d.js?v=ambient-lfo-v5"></script>
+<script type="module" src="mandala3d.js?v=mandala-panel-toggle-v1"></script>
 </body>
 </html>

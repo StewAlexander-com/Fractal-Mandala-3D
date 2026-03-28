@@ -85,6 +85,7 @@ const layerSubtitle  = $('layerSubtitle');
 const teachingWrap   = $('teachingWrap');
 const teachingPanel  = $('teachingPanel');
 const teachingInner  = $('teachingInner');
+const teachingPanelToggle = $('teachingPanelToggle');
 const welcome        = $('welcome');
 const enterBtn       = $('enterBtn');
 const sliderTrack    = $('sliderTrack');
@@ -151,6 +152,45 @@ function bindScrollHintButton(btn, direction) {
 }
 bindScrollHintButton(scrollHintUp, -1);
 bindScrollHintButton(scrollHintDown, 1);
+
+// ─── KEY IDEAS PANEL SHOW / HIDE (co-located toggle — same HUD language as audio/mic) ───
+function syncTeachingPanelCollapsed(collapsed) {
+  if (!teachingWrap) return;
+  teachingWrap.classList.toggle('teaching-wrap--collapsed', !!collapsed);
+  if (teachingPanelToggle) {
+    teachingPanelToggle.setAttribute('aria-expanded', String(!collapsed));
+    teachingPanelToggle.setAttribute(
+      'aria-label',
+      collapsed ? 'Show key ideas panel' : 'Hide key ideas panel'
+    );
+    teachingPanelToggle.title = collapsed ? 'Show key ideas' : 'Hide key ideas';
+  }
+}
+
+function toggleTeachingPanelCollapsed() {
+  if (!teachingWrap) return;
+  syncTeachingPanelCollapsed(!teachingWrap.classList.contains('teaching-wrap--collapsed'));
+}
+
+let lastTeachingPanelToggleAt = 0;
+function handleTeachingPanelToggle(ev) {
+  if (!entered || !teachingWrap || !teachingPanelToggle) return;
+  if (ev) {
+    ev.stopPropagation();
+    if (ev.type === 'touchend') ev.preventDefault();
+  }
+  const t = Date.now();
+  if (t - lastTeachingPanelToggleAt < 320) return;
+  lastTeachingPanelToggleAt = t;
+  toggleTeachingPanelCollapsed();
+}
+
+if (teachingPanelToggle) {
+  teachingPanelToggle.addEventListener('click', handleTeachingPanelToggle);
+  teachingPanelToggle.addEventListener('touchend', handleTeachingPanelToggle);
+  teachingPanelToggle.addEventListener('touchstart', (e) => { e.stopPropagation(); }, { passive: true });
+  teachingPanelToggle.addEventListener('touchmove', (e) => { e.stopPropagation(); }, { passive: true });
+}
 
 // ─── PANEL TOUCH ISOLATION ───
 // Prevent touch events on the teaching panel from leaking to the canvas
@@ -1481,10 +1521,9 @@ document.addEventListener('keydown', (e) => {
       hideMicModal();
       return;
     }
-    if (teachingPanel && teachingPanel.classList.contains('visible')) {
-      teachingPanel.classList.remove('visible');
-      if (scrollHintUp) scrollHintUp.disabled = true;
-      if (scrollHintDown) scrollHintDown.disabled = true;
+    if (entered && teachingWrap && teachingPanel && teachingPanel.classList.contains('visible')
+        && !teachingWrap.classList.contains('teaching-wrap--collapsed')) {
+      syncTeachingPanelCollapsed(true);
       return;
     }
   }
@@ -2316,6 +2355,7 @@ function handleEnter(e) {
     try { canvas.style.touchAction = 'none'; } catch (_) {}
   }
   goToLayer(0);
+  if (teachingWrap) teachingWrap.classList.add('teaching-wrap--in-scene');
   initAudio();  // user gesture — safe to start audio
 }
 
@@ -2344,6 +2384,14 @@ function resetToSplash() {
   updateSliderPosition(0);
   if (welcome) welcome.classList.remove('hidden');
   if (exitBtn) exitBtn.classList.remove('visible');
+  if (teachingWrap) {
+    teachingWrap.classList.remove('teaching-wrap--in-scene', 'teaching-wrap--collapsed');
+  }
+  if (teachingPanelToggle) {
+    teachingPanelToggle.setAttribute('aria-expanded', 'true');
+    teachingPanelToggle.setAttribute('aria-label', 'Hide key ideas panel');
+    teachingPanelToggle.title = 'Hide key ideas';
+  }
   if (canvas) {
     try { canvas.style.touchAction = 'pinch-zoom'; } catch (_) {}
   }
