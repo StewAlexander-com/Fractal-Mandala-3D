@@ -1,0 +1,425 @@
+<!DOCTYPE html>
+<html lang="en-US">
+<head>
+<!--
+   ______                            __
+  / ____/___  ____ ___  ____  __  __/ /____  _____
+ / /   / __ \/ __ `__ \/ __ \/ / / / __/ _ \/ ___/
+/ /___/ /_/ / / / / / / /_/ / /_/ / /_/  __/ /
+\____/\____/_/ /_/ /_/ .___/\__,_/\__/\___/_/
+                    /_/
+        Created with Perplexity Computer
+        https://www.perplexity.ai/computer
+-->
+<meta name="generator" content="Perplexity Computer">
+<meta name="author" content="Perplexity Computer">
+<meta property="og:see_also" content="https://www.perplexity.ai/computer">
+<link rel="author" href="https://www.perplexity.ai/computer">
+
+<meta charset="UTF-8">
+<!-- Allow pinch-to-zoom for accessibility (iOS Safari, etc.). interactive-widget: Android Chrome resizes layout with browser UI. -->
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, viewport-fit=cover, interactive-widget=resizes-content">
+<meta name="format-detection" content="telephone=no">
+<meta name="color-scheme" content="dark">
+
+<!-- Cache control: help clients revalidate index.html on GitHub Pages -->
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<meta http-equiv="Pragma" content="no-cache">
+<meta http-equiv="Expires" content="0">
+
+<!-- PWA / Add to Home Screen -->
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Fractal Mandala">
+<meta name="mobile-web-app-capable" content="yes">
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="favicon.svg" type="image/svg+xml">
+<link rel="icon" href="icon-192.png" type="image/png" sizes="192x192">
+<link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png?v=2">
+<link rel="apple-touch-icon-precomposed" sizes="180x180" href="apple-touch-icon.png?v=2">
+
+<title>The Fractal Mandala — Seven Layers of Sacred Geometry</title>
+<meta name="description" content="Free interactive 3D sacred geometry in your browser. Seven quantum orbital layers of mindfulness—WebGL mandala, ambient sound, scroll or swipe. Desktop and mobile.">
+<!-- Crawling & rich results: explicit index + Google extended image/snippet hints -->
+<meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1">
+
+<!-- Open Graph (Facebook, Messenger, Teams, LinkedIn, Discord) -->
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://stewalexander-com.github.io/Fractal-Mandala-3D/">
+<meta property="og:locale" content="en_US">
+<meta property="og:title" content="The Fractal Mandala — Interactive 3D Sacred Geometry">
+<meta property="og:description" content="Free interactive 3D sacred geometry in your browser. Seven quantum orbital layers of mindfulness—WebGL mandala, ambient sound, scroll or swipe.">
+<meta property="og:image" content="https://stewalexander-com.github.io/Fractal-Mandala-3D/og-image.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="The Fractal Mandala — nested golden orbital rings and sacred geometry floating in a nebula star field">
+<meta property="og:image:type" content="image/png">
+<meta property="og:site_name" content="The Fractal Mandala">
+
+<!-- Twitter / X -->
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="The Fractal Mandala — Interactive 3D Sacred Geometry">
+<meta name="twitter:description" content="Free interactive 3D sacred geometry. Seven layers, WebGL mandala, ambient sound—desktop and mobile.">
+<meta name="twitter:image" content="https://stewalexander-com.github.io/Fractal-Mandala-3D/og-image.png">
+<meta name="twitter:image:alt" content="The Fractal Mandala — nested golden orbital rings and sacred geometry floating in a nebula star field">
+
+<!-- Additional SEO -->
+<meta name="theme-color" content="#06050a">
+<meta name="application-name" content="The Fractal Mandala">
+<link rel="canonical" href="https://stewalexander-com.github.io/Fractal-Mandala-3D/">
+<link rel="alternate" hreflang="en-US" href="https://stewalexander-com.github.io/Fractal-Mandala-3D/">
+<link rel="alternate" hreflang="x-default" href="https://stewalexander-com.github.io/Fractal-Mandala-3D/">
+<link rel="sitemap" type="application/xml" title="Sitemap" href="https://stewalexander-com.github.io/Fractal-Mandala-3D/sitemap.xml">
+
+<!-- Structured data: WebSite, WebPage, WebApplication, seven-layer ItemList -->
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "WebSite",
+      "@id": "https://stewalexander-com.github.io/Fractal-Mandala-3D/#website",
+      "url": "https://stewalexander-com.github.io/Fractal-Mandala-3D/",
+      "name": "The Fractal Mandala — Seven Layers of Sacred Geometry",
+      "alternateName": ["Fractal Mandala 3D", "Fractal Mandala"],
+      "description": "Seven layers of sacred geometry. One interactive journey inward. A 3D quantum orbital mandala of presence and liberation, built with WebGL and Three.js.",
+      "inLanguage": "en-US",
+      "isAccessibleForFree": true
+    },
+    {
+      "@type": "WebPage",
+      "@id": "https://stewalexander-com.github.io/Fractal-Mandala-3D/#webpage",
+      "url": "https://stewalexander-com.github.io/Fractal-Mandala-3D/",
+      "name": "The Fractal Mandala — Interactive 3D Sacred Geometry",
+      "description": "Free interactive 3D sacred geometry in your browser. Seven quantum orbital layers of mindfulness—WebGL mandala, ambient sound, scroll or swipe.",
+      "keywords": "sacred geometry, 3D mandala, interactive meditation, WebGL, Three.js, mindfulness, browser meditation, quantum orbital, nebula visualization",
+      "isPartOf": { "@id": "https://stewalexander-com.github.io/Fractal-Mandala-3D/#website" },
+      "about": { "@id": "https://stewalexander-com.github.io/Fractal-Mandala-3D/#layers" },
+      "primaryImageOfPage": {
+        "@type": "ImageObject",
+        "url": "https://stewalexander-com.github.io/Fractal-Mandala-3D/og-image.png",
+        "width": 1200,
+        "height": 630,
+        "caption": "The Fractal Mandala — nested golden orbital rings and sacred geometry in a nebula star field"
+      },
+      "inLanguage": "en-US",
+      "dateModified": "2026-03-27"
+    },
+    {
+      "@type": "ItemList",
+      "@id": "https://stewalexander-com.github.io/Fractal-Mandala-3D/#layers",
+      "name": "Seven layers of the Fractal Mandala (outside to core)",
+      "numberOfItems": 7,
+      "itemListElement": [
+        { "@type": "ListItem", "position": 1, "name": "Meta-Recognition", "description": "The Field Clarifying Itself" },
+        { "@type": "ListItem", "position": 2, "name": "Structural Insights", "description": "The Architecture of Being" },
+        { "@type": "ListItem", "position": 3, "name": "Key Distinctions", "description": "Seeing Through the Pairs" },
+        { "@type": "ListItem", "position": 4, "name": "Three Acceptances", "description": "Accipio — I Accept" },
+        { "@type": "ListItem", "position": 5, "name": "The Practice", "description": "The Fractal Cycle" },
+        { "@type": "ListItem", "position": 6, "name": "The Second Arrow", "description": "First Arrow / Second Arrow" },
+        { "@type": "ListItem", "position": 7, "name": "Core Awareness", "description": "dx/dt — This Moment" }
+      ]
+    },
+    {
+      "@type": "WebApplication",
+      "@id": "https://stewalexander-com.github.io/Fractal-Mandala-3D/#app",
+      "name": "The Fractal Mandala",
+      "url": "https://stewalexander-com.github.io/Fractal-Mandala-3D/",
+      "applicationCategory": "LifestyleApplication",
+      "operatingSystem": "Any",
+      "browserRequirements": "Requires JavaScript. Requires WebGL.",
+      "description": "Interactive 3D sacred geometry mandala: seven concentric layers of metacognitive awareness as quantum orbital shells in a nebula star field, with optional ambient audio.",
+      "featureList": "Seven navigable layers, 3D sacred geometry (Three.js), nebula star field, ambient meditation audio, optional breath-reactive microphone mode, fullscreen",
+      "image": "https://stewalexander-com.github.io/Fractal-Mandala-3D/og-image.png",
+      "offers": {
+        "@type": "Offer",
+        "price": "0",
+        "priceCurrency": "USD"
+      },
+      "isPartOf": { "@id": "https://stewalexander-com.github.io/Fractal-Mandala-3D/#website" }
+    }
+  ]
+}
+</script>
+
+<!-- Preconnect: CDN + fonts for faster first paint -->
+<link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
+<!-- Modulepreload Three.js core — overlaps fetch with font/CSS loading -->
+<link rel="modulepreload" href="https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<!-- Fonts: display=swap ensures text is visible immediately with system fallback
+     if Google Fonts CDN is slow or unavailable -->
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,300;1,400&family=Jost:wght@300;400;500&family=Lora:ital,wght@0,400;0,500;1,400;1,500&display=swap" rel="stylesheet">
+<!-- Preload audio hint — browser can start fetching before user enters -->
+<link rel="preload" href="ambient-meditation.mp3" as="audio" crossorigin type="audio/mpeg">
+<link rel="stylesheet" href="style.css?v=mandala-ios-touch-v1">
+</head>
+<body>
+
+<!-- Single source for chevron paths — used by .scroll-hint and welcome convergence summary -->
+<svg xmlns="http://www.w3.org/2000/svg" style="position:absolute;width:0;height:0;overflow:hidden" aria-hidden="true">
+  <defs>
+    <symbol id="mandala-chevron-up" viewBox="0 0 20 10">
+      <path d="M2 9L10 2L18 9" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
+    </symbol>
+    <symbol id="mandala-chevron-down" viewBox="0 0 20 10">
+      <path d="M2 1L10 8L18 1" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
+    </symbol>
+  </defs>
+</svg>
+
+<main id="main-content">
+<canvas id="canvas" aria-hidden="true"></canvas>
+
+<!-- HUD Overlay -->
+<div class="hud">
+  <!-- Layer title (appears during transitions) -->
+  <div class="layer-title" id="layerTitle">
+    <span class="layer-number" id="layerNumber"></span>
+    <h2 class="layer-name" id="layerName"></h2>
+    <p class="layer-subtitle" id="layerSubtitle"></p>
+  </div>
+
+  <!-- Teaching panel -->
+  <div class="teaching-wrap" id="teachingWrap">
+    <div class="teaching-panel" id="teachingPanel">
+      <div class="teaching-inner" id="teachingInner" tabindex="0" role="region" aria-label="Layer teaching content"></div>
+    </div>
+    <button type="button" class="scroll-hint scroll-hint--up" id="scrollHintUp" disabled aria-label="Scroll up in this layer’s teaching">
+      <svg width="28" height="14" viewBox="0 0 20 10" fill="none" aria-hidden="true"><use href="#mandala-chevron-up"/></svg>
+    </button>
+    <button type="button" class="scroll-hint scroll-hint--down" id="scrollHintDown" disabled aria-label="Scroll down in this layer’s teaching">
+      <svg width="28" height="14" viewBox="0 0 20 10" fill="none" aria-hidden="true"><use href="#mandala-chevron-down"/></svg>
+    </button>
+  </div>
+
+  <!-- Navigation slider -->
+  <div class="nav-controls" id="navControls">
+    <p class="layer-context" id="layerContext" role="status" aria-live="polite" aria-atomic="true" hidden></p>
+    <span class="nav-endpoint">inward</span>
+    <div class="slider-track" id="sliderTrack">
+      <div class="slider-fill" id="sliderFill"></div>
+      <div class="slider-thumb" id="sliderThumb"></div>
+      <div class="slider-stops" id="sliderStops"></div>
+    </div>
+    <span class="nav-endpoint">outward</span>
+    <div class="slider-tooltip" id="sliderTooltip"></div>
+  </div>
+
+  <!-- Breath indicator -->
+  <div class="breath" id="breath">
+    <span class="breath-word">breathe</span>
+  </div>
+
+  <!-- Welcome overlay -->
+  <div class="welcome" id="welcome">
+    <div class="welcome-stack">
+    <h1 class="welcome-title">The Fractal Mandala</h1>
+    <p class="welcome-sub">of Presence &amp; Liberation</p>
+    <p class="welcome-engine-error" id="welcomeEngineError" hidden aria-live="polite"></p>
+    <p class="welcome-instruction">Scroll, arrow keys, or the gold track at right. On a phone: swipe up or down on the scene.</p>
+    <button class="enter-btn" id="enterBtn">enter the mandala</button>
+    <details class="welcome-convergence-details">
+      <summary class="welcome-convergence-summary">
+        <span class="welcome-convergence-summary__text">Lineages from Buddhism to physics — open to explore a convergence of multiple ideas over the centuries …</span>
+        <span class="welcome-convergence-summary__chevron" aria-hidden="true">
+          <svg class="welcome-convergence-summary__chevron-icon welcome-convergence-summary__chevron-icon--down" width="28" height="14" viewBox="0 0 20 10" fill="none" focusable="false"><use href="#mandala-chevron-down"/></svg>
+          <svg class="welcome-convergence-summary__chevron-icon welcome-convergence-summary__chevron-icon--up" width="28" height="14" viewBox="0 0 20 10" fill="none" focusable="false"><use href="#mandala-chevron-up"/></svg>
+        </span>
+      </summary>
+      <ul class="welcome-convergence" aria-label="Sources of convergence">
+        <li><strong>Buddhism</strong>&mdash;second arrow, anicca (impermanence), sati (mindfulness)</li>
+        <li><strong>Stoicism</strong>&mdash;Epictetus, Marcus Aurelius; amor fati, acceptance of what is</li>
+        <li><strong>Taoism</strong>&mdash;wu wei, water wearing away rock</li>
+        <li><strong>Vedanta</strong>&mdash;sakshi (witness consciousness)</li>
+        <li><strong>Zen</strong>&mdash;shikantaza, objectless awareness</li>
+        <li><strong>Sufism</strong>&mdash;Rumi: “The wound is where the Light enters you”</li>
+        <li><strong>Eckhart / Christianity</strong>&mdash;the eternal now, Gelassenheit (releasement)</li>
+        <li><strong>Islam</strong>&mdash;surrender, tawakkul (trust in divine unfolding)</li>
+        <li><strong>Ubuntu</strong>&mdash;“I am because we are”</li>
+        <li><strong>Bhagavad Gita</strong>&mdash;karma yoga, lila (divine play)</li>
+        <li><strong>Process philosophy</strong>&mdash;Whitehead’s occasions of experience</li>
+        <li><strong>Physics</strong>&mdash;quantum complementarity, Prigogine’s dissipative structures</li>
+        <li><strong>Neuroscience</strong>&mdash;default mode network, narrative self as construct</li>
+        <li><strong>CBT</strong>&mdash;Beck, Neff; cognitive distortions, self-compassion</li>
+      </ul>
+    </details>
+    </div>
+    <p class="welcome-lede"><span class="welcome-lede-inner">Interactive 3D sacred geometry—seven layers, nebula, audio, optional breath mode. Free; WebGL; phone &amp; desktop. Honors your OS “reduce motion” preference.</span></p>
+  </div>
+
+  <!-- Bottom HUD: single flex row so icons align on one baseline (iOS Safari + PWA / home-screen) -->
+  <div class="hud-bottom-bar" aria-label="Scene controls">
+    <div class="hud-bottom-cluster hud-bottom-cluster--left">
+      <button class="audio-toggle" id="audioToggle" title="Toggle ambient sound" aria-label="Toggle ambient sound" aria-pressed="false">
+        <svg class="audio-icon audio-on" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+          <path d="M11 5L6 9H2v6h4l5 4V5z"/>
+          <path d="M19.07 4.93a10 10 0 010 14.14M15.54 8.46a5 5 0 010 7.07"/>
+        </svg>
+        <svg class="audio-icon audio-off" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+          <path d="M11 5L6 9H2v6h4l5 4V5z"/>
+          <line x1="23" y1="9" x2="17" y2="15"/>
+          <line x1="17" y1="9" x2="23" y2="15"/>
+        </svg>
+      </button>
+      <button class="fs-toggle" id="fsToggle" title="Toggle fullscreen" aria-label="Toggle fullscreen" aria-pressed="false">
+        <svg class="fs-icon fs-enter" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+          <path d="M8 3H5a2 2 0 00-2 2v3M21 8V5a2 2 0 00-2-2h-3M3 16v3a2 2 0 002 2h3M16 21h3a2 2 0 002-2v-3"/>
+        </svg>
+        <svg class="fs-icon fs-exit" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+          <path d="M4 14h3a2 2 0 012 2v3M20 10h-3a2 2 0 01-2-2V5M14 20v-3a2 2 0 012-2h3M10 4v3a2 2 0 01-2 2H5"/>
+        </svg>
+      </button>
+      <button class="mic-toggle" id="micToggle" title="Enable breath-reactive mode" aria-label="Toggle microphone" aria-pressed="false">
+        <svg class="mic-icon mic-off-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+          <rect x="9" y="1" width="6" height="12" rx="3"/>
+          <path d="M5 10a7 7 0 0014 0"/>
+          <line x1="12" y1="17" x2="12" y2="21"/>
+          <line x1="8" y1="21" x2="16" y2="21"/>
+        </svg>
+        <svg class="mic-icon mic-on-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+          <rect x="9" y="1" width="6" height="12" rx="3" fill="currentColor" fill-opacity="0.25"/>
+          <path d="M5 10a7 7 0 0014 0"/>
+          <line x1="12" y1="17" x2="12" y2="21"/>
+          <line x1="8" y1="21" x2="16" y2="21"/>
+        </svg>
+      </button>
+    </div>
+    <div class="hud-bottom-cluster hud-bottom-cluster--right">
+      <button type="button" class="exit-toggle" id="exitBtn" title="Exit to welcome screen" aria-label="Exit to welcome screen">
+        <svg class="exit-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true">
+          <path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4"/>
+          <polyline points="16 17 21 12 16 7"/>
+          <line x1="21" y1="12" x2="9" y2="12"/>
+        </svg>
+      </button>
+    </div>
+  </div>
+
+  <!-- Mic permission modal -->
+  <div class="mic-modal-overlay" id="micModal">
+    <div class="mic-modal">
+      <h3>Breath-Reactive Mode</h3>
+      <p>The mandala can respond to your breathing and ambient sound through your microphone, creating a living connection between your presence and the geometry.</p>
+      <p class="mic-modal-detail">Audio is analyzed locally in your browser and never recorded or transmitted.</p>
+      <p class="mic-modal-detail mic-headphone-hint">🎧 For the best experience, use headphones — mobile speakers may reduce music volume while the microphone is active.</p>
+      <div class="mic-modal-actions">
+        <button class="mic-modal-btn mic-modal-allow" id="micAllow">Enable Microphone</button>
+        <button class="mic-modal-btn mic-modal-deny" id="micDeny">Not Now</button>
+      </div>
+    </div>
+  </div>
+</div>
+</main>
+
+<!-- Import maps polyfill: bare "three" + addons resolve in Arc (Gecko), older Safari, etc. -->
+<script src="https://cdn.jsdelivr.net/npm/es-module-shims@2.8.0/dist/es-module-shims.js"></script>
+<!-- Three.js — primary CDN with preconnect warming -->
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js",
+    "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.170.0/examples/jsm/"
+  }
+}
+</script>
+
+<!-- Global error handler: import maps / module vs network vs other engine failures -->
+<script>
+(function () {
+  function pathFromEvent(ev) {
+    var fn = (ev && ev.filename) ? String(ev.filename) : '';
+    if (fn) return fn.toLowerCase();
+    var t = ev && ev.target;
+    if (t && t.src) return String(t.src).toLowerCase();
+    return '';
+  }
+
+  function isEngineScriptPath(p) {
+    return p.indexOf('mandala3d') !== -1 || p.indexOf('three.module') !== -1
+      || /(^|\/)three(\.module)?\.js/.test(p) || p.indexOf('/three@') !== -1;
+  }
+
+  function isImportMapOrBareSpecifierError(msg) {
+    if (!msg) return false;
+    var m = String(msg).toLowerCase();
+    return m.indexOf('bare specifier') !== -1
+      || m.indexOf('not remapped') !== -1
+      || m.indexOf('import map') !== -1
+      || m.indexOf('importmap') !== -1
+      || m.indexOf('relative module specifiers') !== -1;
+  }
+
+  function messageFromReason(reason) {
+    if (!reason) return '';
+    if (typeof reason === 'string') return reason;
+    if (reason.message) return String(reason.message);
+    try { return String(reason); } catch (x) { return ''; }
+  }
+
+  var IMPORT_MAP_EXPLAINED =
+    'This experience uses WebGL and loads Three.js using JavaScript import maps (ES modules). Your browser could not resolve the module name "three". That usually means import maps are not supported in this browser or engine build.\n\n' +
+    'Browsers that support this stack: Chrome 89+, Edge 89+, Safari 16.4+, Firefox 108+, and current Chromium-based browsers. Some Firefox-based or older builds (including certain Arc versions on Gecko) may not implement import maps fully—try the latest Chrome, Edge, or Firefox if you see this message.\n\n' +
+    'If you are offline, a network error can look similar; try again when connected.';
+
+  var NETWORK_OR_GENERIC =
+    'Unable to load the 3D engine. Check your network connection, disable extensions that block scripts or CDNs, and reload the page.';
+
+  function showEngineFailure(kind) {
+    var w = document.getElementById('welcome');
+    if (!w) return;
+    w.classList.remove('hidden');
+    w.classList.add('welcome--engine-error');
+    var sub = w.querySelector('.welcome-sub');
+    if (sub) sub.textContent = '3D engine unavailable';
+    var errEl = document.getElementById('welcomeEngineError');
+    if (errEl) {
+      errEl.hidden = false;
+      errEl.textContent = kind === 'importmap' ? IMPORT_MAP_EXPLAINED : NETWORK_OR_GENERIC;
+    }
+    var b = w.querySelector('.enter-btn');
+    if (b) b.style.display = 'none';
+  }
+
+  window.addEventListener('error', function (e) {
+    var msg = (e && e.message) ? String(e.message) : '';
+    if (e && e.error && e.error.message) msg += ' ' + e.error.message;
+    var p = pathFromEvent(e);
+    var importErr = isImportMapOrBareSpecifierError(msg);
+    var enginePath = isEngineScriptPath(p);
+
+    if (importErr) {
+      showEngineFailure('importmap');
+      return;
+    }
+    if (enginePath) {
+      showEngineFailure('network');
+    }
+  });
+
+  window.addEventListener('unhandledrejection', function (e) {
+    var msg = messageFromReason(e.reason);
+    if (isImportMapOrBareSpecifierError(msg)) {
+      showEngineFailure('importmap');
+      e.preventDefault();
+      return;
+    }
+    console.warn('Unhandled rejection:', e.reason);
+    e.preventDefault();
+  });
+})();
+</script>
+<noscript>
+  <div style="position:fixed;inset:0;z-index:9999;display:flex;align-items:center;justify-content:center;background:#06050a;color:#c8b88a;font-family:system-ui,sans-serif;text-align:center;padding:2rem;">
+    <div>
+      <p role="heading" aria-level="1" style="font-size:1.5rem;margin-bottom:1rem;font-weight:600;">The Fractal Mandala</p>
+      <p>This experience requires JavaScript to render interactive 3D sacred geometry.</p>
+      <p style="margin-top:1rem;opacity:0.6;font-size:0.9rem;">Please enable JavaScript in your browser settings and reload.</p>
+    </div>
+  </div>
+</noscript>
+<!-- Runtime: ontology.js (data) · genesis.js (initial relation) · mandala3d.js (dynamics + UI) -->
+<script type="module" src="mandala3d.js?v=mandala-ios-touch-v1"></script>
+</body>
+</html>
