@@ -247,6 +247,17 @@ canvas {
   text-align: center !important;
 }
 
+.welcome-convergence-teaser {
+  font-family: var(--font-body);
+  font-size: clamp(0.78rem, 2.1vw, 0.9rem);
+  color: var(--text-secondary);
+  opacity: 0.88;
+  text-align: center;
+  max-width: min(28rem, 92vw);
+  margin: 0.35rem auto 0.5rem;
+  line-height: 1.45;
+}
+
 .welcome-instruction {
   font-size: clamp(0.85rem, 1.5vmin, 1rem);
   color: var(--text-muted);
@@ -638,6 +649,15 @@ canvas {
   100% { opacity: 1;    transform: translateY(0);            filter: brightness(1); }
 }
 
+@media (prefers-reduced-motion: reduce) {
+  .teaching-inner .stagger-in {
+    opacity: 1;
+    transform: none;
+    animation: none;
+    filter: none !important;
+  }
+}
+
 /* Communal presence — lineage of minds who sat here */
 .communal-presence {
   display: block;
@@ -889,6 +909,25 @@ canvas {
 }
 
 /* ═══ NAV SLIDER ═══ */
+/* Persistent layer id — complements the brief center title; always readable at the track */
+.layer-context {
+  margin: 0;
+  padding: 0 0 2px;
+  max-width: min(7.5rem, 28vw);
+  font-family: var(--font-display);
+  font-size: clamp(0.58rem, 1.35vmin, 0.72rem);
+  letter-spacing: 0.06em;
+  line-height: 1.25;
+  text-align: center;
+  text-transform: none;
+  color: var(--gold-dim);
+  opacity: 0.92;
+  text-shadow: 0 1px 8px rgba(0, 0, 0, 0.75);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
 .nav-controls {
   position: absolute;
   right: clamp(16px, 2.5vw, 36px);

@@ -92,6 +92,7 @@ const sliderFill     = $('sliderFill');
 const sliderThumb    = $('sliderThumb');
 const sliderStops    = $('sliderStops');
 const sliderTooltip  = $('sliderTooltip');
+const layerContext   = $('layerContext');
 let visitedLayers = new Set();
 const audioToggle    = $('audioToggle');
 const micToggle      = $('micToggle');
@@ -1094,19 +1095,35 @@ function updateSliderPosition(index) {
   // Mark visited
   visitedLayers.add(index);
   // Update stop dots + trigger pulse animation on newly active dot
-  if (!sliderStops) return;
-  sliderStops.querySelectorAll('.slider-stop').forEach((stop, i) => {
-    const wasActive = stop.classList.contains('active');
-    stop.classList.toggle('active', i === index);
-    stop.classList.toggle('visited', visitedLayers.has(i) && i !== index);
-    // Trigger grow/glow pulse on newly activated dot
-    if (i === index && !wasActive) {
-      stop.classList.remove('pulse');
-      // Force reflow to restart animation
-      void stop.offsetWidth;
-      stop.classList.add('pulse');
-    }
-  });
+  if (sliderStops) {
+    sliderStops.querySelectorAll('.slider-stop').forEach((stop, i) => {
+      const wasActive = stop.classList.contains('active');
+      stop.classList.toggle('active', i === index);
+      stop.classList.toggle('visited', visitedLayers.has(i) && i !== index);
+      // Trigger grow/glow pulse on newly activated dot
+      if (i === index && !wasActive) {
+        stop.classList.remove('pulse');
+        // Force reflow to restart animation
+        void stop.offsetWidth;
+        stop.classList.add('pulse');
+      }
+    });
+  }
+  updateLayerContext(index);
+}
+
+/** Persistent label beside the slider — complements the brief center title flash. */
+function updateLayerContext(index) {
+  if (!layerContext) return;
+  if (!entered) {
+    layerContext.hidden = true;
+    layerContext.textContent = '';
+    return;
+  }
+  const layer = LAYERS[index];
+  if (!layer) return;
+  layerContext.hidden = false;
+  layerContext.textContent = `${LAYER_COUNT - index}. ${layer.name}`;
 }
 
 function showSliderTooltip(index, refEl) {
@@ -1191,7 +1208,7 @@ function showLayerTitle(index) {
         let cumulative = 0;
         for (let i = 0; i < children.length; i++) {
           // Each gap grows: 600, 720, 840... thoughts arrive slower as you go deeper
-          const gap = 600 + i * 120;
+          const gap = prefersReducedMotion ? 0 : (600 + i * 120);
           cumulative += i === 0 ? 0 : gap;
           children[i].classList.add('stagger-in');
           children[i].style.animationDelay = `${cumulative}ms`;
@@ -2027,7 +2044,7 @@ document.addEventListener('webkitfullscreenchange', updateFsIcon);
 // ─── LAYER-ADAPTIVE PANEL OPACITY ───
 // Panel darkens progressively toward the bright inner layers
 // so text stays readable against luminous core geometry.
-const PANEL_BASE_ALPHA = 0.38;
+const PANEL_BASE_ALPHA = 0.40;
 const PANEL_DEPTH_BOOST = 0.22; // extra alpha added at innermost layer
 
 function updatePanelOpacity(layerIndex) {
@@ -2074,8 +2091,8 @@ function resetToSplash() {
   targetOrbitAngle = 0;
   userZoom = 1;
   targetZoom = 1;
-  updateSliderPosition(0);
   entered = false;
+  updateSliderPosition(0);
   if (welcome) welcome.classList.remove('hidden');
   if (exitBtn) exitBtn.classList.remove('visible');
   if (canvas) {

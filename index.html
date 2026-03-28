@@ -153,7 +153,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,300;1,400&family=Jost:wght@300;400;500&family=Lora:ital,wght@0,400;0,500;1,400;1,500&display=swap" rel="stylesheet">
 <!-- Preload audio hint — browser can start fetching before user enters -->
 <link rel="preload" href="ambient-meditation.mp3" as="audio" crossorigin type="audio/mpeg">
-<link rel="stylesheet" href="style.css?v=mobile-ready-v1">
+<link rel="stylesheet" href="style.css?v=review-ux-v1">
 </head>
 <body>
 
@@ -184,6 +184,7 @@
 
   <!-- Navigation slider -->
   <div class="nav-controls" id="navControls">
+    <p class="layer-context" id="layerContext" role="status" aria-live="polite" aria-atomic="true" hidden></p>
     <span class="nav-endpoint">inward</span>
     <div class="slider-track" id="sliderTrack">
       <div class="slider-fill" id="sliderFill"></div>
@@ -205,8 +206,9 @@
     <h1 class="welcome-title">The Fractal Mandala</h1>
     <p class="welcome-sub">of Presence &amp; Liberation</p>
     <p class="welcome-engine-error" id="welcomeEngineError" hidden aria-live="polite"></p>
-    <p class="welcome-instruction">scroll or use arrow keys to move through the layers</p>
+    <p class="welcome-instruction">Scroll, arrow keys, or the gold track at right. On a phone: swipe up or down on the scene.</p>
     <button class="enter-btn" id="enterBtn">enter the mandala</button>
+    <p class="welcome-convergence-teaser">Lineages from Buddhism to physics — open to explore.</p>
     <details class="welcome-convergence-details">
       <summary class="welcome-convergence-summary">A convergence of multiple ideas over the centuries ...</summary>
       <ul class="welcome-convergence" aria-label="Sources of convergence">
@@ -227,7 +229,7 @@
       </ul>
     </details>
     </div>
-    <p class="welcome-lede"><span class="welcome-lede-inner">Interactive 3D sacred geometry—seven layers, nebula, audio, optional breath mode. Free; WebGL; phone &amp; desktop.</span></p>
+    <p class="welcome-lede"><span class="welcome-lede-inner">Interactive 3D sacred geometry—seven layers, nebula, audio, optional breath mode. Free; WebGL; phone &amp; desktop. Honors your OS “reduce motion” preference.</span></p>
   </div>
 
   <!-- Bottom HUD: single flex row so icons align on one baseline (iOS Safari + PWA / home-screen) -->
@@ -401,6 +403,6 @@
   </div>
 </noscript>
 <!-- Runtime: ontology.js (data) · genesis.js (initial relation) · mandala3d.js (dynamics + UI) -->
-<script type="module" src="mandala3d.js?v=mobile-ready-v1"></script>
+<script type="module" src="mandala3d.js?v=review-ux-v1"></script>
 </body>
 </html>
