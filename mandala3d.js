@@ -2125,9 +2125,20 @@ function handleResize() {
 }
 
 window.addEventListener('resize', handleResize);
-// iOS Safari fires this on address-bar show/hide
+
+// visualViewport: coalesce resize + scroll — iOS Safari / Chrome sometimes update
+// layout on scroll when the URL bar shows or hides without a window "resize".
+let _vvResizeRaf = null;
+function scheduleViewportResize() {
+  if (_vvResizeRaf != null) return;
+  _vvResizeRaf = requestAnimationFrame(() => {
+    _vvResizeRaf = null;
+    handleResize();
+  });
+}
 if (window.visualViewport) {
-  window.visualViewport.addEventListener('resize', handleResize);
+  window.visualViewport.addEventListener('resize', scheduleViewportResize);
+  window.visualViewport.addEventListener('scroll', scheduleViewportResize);
 }
 // Also re-check on orientation change (Android + iOS fallback)
 window.addEventListener('orientationchange', () => {
