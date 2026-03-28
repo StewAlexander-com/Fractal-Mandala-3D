@@ -1520,6 +1520,13 @@ const AUDIO_VOLUME = 0.33;
 const OCEAN_TO_MUSIC_GAIN = 0.2;
 const oceanTargetGain = () => AUDIO_VOLUME * OCEAN_TO_MUSIC_GAIN;
 
+// Slow volume swell — ~3 min crest-to-crest, wide Gaussian-like bump (both beds track together)
+const AMBIENT_LFO_PERIOD_MS = 180000;
+const AMBIENT_LFO_MIN = 0.24;   // trough: weird & quiet
+const AMBIENT_LFO_MAX = 1.0;    // crest: current nominal mix strength
+// Large σ → gentle shoulders, long smooth climb/descent (narrow σ reads as a sharp spike)
+const AMBIENT_LFO_SIGMA = 0.44;
+
 let audioCtx = null;          // AudioContext — created on first user gesture
 let gainNode = null;          // GainNode for meditation volume
 let audioSource = null;       // MediaElementAudioSourceNode (meditation)
@@ -1530,14 +1537,36 @@ let waveAudioElement = null;  // underlying <audio> for ocean loop
 let audioMuted = false;
 let audioReady = false;       // true once pipeline is connected & playing
 let fadeRAF = null;           // requestAnimationFrame id for fade-in
+let ambientIntroFade = 0;     // 0..1 initial fade-in; then stays 1
 
-function setAmbientGainsFromFadeT(t) {
-  const clamped = Math.max(0, Math.min(1, t));
-  if (gainNode) gainNode.gain.value = AUDIO_VOLUME * clamped;
-  else if (audioElement) audioElement.volume = AUDIO_VOLUME * clamped;
-  const og = oceanTargetGain() * clamped;
+/** Crest-to-crest period AMBIENT_LFO_PERIOD_MS; wide normal-like bump, normalized to [MIN, MAX]. */
+function getAmbientLfoGainMultiplier(nowMs = performance.now()) {
+  const T = AMBIENT_LFO_PERIOD_MS;
+  const phase = (((nowMs % T) + T) % T) / T;
+  const sig = AMBIENT_LFO_SIGMA;
+  const edgeBell = Math.exp(-0.5 * Math.pow(0.5 / sig, 2));
+  const x = (phase - 0.5) / sig;
+  const bell = Math.exp(-0.5 * x * x);
+  const denom = 1 - edgeBell;
+  const n = denom > 1e-6 ? (bell - edgeBell) / denom : 0;
+  const clampedN = Math.max(0, Math.min(1, n));
+  return AMBIENT_LFO_MIN + (AMBIENT_LFO_MAX - AMBIENT_LFO_MIN) * clampedN;
+}
+
+function refreshAmbientGains() {
+  if (!audioReady || audioMuted) return;
+  const lfo = getAmbientLfoGainMultiplier();
+  const f = ambientIntroFade * lfo;
+  if (gainNode) gainNode.gain.value = AUDIO_VOLUME * f;
+  else if (audioElement) audioElement.volume = AUDIO_VOLUME * f;
+  const og = oceanTargetGain() * f;
   if (waveGainNode) waveGainNode.gain.value = og;
   else if (waveAudioElement) waveAudioElement.volume = og;
+}
+
+function setAmbientIntroFade(t) {
+  ambientIntroFade = Math.max(0, Math.min(1, t));
+  refreshAmbientGains();
 }
 
 function silenceAmbientOutputs() {
@@ -1609,7 +1638,7 @@ function initAudio() {
           return;
         }
         const t = Math.min((now - fadeStart) / FADE_MS, 1);
-        setAmbientGainsFromFadeT(t);
+        setAmbientIntroFade(t);
         if (t < 1) fadeRAF = requestAnimationFrame(fadeStep);
       }
       fadeRAF = requestAnimationFrame(fadeStep);
@@ -1662,12 +1691,12 @@ function handleAudioToggle(e) {
       audioElement.volume = gainNode ? 1 : AUDIO_VOLUME;
       audioElement.play().catch(() => {});
     }
-    if (gainNode) gainNode.gain.value = AUDIO_VOLUME;
     if (waveAudioElement) {
       waveAudioElement.volume = waveGainNode ? 1 : oceanTargetGain();
       waveAudioElement.play().catch(() => {});
     }
-    if (waveGainNode) waveGainNode.gain.value = oceanTargetGain();
+    ambientIntroFade = 1;
+    refreshAmbientGains();
   }
 }
 // Listen on both click (desktop) and touchend (iOS standalone fallback)
@@ -2238,6 +2267,13 @@ function animate() {
 
   // ── Audio-reactive breath signal ──
   updateAudioBreath();
+
+  // Slow Gaussian-like volume swell (meditation + ocean) — after intro fade, LFO runs every frame
+  if (audioReady && !audioMuted && ambientIntroFade >= 1) {
+    try {
+      refreshAmbientGains();
+    } catch (_) {}
+  }
   // audioBreath is 0..1, heavily smoothed, wide distribution
   // b = breath intensity for use throughout the loop
   // Final NaN guard: if anything upstream corrupted the value, clamp to 0
