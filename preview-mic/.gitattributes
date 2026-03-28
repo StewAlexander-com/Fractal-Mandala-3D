@@ -1,0 +1,2 @@
+# Merging feature branches into main: keep CI-maintained staging tree (see deploy-preview-mic.yml)
+preview-mic/** merge=ours
