@@ -16,6 +16,8 @@ Production remains **[…/Fractal-Mandala-3D/](https://stewalexander-com.github.
 
 Requires **GitHub Actions** workflow permissions: *Settings → Actions → General → Workflow permissions → Read and write*. If `main` is branch-protected, allow GitHub Actions to push or use a merge queue / manual sync.
 
+Avoid merging `main` into `feature/mic-breath-sensitivity` if that would pull the generated `preview-mic/` tree into your branch; edit the app at repo root on the feature branch only — CI copies that to `preview-mic/` on `main`.
+
 A 3D interactive sacred geometry mandala of presence and liberation. Seven concentric layers of metacognitive awareness rendered as quantum orbital shells — fly through them in your browser. Built with Three.js, set in an astronomically-inspired nebula star field with ambient meditation audio.
 
 The teachings distill converging ideas from Buddhism, Hinduism, Stoicism, Sufism, Taoism, and Christian mysticism, interwoven with modern physics, neuroscience, cognitive-behavioral research, process philosophy, and the mathematics of fractals and calculus — drawn from cultures across Asia, Africa, Europe, and the Americas. Where traditions separated by thousands of miles and thousands of years arrive at the same insight, that convergence is the signal.
