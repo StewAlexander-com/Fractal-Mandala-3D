@@ -131,13 +131,21 @@ function scrollTeachingByHint(direction) {
   teachingPanel.scrollBy({ top: direction * step, behavior });
 }
 
+// iOS home-screen / standalone often omits or delays synthetic click; mirror other HUD controls.
+let lastScrollHintTap = 0;
 function bindScrollHintButton(btn, direction) {
   if (!btn) return;
-  btn.addEventListener('click', (e) => {
+  const onActivate = (e) => {
     e.stopPropagation();
+    if (e.type === 'touchend') e.preventDefault();
+    const now = Date.now();
+    if (now - lastScrollHintTap < 320) return;
+    lastScrollHintTap = now;
     if (btn.disabled) return;
     scrollTeachingByHint(direction);
-  });
+  };
+  btn.addEventListener('click', onActivate);
+  btn.addEventListener('touchend', onActivate);
   btn.addEventListener('touchstart', (e) => { e.stopPropagation(); }, { passive: true });
   btn.addEventListener('touchmove', (e) => { e.stopPropagation(); }, { passive: true });
 }

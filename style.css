@@ -296,6 +296,8 @@ canvas {
   color: #dbe7f0;
   text-align: center;
   cursor: pointer;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: rgba(240, 200, 100, 0.12);
   user-select: none;
   /* Make it a comfortable tap target on phones */
   padding: 0.6rem 0.8rem;
@@ -581,7 +583,9 @@ canvas {
   transform: translateX(-50%);
   width: min(640px, 92vw);
   z-index: 20;
-  pointer-events: none;
+  /* Must not use pointer-events: none — iOS home-screen / standalone WebKit often fails to
+     deliver taps to children (scroll-hint buttons) even when they set pointer-events: auto. */
+  pointer-events: auto;
 }
 
 .teaching-panel {
@@ -665,6 +669,10 @@ canvas {
   pointer-events: none;
   transition: opacity 0.4s var(--ease-out);
   z-index: 25;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+  user-select: none;
+  -webkit-user-select: none;
   filter: drop-shadow(0 0 4px rgba(240, 200, 100, 0.7))
          drop-shadow(0 0 8px rgba(200, 160, 60, 0.35));
 }
