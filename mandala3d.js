@@ -1516,13 +1516,36 @@ document.addEventListener('keydown', (e) => {
 
 // ─── AMBIENT AUDIO (Web Audio API — works in all environments inc. iOS standalone) ───
 const AUDIO_VOLUME = 0.33;
+// Ocean bed (CC0 — see AUDIO-CREDITS.txt): same bus shape as meditation, 33% of its linear gain
+const OCEAN_TO_MUSIC_GAIN = 0.33;
+const oceanTargetGain = () => AUDIO_VOLUME * OCEAN_TO_MUSIC_GAIN;
+
 let audioCtx = null;          // AudioContext — created on first user gesture
-let gainNode = null;          // GainNode for volume control
-let audioSource = null;       // MediaElementAudioSourceNode
-let audioElement = null;      // underlying <audio> for media loading
+let gainNode = null;          // GainNode for meditation volume
+let audioSource = null;       // MediaElementAudioSourceNode (meditation)
+let audioElement = null;      // underlying <audio> for meditation
+let waveGainNode = null;      // GainNode for ocean loop (Web Audio path)
+let waveAudioSource = null;   // MediaElementAudioSourceNode (ocean)
+let waveAudioElement = null;  // underlying <audio> for ocean loop
 let audioMuted = false;
 let audioReady = false;       // true once pipeline is connected & playing
 let fadeRAF = null;           // requestAnimationFrame id for fade-in
+
+function setAmbientGainsFromFadeT(t) {
+  const clamped = Math.max(0, Math.min(1, t));
+  if (gainNode) gainNode.gain.value = AUDIO_VOLUME * clamped;
+  else if (audioElement) audioElement.volume = AUDIO_VOLUME * clamped;
+  const og = oceanTargetGain() * clamped;
+  if (waveGainNode) waveGainNode.gain.value = og;
+  else if (waveAudioElement) waveAudioElement.volume = og;
+}
+
+function silenceAmbientOutputs() {
+  if (gainNode) gainNode.gain.value = 0;
+  if (audioElement) audioElement.volume = gainNode ? 1 : 0;
+  if (waveGainNode) waveGainNode.gain.value = 0;
+  if (waveAudioElement) waveAudioElement.volume = waveGainNode ? 1 : 0;
+}
 
 function initAudio() {
   if (audioReady) return;
@@ -1532,29 +1555,41 @@ function initAudio() {
     if (!AC) return;   // browser has no Web Audio support
     audioCtx = new AC();
 
-    // 2. Create gain node for volume control
+    // 2. Meditation: gain → destination
     gainNode = audioCtx.createGain();
     gainNode.gain.value = 0;   // start silent for fade-in
     gainNode.connect(audioCtx.destination);
 
-    // 3. Create <audio> element and route through Web Audio
     audioElement = new Audio('ambient-meditation.mp3');
     audioElement.loop = true;
     audioElement.playsInline = true;
-    // Keep HTML element volume at 1 — gain node controls actual volume
     audioElement.volume = 1;
 
-    // Route through Web Audio API for reliable iOS gain control.
-    // createMediaElementSource needs same-origin or CORS headers;
-    // our audio is same-origin so this works without crossOrigin attr.
-    // Wrap in try/catch: if CORS somehow fails, fall back to direct HTML audio.
     try {
       audioSource = audioCtx.createMediaElementSource(audioElement);
       audioSource.connect(gainNode);
     } catch (corsErr) {
-      // Fallback: connect nothing through Web Audio, control via HTML volume
       console.warn('MediaElementSource failed, using HTML audio fallback:', corsErr);
-      gainNode = null;  // signal to use audioElement.volume instead
+      gainNode = null;
+    }
+
+    // 3. Ocean loop (separate element + gain, same context)
+    waveGainNode = audioCtx.createGain();
+    waveGainNode.gain.value = 0;
+    waveGainNode.connect(audioCtx.destination);
+
+    waveAudioElement = new Audio('ambient-ocean-wave.mp3');
+    waveAudioElement.loop = true;
+    waveAudioElement.playsInline = true;
+    waveAudioElement.volume = 1;
+
+    try {
+      waveAudioSource = audioCtx.createMediaElementSource(waveAudioElement);
+      waveAudioSource.connect(waveGainNode);
+    } catch (waveErr) {
+      console.warn('Ocean wave MediaElementSource failed:', waveErr);
+      try { waveGainNode.disconnect(); } catch (e) {}
+      waveGainNode = null;
     }
 
     // 4. Resume context if suspended (iOS starts contexts suspended)
@@ -1562,22 +1597,19 @@ function initAudio() {
       audioCtx.resume().catch(() => {});
     }
 
-    // 5. Start playback
+    // 5. Start playback (meditation drives readiness; ocean best-effort)
     audioElement.play().then(() => {
+      waveAudioElement.play().catch(() => {});
       audioReady = true;
-      // Smooth fade-in over ~3s
       const fadeStart = performance.now();
       const FADE_MS = 3000;
       function fadeStep(now) {
         if (audioMuted) {
-          // Muted during fade — zero out and stop
-          if (gainNode) gainNode.gain.value = 0;
-          else audioElement.volume = 0;
+          silenceAmbientOutputs();
           return;
         }
         const t = Math.min((now - fadeStart) / FADE_MS, 1);
-        if (gainNode) gainNode.gain.value = AUDIO_VOLUME * t;
-        else audioElement.volume = AUDIO_VOLUME * t;
+        setAmbientGainsFromFadeT(t);
         if (t < 1) fadeRAF = requestAnimationFrame(fadeStep);
       }
       fadeRAF = requestAnimationFrame(fadeStep);
@@ -1615,29 +1647,27 @@ function handleAudioToggle(e) {
   }
 
   if (audioMuted) {
-    // Cancel any in-progress fade
     if (fadeRAF) { cancelAnimationFrame(fadeRAF); fadeRAF = null; }
-    // Silence via gain node or HTML volume
-    if (gainNode) gainNode.gain.value = 0;
-    if (audioElement) audioElement.volume = gainNode ? 1 : 0;
-    // Suspend the AudioContext — iOS standalone respects this
+    silenceAmbientOutputs();
     if (audioCtx && audioCtx.state === 'running') {
       audioCtx.suspend().catch(() => {});
     }
-    // Also pause the media element as belt-and-suspenders
     if (audioElement) audioElement.pause();
+    if (waveAudioElement) waveAudioElement.pause();
   } else {
-    // Resume AudioContext first (must happen in user gesture on iOS)
     if (audioCtx && audioCtx.state === 'suspended') {
       audioCtx.resume().catch(() => {});
     }
-    // Resume media element
     if (audioElement) {
       audioElement.volume = gainNode ? 1 : AUDIO_VOLUME;
       audioElement.play().catch(() => {});
     }
-    // Restore gain
     if (gainNode) gainNode.gain.value = AUDIO_VOLUME;
+    if (waveAudioElement) {
+      waveAudioElement.volume = waveGainNode ? 1 : oceanTargetGain();
+      waveAudioElement.play().catch(() => {});
+    }
+    if (waveGainNode) waveGainNode.gain.value = oceanTargetGain();
   }
 }
 // Listen on both click (desktop) and touchend (iOS standalone fallback)
