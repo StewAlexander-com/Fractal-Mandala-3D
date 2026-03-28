@@ -301,26 +301,37 @@ canvas {
   padding: 0.6rem 0.8rem;
   list-style: none;
   outline: none;
+  /* Text block + chevron on its own row — reads cleanly on narrow viewports */
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.35rem;
 }
 
 .welcome-convergence-summary__text {
-  display: inline-block;
-  max-width: min(28rem, 92vw);
-  line-height: 1.5;
+  display: block;
+  width: 100%;
+  max-width: min(26rem, calc(100vw - 2.75rem));
+  margin: 0 auto;
+  line-height: 1.58;
   color: #dbe7f0;
+  text-wrap: balance;
 }
 
 /* Hide default marker */
 .welcome-convergence-details > summary::-webkit-details-marker { display: none; }
 .welcome-convergence-details > summary::marker { content: ""; }
 
-/* Subtle affordance */
+/* Subtle affordance — below the copy on all breakpoints */
 .welcome-convergence-summary::after {
-  content: " ▾";
-  opacity: 0.75;
+  content: "▾";
+  font-size: 0.72em;
+  opacity: 0.8;
+  line-height: 1;
+  letter-spacing: 0;
 }
 .welcome-convergence-details[open] .welcome-convergence-summary::after {
-  content: " ▴";
+  content: "▴";
 }
 
 .welcome-convergence-summary:hover {
@@ -385,6 +396,15 @@ canvas {
     margin-top: 1.5rem;
     padding: 0 1.2rem;
     text-align: center;
+  }
+  .welcome-convergence-summary {
+    letter-spacing: 0.045em;
+    padding: 0.65rem 1rem;
+  }
+  .welcome-convergence-summary__text {
+    font-size: clamp(0.78rem, 3.1vw, 0.92rem);
+    line-height: 1.62;
+    max-width: calc(100vw - 1.85rem);
   }
   .welcome-convergence-details {
     width: min(900px, calc(100vw - 1.6rem));
