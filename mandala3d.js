@@ -12,8 +12,27 @@
      variation inside is the freedom. Same gesture as “order amid change, change amid
      order” (Whitehead): rigor and play are one structure at different resolutions.
    • Fault — fall back to canonical conditions; meaning persists; atmosphere may reset.
+   • Modules — ontology.js (invariant data), genesis.js (bounded initial relation),
+     mandala3d.js (dynamics, perception, UI). Same split as worldview layers above.
 
    ═══════════════════════════════════════════════════════════ */
+
+import * as THREE from 'three';
+import {
+  LAYERS,
+  LAYER_COUNT,
+  LAYER_SPACING,
+  LAYER_TILTS,
+  LINEAGE,
+  TAU,
+} from './ontology.js';
+import {
+  INITIAL_CONDITIONS,
+  applyInitialConditions,
+} from './genesis.js';
+
+// DYNAMICS + PRESENTATION — everything below orchestrates Three.js, input, and the loop.
+// Ontology and genesis are imported; they are not duplicated here.
 
 // ─── RESILIENCE LAYER — fault-tolerant foundation ───
 // dt clamp: accept finitude; preserve continuity (no runaway state on resume)
@@ -28,364 +47,7 @@ const reducedMotionQuery = window.matchMedia('(prefers-reduced-motion: reduce)')
 let prefersReducedMotion = reducedMotionQuery.matches;
 reducedMotionQuery.addEventListener('change', (e) => { prefersReducedMotion = e.matches; });
 
-import * as THREE from 'three';
 
-// ─── ONTOLOGY (invariant — do not treat as tunable “content”) ───
-// ─── LAYER TEACHINGS ───
-const LAYERS = [
-  {
-    name: 'Meta-Recognition',
-    subtitle: 'The Field Clarifying Itself',
-    content: `
-      <p><span class="key-phrase">The practice IS awareness practicing itself.</span></p>
-      <span class="explain">What Zen calls shikantaza and Vedanta calls sakshi—the observer and the observed collapse into one act.</span>
-      <p class="dim">Not you doing practice. Not practice happening to you. Practice practicing through this form.</p>
-      <p><span class="key-phrase">The teaching teaches itself</span></p>
-      <span class="explain">Like the Tao that names itself by flowing, understanding deepens not by grasping but by letting it move through you.</span>
-      <p class="dim">Through dialogue. Through questioning. Through refinement. Consciousness clarifying consciousness.</p>
-      <p><span class="key-phrase">Release is communal, not individual</span></p>
-      <span class="explain">Ubuntu—“I am because we are”—meets quantum entanglement: no particle is truly isolated, no person truly alone.</span>
-      <p class="dim">Your release affects field. My release affects field. We're not separate practitioners.</p>
-      <p>We are <span class="key-phrase">perspectives of unified awareness</span>, <span class="dim">clarifying together.</span></p>
-      <span class="explain">Indra’s net in Hindu cosmology, where every jewel reflects every other—a holographic universe of mutual seeing.</span>
-      <p class="quote">“Observe the wonders as they occur around you. Don’t claim them. Feel the artistry moving through, and be silent.”</p>
-      <p class="quote-author">— Rumi</p>
-      <p class="quote">“The quieter you become, the more you are able to hear.”</p>
-      <p class="quote-author">— Rumi</p>
-    `,
-    color: new THREE.Color(0x3a2e40),    // indigo-tinted outer
-    emissive: new THREE.Color(0x4a3b55),
-    particleColor: 0x6e5a8a,
-    geometry: 'dodecagram',
-    n: 12,
-    radius: 42
-  },
-  {
-    name: 'Structural Insights',
-    subtitle: 'The Architecture of Being',
-    content: `
-      <p><span class="key-phrase">Process, not substance</span></p>
-      <span class="explain">Heraclitus saw the river, the Buddha saw impermanence, modern physics sees fields—everything that persists does so as pattern, not thing.</span>
-      <p class="dim">Ship of Theseus: not the planks, the pattern. You are verb-ing, not noun.</p>
-      <p><span class="key-phrase">Multiple perspectives, unified substrate</span></p>
-      <span class="explain">The Sufi parable of the elephant, Kant’s noumena, and quantum complementarity all point the same way: reality is larger than any single view of it.</span>
-      <p class="dim">Blind mice and elephant. Prism refracting light. Gaussian distribution with unique samples. All angles real, all pointing to one reality.</p>
-      <p><span class="key-phrase">Qualia unique, stuff shared</span></p>
-      <span class="explain">Neuroscience confirms each brain wires itself uniquely, yet we share the same atoms—your red and my red may differ, but the light is one.</span>
-      <p class="dim">Your experience irreducibly yours. My experience irreducibly mine. Both made of same substrate. Individuation and connection both real.</p>
-      <p class="quote">“No man ever steps in the same river twice, for it’s not the same river and he’s not the same man.”</p>
-      <p class="quote-author">— Heraclitus</p>
-      <p class="quote">“To see a world in a grain of sand and a heaven in a wild flower, hold infinity in the palm of your hand and eternity in an hour.”</p>
-      <p class="quote-author">— William Blake, <em>Auguries of Innocence</em></p>
-    `,
-    color: new THREE.Color(0x4a3f42),    // lavender hint
-    emissive: new THREE.Color(0x5e4f5a),
-    particleColor: 0x7d6275,
-    geometry: 'hexagonal',
-    n: 6,
-    radius: 36
-  },
-  {
-    name: 'Key Distinctions',
-    subtitle: 'Seeing Through the Pairs',
-    content: `
-      <div class="distinction"><span class="symbol">≠</span><span><span class="key-phrase">Service ≠ Servitude</span><br><span class="dim">Service flows from gratitude ("get to"). Servitude flows from obligation ("have to").</span></span></div>
-      <span class="explain">Karma yoga in the Gita teaches action without attachment—the difference between offering and obligation is the entire spiritual path.</span>
-      <div class="distinction"><span class="symbol">≠</span><span><span class="key-phrase">Consciousness ≠ Continuity</span><br><span class="math">Awareness = dx/dt</span> <span class="dim">(this moment)</span><br><span class="math">Identity = ∫</span> <span class="dim">(accumulated story)</span></span></div>
-      <span class="explain">The calculus of selfhood: awareness is the instantaneous derivative, while the ego is the integral—useful, but never the whole function.</span>
-      <div class="distinction"><span class="symbol">⇌</span><span><span class="key-phrase">Imagination: double-edged</span><br><span class="dim">Creates art and beauty. Creates worry and ego. Same tool, different application.</span></span></div>
-      <span class="explain">The prefrontal cortex that lets you compose a symphony is the same one that rehearses catastrophe at 3 a.m.—the tool is neutral, the wielder matters.</span>
-      <div class="distinction"><span class="symbol">◇</span><span><span class="key-phrase">Ego = filter</span><br><span class="dim">Not enemy to destroy. Not self to cling to. Transparent pattern to see through.</span></span></div>
-      <span class="explain">Like a lens that focuses light but is not the light itself, ego organises experience without being the experiencer.</span>
-      <p class="quote">“It is not things that disturb us, but our judgments about things.”</p>
-      <p class="quote-author">— Epictetus, <em>Enchiridion</em></p>
-      <p class="quote">“Imagination is more important than knowledge. Knowledge is limited. Imagination encircles the world.”</p>
-      <p class="quote-author">— Albert Einstein</p>
-    `,
-    color: new THREE.Color(0x5e4f4a),    // rose-warm
-    emissive: new THREE.Color(0x7d6260),
-    particleColor: 0x9a7570,
-    geometry: 'octagram',
-    n: 8,
-    radius: 30
-  },
-  {
-    name: 'Three Acceptances',
-    subtitle: 'Accipio — I Accept',
-    content: `
-      <div class="distinction"><span class="symbol">◯</span><span><span class="latin">Accipio Toto</span><br><span class="dim">I accept the whole. Everything, including this.</span></span></div>
-      <span class="explain">Amor fati from the Stoics, surrender in Islam, Nietzsche’s eternal yes—every tradition finds a door marked “accept everything.”</span>
-      <div class="distinction"><span class="symbol">◎</span><span><span class="latin">Accipio Praesentia</span><br><span class="dim">I accept presence. Now, not past or future.</span></span></div>
-      <span class="explain">The eternal now of Eckhart, the mindfulness of sati, the physicist’s block universe—all agree the present is the only coordinate you actually occupy.</span>
-      <div class="distinction"><span class="symbol">◉</span><span><span class="latin">Accipio Ludo</span><br><span class="dim">I accept play. Engagement without grasping.</span></span></div>
-      <span class="explain">Hindu līlā, the divine play of creation, echoed in Huizinga’s homo ludens—life is most alive when it stops being a problem to solve and becomes a game to inhabit.</span>
-      <p style="margin-top:0.5rem">Three concentric acceptances:<br><span class="dim">The whole contains the now. The now contains the play. The play contains the whole.</span></p>
-      <span class="explain">Nested like Russian dolls or fractal geometry—each acceptance lives inside the others, the smallest holding the shape of the largest.</span>
-      <p class="quote">“My formula for greatness in a human being is amor fati: that one wants nothing to be different, not forward, not backward, not in all eternity.”</p>
-      <p class="quote-author">— Friedrich Nietzsche, <em>Ecce Homo</em></p>
-      <p class="quote">“Accept the things to which fate binds you, and love the people with whom fate brings you together.”</p>
-      <p class="quote-author">— Marcus Aurelius, <em>Meditations</em></p>
-    `,
-    color: new THREE.Color(0x7d6245),
-    emissive: new THREE.Color(0x9a7555),
-    particleColor: 0xb08560,
-    geometry: 'borromean',
-    n: 3,
-    radius: 24
-  },
-  {
-    name: 'The Practice',
-    subtitle: 'The Fractal Cycle',
-    content: `
-      <p>Five movements, self-renewing:</p>
-      <ul>
-        <li><span class="key-phrase">Meditate</span> — presence, opening</li>
-        <li><span class="key-phrase">Let revelation emerge</span> — don't force</li>
-        <li><span class="key-phrase">Ask questions</span> — deepen, explore</li>
-        <li><span class="key-phrase">Release second arrows</span> — see ego's additions, let go</li>
-        <li><span class="key-phrase">Return</span> — cycle continues, self-renewing</li>
-      </ul>
-      <span class="explain">The Sufi whirl, the Buddhist wheel of dharma, the scientific method—every path that actually works is a cycle, not a line.</span>
-      <p class="dim" style="margin-top:0.5rem">Each cycle breathes: <span class="latin">Inspiration</span> → <span class="latin">Relaxation</span> → <span class="latin">Awareness</span></p>
-      <span class="explain">Breath is the body’s oldest teacher: inhale gathers, exhale releases, the pause between knows.</span>
-      <p class="dim">Fractal: the pattern repeats at every scale. One breath. One hour. One life.</p>
-      <span class="explain">Scale invariance in nature—coastlines, bronchial trees, galaxy clusters—the same geometry repeating from the microscopic to the cosmic.</span>
-      <p class="quote">“Water is fluid, soft, and yielding. But water will wear away rock, which is rigid and cannot yield.”</p>
-      <p class="quote-author">— Lao Tzu, <em>Tao Te Ching</em></p>
-      <p class="quote">“I slept and dreamt that life was joy. I awoke and saw that life was service. I acted and behold, service was joy.”</p>
-      <p class="quote-author">— Rabindranath Tagore</p>
-    `,
-    color: new THREE.Color(0x9a7555),
-    emissive: new THREE.Color(0xb08560),
-    particleColor: 0xc4956a,
-    geometry: 'pentagram',
-    n: 5,
-    radius: 18
-  },
-  {
-    name: 'The Second Arrow',
-    subtitle: 'First Arrow / Second Arrow',
-    content: `
-      <div class="distinction"><span class="symbol">↣</span><span><span class="key-phrase">First arrow</span> = discomfort<br><span class="dim">Unavoidable. Natural. Informational.</span></span></div>
-      <span class="explain">Pain is the nervous system doing its job—a signal, not a sentence, as old as nociceptors and as honest as gravity.</span>
-      <div class="distinction"><span class="symbol">↣↣</span><span><span class="key-phrase">Second arrow</span> = suffering<br><span class="dim">Ego's addition. Optional. Constructed.</span></span></div>
-      <span class="explain">The Buddha’s Sallatha Sutta, Epictetus’ “it is not things that disturb us,” and cognitive-behavioral therapy all diagnose the same add-on.</span>
-      <p><span class="key-phrase">Liberation</span> = seeing and releasing second arrows, continuously.</p>
-      <span class="explain">Moksha, nirvana, flow state—every name for freedom describes the same unburdening: the story drops and what remains is enough.</span>
-      <p class="dim">Discomfort is reality (first arrow). Suffering is story (second arrow).</p>
-      <p>The practice is not removing arrows. It is <span class="key-phrase">seeing which ones you shot at yourself</span>.</p>
-      <span class="explain">Self-compassion research shows that simply recognising self-inflicted narratives reduces their hold—awareness is already halfway to release.</span>
-      <p class="quote">“In life, we cannot always control the first arrow. However, the second arrow is our reaction to the first.”</p>
-      <p class="quote-author">— The Buddha, <em>Sallatha Sutta</em></p>
-      <p class="quote">“The wound is the place where the Light enters you.”</p>
-      <p class="quote-author">— Rumi</p>
-    `,
-    color: new THREE.Color(0xb08560),
-    emissive: new THREE.Color(0xc4956a),
-    particleColor: 0xd4a574,
-    geometry: 'hexagram',
-    n: 6,
-    radius: 12
-  },
-  {
-    name: 'Core Awareness',
-    subtitle: 'dx/dt — This Moment',
-    content: `
-      <p>The irreducible point. Not a thing — a <span class="key-phrase">process</span>.</p>
-      <span class="explain">What physics calls an event, Buddhism calls a dharma, and process philosophy calls an occasion of experience—the atom of reality is a happening, not a thing.</span>
-      <p class="math">Awareness = dx/dt</p>
-      <span class="explain">The derivative is the rate of change at a single instant—consciousness as the living edge where time actually moves.</span>
-      <p class="dim">This moment, complete. Not needing continuity to be real.</p>
-      <p>You are not a noun. You are <span class="key-phrase">verb-ing</span>.</p>
-      <span class="explain">The Hopi language has no fixed nouns for time—everything is event; modern neuroscience agrees the self is a process, re-assembled each moment.</span>
-      <p class="dim">Ship of Theseus: not the planks, the pattern. Life persists as process, not thing.</p>
-      <p>"This too shall pass" = liberation, not pessimism.<br><span class="dim">Wave-form temporary, sea-stuff eternal.</span></p>
-      <span class="explain">The Sufi adage, the Second Law of Thermodynamics, and the Buddhist teaching of anicca all say the same thing: impermanence is not a flaw, it is the engine.</span>
-      <p class="quote">“The art of progress is to preserve order amid change and to preserve change amid order.”</p>
-      <p class="quote-author">— Alfred North Whitehead, <em>Process and Reality</em></p>
-      <p class="quote">“There is only one moment for you to be alive, and that is the present moment.”</p>
-      <p class="quote-author">— Thich Nhat Hanh</p>
-    `,
-    color: new THREE.Color(0xd4a574),
-    emissive: new THREE.Color(0xf0d9b5),
-    particleColor: 0xf0d9b5,
-    geometry: 'seed',
-    n: 7,
-    radius: 6
-  }
-];
-
-const TAU = Math.PI * 2;
-const LAYER_COUNT = LAYERS.length;
-const LAYER_SPACING = 16;
-
-// ─── GENESIS (Accipio Ludo in code) — session seed + bounded initial conditions ───
-// Structure accepted whole; freedom = lawful variation of starting coordinates only.
-// Replay: set window.__FM3D_SEED__ (string) before this module loads.
-const GENESIS_VERSION = 1;
-const CANONICAL_GENESIS_SEED = 'fm3d-canonical-v1';
-
-function genesisClamp(v, lo, hi, fb = 0) {
-  const n = Number.isFinite(v) ? v : fb;
-  return Math.min(hi, Math.max(lo, n));
-}
-
-function hashString32(str) {
-  let h = 2166136261 >>> 0;
-  for (let i = 0; i < str.length; i++) {
-    h ^= str.charCodeAt(i);
-    h = Math.imul(h, 16777619);
-  }
-  return h >>> 0;
-}
-
-function mulberry32(seed) {
-  let t = seed >>> 0;
-  return function () {
-    t += 0x6D2B79F5;
-    let r = Math.imul(t ^ (t >>> 15), 1 | t);
-    r ^= r + Math.imul(r ^ (r >>> 7), 61 | r);
-    return ((r ^ (r >>> 14)) >>> 0) / 4294967296;
-  };
-}
-
-function rngBetween(rng, lo, hi, fb = 0) {
-  const a = Number.isFinite(lo) ? lo : fb;
-  const b = Number.isFinite(hi) ? hi : fb;
-  return a + (b - a) * rng();
-}
-
-function rngSigned(rng, mag, fb = 0) {
-  const m = Number.isFinite(mag) ? mag : fb;
-  return rngBetween(rng, -m, m, 0);
-}
-
-// Envelopes: outward rigor that makes inward variation trustworthy (same gesture, two scales).
-const GENESIS_BOUNDS = Object.freeze({
-  maxCameraAzimuthDeg: 12,
-  maxCameraElevationDeg: 6,
-  maxLayerYawDeg: 10,
-  maxParticleZBias: 1.5,
-  maxDriftBias: 0.08,
-  maxBrightnessBias: 0.08,
-  maxEventDelayScaleDelta: 0.25,
-});
-
-const CANONICAL_INITIAL_CONDITIONS = Object.freeze({
-  version: GENESIS_VERSION,
-  seed: CANONICAL_GENESIS_SEED,
-  canonicalFallback: true,
-  invariants: Object.freeze({
-    preserveLayerOrder: true,
-    preserveLayerCount: 7,
-    preserveTextContent: true,
-    preserveGeometryMapping: true,
-    preserveColorIdentity: true,
-    preserveNavigationSemantics: true,
-  }),
-  camera: Object.freeze({
-    azimuthOffset: 0,
-    elevationOffset: 0,
-    rollOffset: 0,
-    distanceScale: 1,
-  }),
-  layerPhase: Object.freeze({
-    globalRotationPhase: 0,
-    perLayerYawOffsets: Object.freeze([]),
-    perLayerPrecessionOffsets: Object.freeze([]),
-  }),
-  particles: Object.freeze({
-    radialJitterScale: 1,
-    angularPhaseOffset: 0,
-    zBias: 0,
-    driftBiasX: 0,
-    driftBiasY: 0,
-    driftBiasZ: 0,
-    velocityBiasScale: 1,
-  }),
-  stars: Object.freeze({
-    seedOffset: 0,
-    twinklePhaseOffset: 0,
-    brightnessBias: 0,
-    spatialSkewX: 0,
-    spatialSkewY: 0,
-  }),
-  ambientEvents: Object.freeze({
-    firstShootingStarDelayScale: 1,
-    nebulaPhaseOffset: 0,
-    cosmicDustPhaseOffset: 0,
-  }),
-  breathCoupling: Object.freeze({
-    ambientPhaseNudge: 0,
-    baselineOffset: 0,
-  }),
-  bounds: GENESIS_BOUNDS,
-});
-
-function buildInitialConditions(layerCount = LAYER_COUNT) {
-  try {
-    const sessionSeed =
-      typeof window !== 'undefined' && window.__FM3D_SEED__ != null && String(window.__FM3D_SEED__).length
-        ? String(window.__FM3D_SEED__)
-        : `${Date.now().toString(36)}-${Math.floor(Math.random() * 1e9).toString(36)}`;
-    const seed32 = hashString32(sessionSeed);
-    const rng = mulberry32(seed32);
-
-    const yawMax = TAU * (GENESIS_BOUNDS.maxLayerYawDeg / 360);
-    const precMax = TAU * (8 / 360);
-    const perLayerYawOffsets = Array.from({ length: layerCount }, () => rngSigned(rng, yawMax));
-    const perLayerPrecessionOffsets = Array.from({ length: layerCount }, () => rngSigned(rng, precMax));
-
-    return Object.freeze({
-      version: GENESIS_VERSION,
-      seed: sessionSeed,
-      canonicalFallback: false,
-      invariants: CANONICAL_INITIAL_CONDITIONS.invariants,
-      camera: Object.freeze({
-        azimuthOffset: rngSigned(rng, TAU * (GENESIS_BOUNDS.maxCameraAzimuthDeg / 360)),
-        elevationOffset: rngSigned(rng, TAU * (GENESIS_BOUNDS.maxCameraElevationDeg / 360)),
-        rollOffset: rngSigned(rng, TAU * (1.5 / 360)),
-        distanceScale: genesisClamp(rngBetween(rng, 0.985, 1.015), 0.985, 1.015, 1),
-      }),
-      layerPhase: Object.freeze({
-        globalRotationPhase: rngBetween(rng, 0, TAU, 0),
-        perLayerYawOffsets: Object.freeze(perLayerYawOffsets),
-        perLayerPrecessionOffsets: Object.freeze(perLayerPrecessionOffsets),
-      }),
-      particles: Object.freeze({
-        radialJitterScale: genesisClamp(rngBetween(rng, 0.92, 1.08), 0.92, 1.08, 1),
-        angularPhaseOffset: rngBetween(rng, 0, TAU, 0),
-        zBias: genesisClamp(rngSigned(rng, GENESIS_BOUNDS.maxParticleZBias), -GENESIS_BOUNDS.maxParticleZBias, GENESIS_BOUNDS.maxParticleZBias, 0),
-        driftBiasX: genesisClamp(rngSigned(rng, GENESIS_BOUNDS.maxDriftBias), -GENESIS_BOUNDS.maxDriftBias, GENESIS_BOUNDS.maxDriftBias, 0),
-        driftBiasY: genesisClamp(rngSigned(rng, GENESIS_BOUNDS.maxDriftBias), -GENESIS_BOUNDS.maxDriftBias, GENESIS_BOUNDS.maxDriftBias, 0),
-        driftBiasZ: genesisClamp(rngSigned(rng, GENESIS_BOUNDS.maxDriftBias), -GENESIS_BOUNDS.maxDriftBias, GENESIS_BOUNDS.maxDriftBias, 0),
-        velocityBiasScale: genesisClamp(rngBetween(rng, 0.96, 1.04), 0.96, 1.04, 1),
-      }),
-      stars: Object.freeze({
-        seedOffset: seed32 >>> 0,
-        twinklePhaseOffset: rngBetween(rng, 0, TAU, 0),
-        brightnessBias: genesisClamp(rngSigned(rng, GENESIS_BOUNDS.maxBrightnessBias), -GENESIS_BOUNDS.maxBrightnessBias, GENESIS_BOUNDS.maxBrightnessBias, 0),
-        spatialSkewX: genesisClamp(rngSigned(rng, 0.04), -0.04, 0.04, 0),
-        spatialSkewY: genesisClamp(rngSigned(rng, 0.04), -0.04, 0.04, 0),
-      }),
-      ambientEvents: Object.freeze({
-        firstShootingStarDelayScale: genesisClamp(rngBetween(rng, 0.85, 1.25), 0.85, 1.25, 1),
-        nebulaPhaseOffset: rngBetween(rng, 0, TAU, 0),
-        cosmicDustPhaseOffset: rngBetween(rng, 0, TAU, 0),
-      }),
-      breathCoupling: Object.freeze({
-        ambientPhaseNudge: rngSigned(rng, TAU * (4 / 360)),
-        baselineOffset: genesisClamp(rngSigned(rng, 0.03), -0.03, 0.03, 0),
-      }),
-      bounds: GENESIS_BOUNDS,
-    });
-  } catch (err) {
-    console.warn('Genesis fallback:', err);
-    return CANONICAL_INITIAL_CONDITIONS;
-  }
-}
-
-const INITIAL_CONDITIONS = buildInitialConditions(LAYER_COUNT);
 
 // ─── STATE ───
 let currentLayer = 0;
@@ -503,133 +165,6 @@ let dustParticleSpeeds; // per-dust-particle animation rates
 let dustBaseOpacities;  // per-dust-particle base brightness (varied)
 
 // One-time perturbation of state vectors only — no new semantics, no rewiring.
-function applyInitialConditions(ctx) {
-  const ic = (ctx && ctx.initialConditions) || INITIAL_CONDITIONS || CANONICAL_INITIAL_CONDITIONS;
-  if (!ctx) return;
-  try {
-    if (ctx.camera) {
-      try {
-        ctx.camera.rotation.z += ic.camera.rollOffset;
-      } catch (_) { /* noop */ }
-      try {
-        ctx.camera.position.multiplyScalar(ic.camera.distanceScale);
-      } catch (_) { /* noop */ }
-      try {
-        ctx.camera.userData = ctx.camera.userData || {};
-        ctx.camera.userData.genesisAzimuth = ic.camera.azimuthOffset;
-        ctx.camera.userData.genesisElevation = ic.camera.elevationOffset;
-      } catch (_) { /* noop */ }
-    }
-
-    if (Array.isArray(ctx.orbitalGroups)) {
-      ctx.orbitalGroups.forEach((group, i) => {
-        try {
-          if (!group) return;
-          const y = ic.layerPhase.perLayerYawOffsets[i] || 0;
-          const p = ic.layerPhase.perLayerPrecessionOffsets[i] || 0;
-          group.userData = group.userData || {};
-          group.userData.genesisYaw = y;
-          group.userData.genesisPrecession = p;
-        } catch (_) { /* noop */ }
-      });
-    }
-
-    if (Array.isArray(ctx.particleSystems)) {
-      const pj = ic.particles;
-      const ang = pj.angularPhaseOffset || 0;
-      const c = Math.cos(ang);
-      const s = Math.sin(ang);
-      ctx.particleSystems.forEach((ps) => {
-        try {
-          if (!ps?.geometry?.attributes?.position) return;
-          const pos = ps.geometry.attributes.position;
-          const arr = pos.array;
-          const rs = pj.radialJitterScale;
-          for (let i = 0; i < arr.length; i += 3) {
-            let x = arr[i + 0];
-            let y = arr[i + 1];
-            let z = arr[i + 2];
-            x *= rs;
-            y *= rs;
-            const ox = x;
-            const oy = y;
-            arr[i + 0] = ox * c - oy * s + pj.driftBiasX;
-            arr[i + 1] = ox * s + oy * c + pj.driftBiasY;
-            arr[i + 2] = z + pj.zBias + pj.driftBiasZ;
-          }
-          pos.needsUpdate = true;
-          ps.userData = ps.userData || {};
-          ps.userData.velocityBiasScale = pj.velocityBiasScale;
-        } catch (_) { /* noop */ }
-      });
-    }
-
-    if (ctx.nebulaStars && ctx.nebulaStars.geometry?.attributes?.position) {
-      try {
-        const pos = ctx.nebulaStars.geometry.attributes.position;
-        const arr = pos.array;
-        const skx = ic.stars.spatialSkewX;
-        const sky = ic.stars.spatialSkewY;
-        for (let i = 0; i < arr.length; i += 3) {
-          arr[i + 0] *= 1 + skx;
-          arr[i + 1] *= 1 + sky;
-        }
-        pos.needsUpdate = true;
-      } catch (_) { /* noop */ }
-    }
-
-    if (ctx.starTwinklePhases && ic.stars.twinklePhaseOffset) {
-      try {
-        const d = ic.stars.twinklePhaseOffset;
-        for (let i = 0; i < ctx.starTwinklePhases.length; i++) {
-          ctx.starTwinklePhases[i] += d;
-        }
-      } catch (_) { /* noop */ }
-    }
-
-    if (ctx.starBaseOpacities && ic.stars.brightnessBias) {
-      try {
-        const bb = ic.stars.brightnessBias;
-        for (let i = 0; i < ctx.starBaseOpacities.length; i++) {
-          ctx.starBaseOpacities[i] = genesisClamp(
-            ctx.starBaseOpacities[i] * (1 + bb),
-            0.02,
-            8,
-            ctx.starBaseOpacities[i]
-          );
-        }
-      } catch (_) { /* noop */ }
-    }
-
-    if (ctx.nebulaStars) {
-      try {
-        ctx.nebulaStars.rotation.z += ic.ambientEvents.nebulaPhaseOffset * 0.001;
-        ctx.nebulaStars.rotation.y += ic.ambientEvents.nebulaPhaseOffset * 0.0004;
-      } catch (_) { /* noop */ }
-    }
-
-    if (ctx.cosmicDust) {
-      try {
-        ctx.cosmicDust.rotation.z += ic.ambientEvents.cosmicDustPhaseOffset * 0.001;
-      } catch (_) { /* noop */ }
-    }
-
-    if (Array.isArray(ctx.nebulaClouds) && ic.ambientEvents.cosmicDustPhaseOffset) {
-      const d = ic.ambientEvents.cosmicDustPhaseOffset * 0.002;
-      ctx.nebulaClouds.forEach((spr) => {
-        try {
-          if (spr?.userData) spr.userData.driftAngle = (spr.userData.driftAngle || 0) + d;
-        } catch (_) { /* noop */ }
-      });
-    }
-
-    try {
-      console.info('FM3D genesis seed:', ic.seed);
-    } catch (_) { /* noop */ }
-  } catch (err) {
-    console.warn('applyInitialConditions fallback:', err);
-  }
-}
 
 // ─── INIT THREE.JS ───
 let contextLost = false;   // WebGL context-loss flag
@@ -743,18 +278,9 @@ function init() {
   animate();
 }
 
-// ─── BUILD SACRED GEOMETRY LAYERS ───
+// ─── DYNAMICS: BUILD LAYERS (geometry from ontology + Three.js) ───
 // Per-layer tilt seeds (6-DOF depth cue 1: each layer tilts uniquely so rings
-// read as true 3D ellipses, not flat circles)
-const LAYER_TILTS = [
-  { x:  0.25, y:  0.15, z:  0.0  },   // outermost — gentle forward lean
-  { x: -0.18, y:  0.30, z:  0.12 },
-  { x:  0.35, y: -0.10, z: -0.15 },
-  { x: -0.12, y: -0.25, z:  0.20 },
-  { x:  0.20, y:  0.20, z: -0.10 },
-  { x: -0.30, y:  0.08, z:  0.15 },
-  { x:  0.10, y: -0.35, z: -0.08 },   // innermost — tilt away
-];
+// read as true 3D ellipses, not flat circles) — tilts live in ontology.js
 
 // Depth glow halos — one per layer (6-DOF depth cue 5)
 let layerHalos = [];
@@ -1602,23 +1128,6 @@ function hideSliderTooltip() {
   if (sliderTooltip) sliderTooltip.classList.remove('visible');
 }
 
-// ─── COMMUNAL PRESENCE — lineage of minds who sat here ───
-const LINEAGE = [
-  // Layer 1 — Meta-Recognition
-  ['Dōgen', 'Śaṅkara', 'Rumi', 'Desmond Tutu', 'David Bohm'],
-  // Layer 2 — Structural Insights
-  ['Heraclitus', 'The Buddha', 'William Blake', 'Kant', 'Niels Bohr'],
-  // Layer 3 — Key Distinctions
-  ['Epictetus', 'Einstein', 'Bhagavad Gītā', 'Aaron Beck', 'Spinoza'],
-  // Layer 4 — Three Acceptances
-  ['Nietzsche', 'Marcus Aurelius', 'Meister Eckhart', 'Huizinga', 'Ibn Arabi'],
-  // Layer 5 — The Practice
-  ['Lao Tzu', 'Tagore', 'Jalāl ad-Dīn Rūmī', 'Patañjali', 'Karl Popper'],
-  // Layer 6 — The Second Arrow
-  ['The Buddha', 'Epictetus', 'Rumi', 'Kristin Neff', 'Viktor Frankl'],
-  // Layer 7 — Core Awareness
-  ['Whitehead', 'Thich Nhat Hanh', 'Benjamin Lee Whorf', 'Nāgārjuna', 'Ilya Prigogine'],
-];
 
 function getLineage(layerIndex) {
   const names = LINEAGE[layerIndex] || [];
