@@ -1,0 +1,56 @@
+# Staging copy for feature/mic-breath-sensitivity — production stays at site root.
+# After push, test at: https://<user>.github.io/Fractal-Mandala-3D/preview-mic/
+name: Sync preview-mic to main
+
+on:
+  push:
+    branches: [feature/mic-breath-sensitivity]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: preview-mic-sync
+  cancel-in-progress: true
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout feature branch (source)
+        uses: actions/checkout@v4
+        with:
+          ref: feature/mic-breath-sensitivity
+          path: src
+
+      - name: Checkout main (destination)
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          path: dest
+          fetch-depth: 0
+
+      - name: Copy site into preview-mic/
+        run: |
+          set -euo pipefail
+          rm -rf dest/preview-mic
+          mkdir -p dest/preview-mic
+          rsync -a \
+            --exclude='.git' \
+            --exclude='.github' \
+            --exclude='preview-mic' \
+            src/ dest/preview-mic/
+
+      - name: Commit and push to main
+        run: |
+          cd dest
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add preview-mic
+          if git diff --staged --quiet; then
+            echo "No changes under preview-mic"
+            exit 0
+          fi
+          git commit -m "chore(pages): sync preview-mic from feature/mic-breath-sensitivity (${{ github.sha }})"
+          git push origin main
