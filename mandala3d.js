@@ -1526,6 +1526,22 @@ const AMBIENT_LFO_MIN = 0.24;   // trough: weird & quiet
 const AMBIENT_LFO_MAX = 1.0;    // crest: current nominal mix strength
 // Large σ → gentle shoulders, long smooth climb/descent (narrow σ reads as a sharp spike)
 const AMBIENT_LFO_SIGMA = 0.44;
+// Exponential smooth toward target gain multiplier — long τ for natural LFO; short when catching up (fade/unmute)
+const AMBIENT_GAIN_SMOOTH_TAU_SLOW = 0.55;
+const AMBIENT_GAIN_SMOOTH_TAU_FAST = 0.1;
+const AMBIENT_GAIN_ERR_FAST = 0.14; // above this |target−smoothed|, use fast τ
+
+/** Web Audio context exists and is not closed — safe to touch nodes created from it. */
+function isAmbientAudioContextAlive() {
+  return audioCtx && audioCtx.state !== 'closed';
+}
+
+/** Gain automation: try on running/suspended/interrupted; closed → rely on HTML volume fallback. */
+function canAutomateAmbientGainNodes() {
+  if (!isAmbientAudioContextAlive()) return false;
+  const s = audioCtx.state;
+  return s === 'running' || s === 'suspended' || s === 'interrupted';
+}
 
 let audioCtx = null;          // AudioContext — created on first user gesture
 let gainNode = null;          // GainNode for meditation volume
@@ -1538,30 +1554,101 @@ let audioMuted = false;
 let audioReady = false;       // true once pipeline is connected & playing
 let fadeRAF = null;           // requestAnimationFrame id for fade-in
 let ambientIntroFade = 0;     // 0..1 initial fade-in; then stays 1
+let ambientSmoothedF = 0;     // smoothed combined multiplier (intro × LFO), for zipper-free gains
+let lastAmbientGainSmoothMs = 0;
 
 /** Crest-to-crest period AMBIENT_LFO_PERIOD_MS; wide normal-like bump, normalized to [MIN, MAX]. */
 function getAmbientLfoGainMultiplier(nowMs = performance.now()) {
-  const T = AMBIENT_LFO_PERIOD_MS;
-  const phase = (((nowMs % T) + T) % T) / T;
-  const sig = AMBIENT_LFO_SIGMA;
-  const edgeBell = Math.exp(-0.5 * Math.pow(0.5 / sig, 2));
-  const x = (phase - 0.5) / sig;
-  const bell = Math.exp(-0.5 * x * x);
-  const denom = 1 - edgeBell;
-  const n = denom > 1e-6 ? (bell - edgeBell) / denom : 0;
-  const clampedN = Math.max(0, Math.min(1, n));
-  return AMBIENT_LFO_MIN + (AMBIENT_LFO_MAX - AMBIENT_LFO_MIN) * clampedN;
+  try {
+    const t = Number(nowMs);
+    if (!Number.isFinite(t)) return (AMBIENT_LFO_MIN + AMBIENT_LFO_MAX) * 0.5;
+    const T = AMBIENT_LFO_PERIOD_MS;
+    const phase = (((t % T) + T) % T) / T;
+    const sig = Math.max(AMBIENT_LFO_SIGMA, 1e-6);
+    const edgeBell = Math.exp(-0.5 * Math.pow(0.5 / sig, 2));
+    const x = (phase - 0.5) / sig;
+    const bell = Math.exp(-0.5 * x * x);
+    const denom = 1 - edgeBell;
+    const n = denom > 1e-6 ? (bell - edgeBell) / denom : 0;
+    const clampedN = Math.max(0, Math.min(1, n));
+    const out = AMBIENT_LFO_MIN + (AMBIENT_LFO_MAX - AMBIENT_LFO_MIN) * clampedN;
+    return Number.isFinite(out) ? out : AMBIENT_LFO_MIN;
+  } catch (_) {
+    return AMBIENT_LFO_MIN;
+  }
 }
 
-function refreshAmbientGains() {
+function trySetAudioParamValue(param, value) {
+  if (!param || !Number.isFinite(value)) return false;
+  try {
+    param.value = Math.max(0, value);
+    return true;
+  } catch (_) {
+    return false;
+  }
+}
+
+function trySetHtmlAudioVolume(el, value) {
+  if (!el || !Number.isFinite(value)) return false;
+  try {
+    el.volume = Math.max(0, Math.min(1, value));
+    return true;
+  } catch (_) {
+    return false;
+  }
+}
+
+/**
+ * Apply meditation + ocean gains. Uses exponential smoothing on the envelope so changes
+ * feel continuous (avoids stepped / zipper artifacts); dtSec from the render loop when available.
+ * Never throws; degrades silently if Web Audio is interrupted/closed or nodes are stale.
+ */
+function refreshAmbientGains(dtSec = null) {
   if (!audioReady || audioMuted) return;
-  const lfo = getAmbientLfoGainMultiplier();
-  const f = ambientIntroFade * lfo;
-  if (gainNode) gainNode.gain.value = AUDIO_VOLUME * f;
-  else if (audioElement) audioElement.volume = AUDIO_VOLUME * f;
-  const og = oceanTargetGain() * f;
-  if (waveGainNode) waveGainNode.gain.value = og;
-  else if (waveAudioElement) waveAudioElement.volume = og;
+  try {
+    const nowMs = performance.now();
+    let dt = dtSec;
+    if (!Number.isFinite(dt) || dt <= 0) {
+      dt = lastAmbientGainSmoothMs ? Math.min((nowMs - lastAmbientGainSmoothMs) / 1000, 0.12) : 1 / 60;
+    }
+    lastAmbientGainSmoothMs = nowMs;
+
+    const intro = Number.isFinite(ambientIntroFade) ? ambientIntroFade : 0;
+    const lfo = getAmbientLfoGainMultiplier(nowMs);
+    const targetF = Math.max(0, Math.min(1, intro * lfo));
+    const err = Math.abs(targetF - ambientSmoothedF);
+    const tau = Math.max(
+      err > AMBIENT_GAIN_ERR_FAST ? AMBIENT_GAIN_SMOOTH_TAU_FAST : AMBIENT_GAIN_SMOOTH_TAU_SLOW,
+      1e-4
+    );
+    const k = 1 - Math.exp(-dt / tau);
+    ambientSmoothedF += (targetF - ambientSmoothedF) * k;
+    if (!Number.isFinite(ambientSmoothedF)) ambientSmoothedF = targetF;
+    ambientSmoothedF = Math.max(0, Math.min(1, ambientSmoothedF));
+
+    const f = ambientSmoothedF;
+    const medLinear = AUDIO_VOLUME * f;
+    const og = oceanTargetGain() * f;
+
+    const webOk = canAutomateAmbientGainNodes();
+    if (gainNode && webOk) {
+      if (!trySetAudioParamValue(gainNode.gain, medLinear) && audioElement) {
+        trySetHtmlAudioVolume(audioElement, medLinear);
+      }
+    } else if (audioElement) {
+      trySetHtmlAudioVolume(audioElement, medLinear);
+    }
+
+    if (waveGainNode && webOk) {
+      if (!trySetAudioParamValue(waveGainNode.gain, og) && waveAudioElement) {
+        trySetHtmlAudioVolume(waveAudioElement, og);
+      }
+    } else if (waveAudioElement) {
+      trySetHtmlAudioVolume(waveAudioElement, og);
+    }
+  } catch (_) {
+    /* keep last smoothed state; next frame may recover */
+  }
 }
 
 function setAmbientIntroFade(t) {
@@ -1570,10 +1657,63 @@ function setAmbientIntroFade(t) {
 }
 
 function silenceAmbientOutputs() {
-  if (gainNode) gainNode.gain.value = 0;
-  if (audioElement) audioElement.volume = gainNode ? 1 : 0;
-  if (waveGainNode) waveGainNode.gain.value = 0;
-  if (waveAudioElement) waveAudioElement.volume = waveGainNode ? 1 : 0;
+  ambientSmoothedF = 0;
+  lastAmbientGainSmoothMs = 0;
+  try {
+    const medWeb = gainNode && canAutomateAmbientGainNodes();
+    if (medWeb) {
+      trySetAudioParamValue(gainNode.gain, 0);
+      if (audioElement) trySetHtmlAudioVolume(audioElement, 1);
+    } else if (audioElement) {
+      trySetHtmlAudioVolume(audioElement, 0);
+    }
+    const waveWeb = waveGainNode && canAutomateAmbientGainNodes();
+    if (waveWeb) {
+      trySetAudioParamValue(waveGainNode.gain, 0);
+      if (waveAudioElement) trySetHtmlAudioVolume(waveAudioElement, 1);
+    } else if (waveAudioElement) {
+      trySetHtmlAudioVolume(waveAudioElement, 0);
+    }
+  } catch (_) {}
+}
+
+const AMBIENT_INTRO_FADE_MS = 3000;
+
+function startAmbientIntroFade() {
+  const fadeStart = performance.now();
+  function fadeStep(now) {
+    if (audioMuted) {
+      silenceAmbientOutputs();
+      return;
+    }
+    const t = Math.min((now - fadeStart) / AMBIENT_INTRO_FADE_MS, 1);
+    setAmbientIntroFade(t);
+    if (t < 1) fadeRAF = requestAnimationFrame(fadeStep);
+  }
+  if (fadeRAF) {
+    try { cancelAnimationFrame(fadeRAF); } catch (_) {}
+    fadeRAF = null;
+  }
+  fadeRAF = requestAnimationFrame(fadeStep);
+}
+
+/** If context exists but play never reached audioReady (autoplay block, iOS quirks), retry on tap. */
+function startOrRetryAmbientPlayback() {
+  if (audioReady) return;
+  if (!audioCtx) {
+    initAudio();
+    return;
+  }
+  if (!audioElement) {
+    initAudio();
+    return;
+  }
+  audioElement.play().then(() => {
+    if (waveAudioElement) waveAudioElement.play().catch(() => {});
+    audioReady = true;
+    if (!audioMuted) startAmbientIntroFade();
+    else silenceAmbientOutputs();
+  }).catch(() => {});
 }
 
 function initAudio() {
@@ -1592,6 +1732,7 @@ function initAudio() {
     audioElement = new Audio('ambient-meditation.mp3');
     audioElement.loop = true;
     audioElement.playsInline = true;
+    audioElement.preload = 'auto';
     audioElement.volume = 1;
 
     try {
@@ -1610,6 +1751,7 @@ function initAudio() {
     waveAudioElement = new Audio('ambient-ocean-wave.mp3');
     waveAudioElement.loop = true;
     waveAudioElement.playsInline = true;
+    waveAudioElement.preload = 'auto';
     waveAudioElement.volume = 1;
 
     try {
@@ -1630,18 +1772,8 @@ function initAudio() {
     audioElement.play().then(() => {
       waveAudioElement.play().catch(() => {});
       audioReady = true;
-      const fadeStart = performance.now();
-      const FADE_MS = 3000;
-      function fadeStep(now) {
-        if (audioMuted) {
-          silenceAmbientOutputs();
-          return;
-        }
-        const t = Math.min((now - fadeStart) / FADE_MS, 1);
-        setAmbientIntroFade(t);
-        if (t < 1) fadeRAF = requestAnimationFrame(fadeStep);
-      }
-      fadeRAF = requestAnimationFrame(fadeStep);
+      if (!audioMuted) startAmbientIntroFade();
+      else silenceAmbientOutputs();
     }).catch(() => {
       console.log('Audio autoplay blocked — tap sound icon to enable');
     });
@@ -1652,6 +1784,22 @@ function initAudio() {
     }
   } catch (err) {
     console.warn('Audio init failed:', err);
+    try {
+      try { audioSource?.disconnect(); } catch (_) {}
+      try { waveAudioSource?.disconnect(); } catch (_) {}
+      try { gainNode?.disconnect(); } catch (_) {}
+      try { waveGainNode?.disconnect(); } catch (_) {}
+      try { audioCtx?.close(); } catch (_) {}
+    } catch (_) {}
+    audioCtx = null;
+    gainNode = null;
+    waveGainNode = null;
+    audioSource = null;
+    waveAudioSource = null;
+    audioElement = null;
+    waveAudioElement = null;
+    audioReady = false;
+    fadeRAF = null;
   }
 }
 
@@ -1663,9 +1811,9 @@ function handleAudioToggle(e) {
   if (now - lastToggleTime < 300) return;   // ignore duplicate within 300ms
   lastToggleTime = now;
 
-  // First tap: bootstrap the whole audio pipeline
-  if (!audioReady && !audioCtx) {
-    initAudio();
+  // Until playback is ready: retries init or play() (mobile autoplay / deferred start)
+  if (!audioReady) {
+    startOrRetryAmbientPlayback();
     return;
   }
 
@@ -1684,19 +1832,33 @@ function handleAudioToggle(e) {
     if (audioElement) audioElement.pause();
     if (waveAudioElement) waveAudioElement.pause();
   } else {
-    if (audioCtx && audioCtx.state === 'suspended') {
+    if (audioCtx && (audioCtx.state === 'suspended' || audioCtx.state === 'interrupted')) {
       audioCtx.resume().catch(() => {});
     }
+    const medWeb = gainNode && canAutomateAmbientGainNodes();
+    const waveWeb = waveGainNode && canAutomateAmbientGainNodes();
+    const finishUnmuteGains = () => {
+      ambientIntroFade = 1;
+      ambientSmoothedF = getAmbientLfoGainMultiplier();
+      lastAmbientGainSmoothMs = 0;
+      refreshAmbientGains();
+    };
     if (audioElement) {
-      audioElement.volume = gainNode ? 1 : AUDIO_VOLUME;
-      audioElement.play().catch(() => {});
+      try { audioElement.volume = medWeb ? 1 : AUDIO_VOLUME; } catch (_) {}
+      audioElement
+        .play()
+        .then(() => {
+          audioReady = true;
+          if (waveAudioElement) {
+            try { waveAudioElement.volume = waveWeb ? 1 : oceanTargetGain(); } catch (_) {}
+            waveAudioElement.play().catch(() => {});
+          }
+          finishUnmuteGains();
+        })
+        .catch(() => {});
+    } else {
+      finishUnmuteGains();
     }
-    if (waveAudioElement) {
-      waveAudioElement.volume = waveGainNode ? 1 : oceanTargetGain();
-      waveAudioElement.play().catch(() => {});
-    }
-    ambientIntroFade = 1;
-    refreshAmbientGains();
   }
 }
 // Listen on both click (desktop) and touchend (iOS standalone fallback)
@@ -2271,7 +2433,7 @@ function animate() {
   // Slow Gaussian-like volume swell (meditation + ocean) — after intro fade, LFO runs every frame
   if (audioReady && !audioMuted && ambientIntroFade >= 1) {
     try {
-      refreshAmbientGains();
+      refreshAmbientGains(dt);
     } catch (_) {}
   }
   // audioBreath is 0..1, heavily smoothed, wide distribution
