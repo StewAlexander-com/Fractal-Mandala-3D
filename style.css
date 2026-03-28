@@ -328,6 +328,12 @@ canvas {
   flex-direction: column;
   align-items: center;
   justify-content: center;
+  /* ~44px min touch target; summary handles click, chevron stays visually centered */
+  min-width: 2.75rem;
+  min-height: 2.75rem;
+  padding: 0.35rem 0.75rem;
+  box-sizing: border-box;
+  cursor: pointer;
   line-height: 0;
   color: #f0d9a0;
   filter: drop-shadow(0 0 4px rgba(240, 200, 100, 0.7))
@@ -635,20 +641,46 @@ canvas {
     0 0 40px rgba(155, 138, 184, 0.04), 0 0 80px rgba(199, 136, 154, 0.03);
 }
 
-/* Scroll hint arrows — high-contrast bounce outside panel edges */
+/* Scroll hint arrows — same chevrons as welcome; buttons when scrollable (not disabled) */
 .scroll-hint {
   position: absolute;
   left: 50%;
   transform: translateX(-50%);
   display: flex;
   justify-content: center;
-  pointer-events: none;
+  align-items: center;
+  margin: 0;
+  padding: 0.5rem 1rem;
+  min-width: 2.75rem;
+  min-height: 2.75rem;
+  box-sizing: border-box;
+  -webkit-appearance: none;
+  appearance: none;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  font: inherit;
   color: #f0d9a0;
   opacity: 0;
+  pointer-events: none;
   transition: opacity 0.4s var(--ease-out);
   z-index: 25;
   filter: drop-shadow(0 0 4px rgba(240, 200, 100, 0.7))
          drop-shadow(0 0 8px rgba(200, 160, 60, 0.35));
+}
+.scroll-hint:not(:disabled) {
+  opacity: 1;
+  pointer-events: auto;
+}
+.scroll-hint:disabled {
+  cursor: default;
+}
+.scroll-hint:focus {
+  outline: none;
+}
+.scroll-hint:focus-visible {
+  box-shadow: 0 0 0 2px rgba(240, 200, 80, 0.35);
+  border-radius: 6px;
 }
 .scroll-hint--up {
   bottom: 100%;
@@ -659,9 +691,6 @@ canvas {
   top: 100%;
   margin-top: 8px;
   animation: hintBounceDown 2.4s ease-in-out infinite;
-}
-.scroll-hint.visible {
-  opacity: 1;
 }
 
 @keyframes hintBounceDown {

@@ -119,10 +119,30 @@ function updateScrollFades() {
   const canDown = el.scrollHeight - el.scrollTop - el.clientHeight > threshold;
   el.classList.toggle('fade-top', canUp);
   el.classList.toggle('fade-bottom', canDown);
-  if (scrollHintUp)   scrollHintUp.classList.toggle('visible', canUp);
-  if (scrollHintDown)  scrollHintDown.classList.toggle('visible', canDown);
+  if (scrollHintUp) scrollHintUp.disabled = !canUp;
+  if (scrollHintDown) scrollHintDown.disabled = !canDown;
 }
 if (teachingPanel) teachingPanel.addEventListener('scroll', updateScrollFades, { passive: true });
+
+function scrollTeachingByHint(direction) {
+  if (!teachingPanel) return;
+  const step = Math.min(Math.round(teachingPanel.clientHeight * 0.55), 280);
+  const behavior = prefersReducedMotion ? 'auto' : 'smooth';
+  teachingPanel.scrollBy({ top: direction * step, behavior });
+}
+
+function bindScrollHintButton(btn, direction) {
+  if (!btn) return;
+  btn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    if (btn.disabled) return;
+    scrollTeachingByHint(direction);
+  });
+  btn.addEventListener('touchstart', (e) => { e.stopPropagation(); }, { passive: true });
+  btn.addEventListener('touchmove', (e) => { e.stopPropagation(); }, { passive: true });
+}
+bindScrollHintButton(scrollHintUp, -1);
+bindScrollHintButton(scrollHintDown, 1);
 
 // ─── PANEL TOUCH ISOLATION ───
 // Prevent touch events on the teaching panel from leaking to the canvas
@@ -1178,8 +1198,8 @@ function showLayerTitle(index) {
   }
   if (teachingPanel) teachingPanel.classList.remove('visible');
   // Hide scroll-hint chevrons while the title is showing — they can overlap it
-  if (scrollHintUp)   scrollHintUp.classList.remove('visible');
-  if (scrollHintDown) scrollHintDown.classList.remove('visible');
+  if (scrollHintUp) scrollHintUp.disabled = true;
+  if (scrollHintDown) scrollHintDown.disabled = true;
 
   clearTimeout(showLayerTitle._timer);
   clearTimeout(showLayerTitle._breathTimer);
@@ -1455,8 +1475,8 @@ document.addEventListener('keydown', (e) => {
     }
     if (teachingPanel && teachingPanel.classList.contains('visible')) {
       teachingPanel.classList.remove('visible');
-      if (scrollHintUp) scrollHintUp.classList.remove('visible');
-      if (scrollHintDown) scrollHintDown.classList.remove('visible');
+      if (scrollHintUp) scrollHintUp.disabled = true;
+      if (scrollHintDown) scrollHintDown.disabled = true;
       return;
     }
   }

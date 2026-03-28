@@ -153,7 +153,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,300;1,400&family=Jost:wght@300;400;500&family=Lora:ital,wght@0,400;0,500;1,400;1,500&display=swap" rel="stylesheet">
 <!-- Preload audio hint — browser can start fetching before user enters -->
 <link rel="preload" href="ambient-meditation.mp3" as="audio" crossorigin type="audio/mpeg">
-<link rel="stylesheet" href="style.css?v=welcome-chevron-spacing-v1">
+<link rel="stylesheet" href="style.css?v=chevron-interactive-v1">
 </head>
 <body>
 
@@ -186,12 +186,12 @@
     <div class="teaching-panel" id="teachingPanel">
       <div class="teaching-inner" id="teachingInner" tabindex="0" role="region" aria-label="Layer teaching content"></div>
     </div>
-    <div class="scroll-hint scroll-hint--up" id="scrollHintUp">
-      <svg width="28" height="14" viewBox="0 0 20 10" fill="none"><use href="#mandala-chevron-up"/></svg>
-    </div>
-    <div class="scroll-hint scroll-hint--down" id="scrollHintDown">
-      <svg width="28" height="14" viewBox="0 0 20 10" fill="none"><use href="#mandala-chevron-down"/></svg>
-    </div>
+    <button type="button" class="scroll-hint scroll-hint--up" id="scrollHintUp" disabled aria-label="Scroll up in this layer’s teaching">
+      <svg width="28" height="14" viewBox="0 0 20 10" fill="none" aria-hidden="true"><use href="#mandala-chevron-up"/></svg>
+    </button>
+    <button type="button" class="scroll-hint scroll-hint--down" id="scrollHintDown" disabled aria-label="Scroll down in this layer’s teaching">
+      <svg width="28" height="14" viewBox="0 0 20 10" fill="none" aria-hidden="true"><use href="#mandala-chevron-down"/></svg>
+    </button>
   </div>
 
   <!-- Navigation slider -->
@@ -420,6 +420,6 @@
   </div>
 </noscript>
 <!-- Runtime: ontology.js (data) · genesis.js (initial relation) · mandala3d.js (dynamics + UI) -->
-<script type="module" src="mandala3d.js?v=welcome-combine-v1"></script>
+<script type="module" src="mandala3d.js?v=chevron-interactive-v1"></script>
 </body>
 </html>
