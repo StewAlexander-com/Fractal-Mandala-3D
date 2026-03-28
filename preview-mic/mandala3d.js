@@ -1515,9 +1515,6 @@ document.addEventListener('keydown', (e) => {
 });
 
 // ─── AMBIENT AUDIO (Web Audio API — works in all environments inc. iOS standalone) ───
-// Set false on feature/mic-breath-sensitivity for mic-only testing (no MP3, no speaker bleed).
-// Restore true before merging to main.
-const ENABLE_AMBIENT_MUSIC = false;
 const AUDIO_VOLUME = 0.33;
 let audioCtx = null;          // AudioContext — created on first user gesture
 let gainNode = null;          // GainNode for volume control
@@ -1527,8 +1524,38 @@ let audioMuted = false;
 let audioReady = false;       // true once pipeline is connected & playing
 let fadeRAF = null;           // requestAnimationFrame id for fade-in
 
+/** Pause + silence ambient MP3 while mic is on (shared AudioContext stays running for analysers). */
+function duckAmbientWhileMicOn() {
+  if (!audioElement) return;
+  if (fadeRAF) { cancelAnimationFrame(fadeRAF); fadeRAF = null; }
+  if (gainNode) gainNode.gain.value = 0;
+  else if (audioElement) audioElement.volume = 0;
+  try { audioElement.pause(); } catch (e) {}
+}
+
+/** Resume ambient after mic off, unless user muted the speaker. */
+function unduckAmbientAfterMicOff() {
+  if (!audioReady || !audioElement || audioMuted) return;
+  if (audioCtx && audioCtx.state === 'suspended') {
+    audioCtx.resume().catch(() => {});
+  }
+  audioElement.play().catch(() => {});
+  if (fadeRAF) { cancelAnimationFrame(fadeRAF); fadeRAF = null; }
+  const fadeStart = performance.now();
+  const FADE_MS = 1200;
+  function fadeStep(now) {
+    if (audioMuted || micActive) return;
+    const t = Math.min((now - fadeStart) / FADE_MS, 1);
+    if (gainNode) gainNode.gain.value = AUDIO_VOLUME * t;
+    else audioElement.volume = AUDIO_VOLUME * t;
+    if (t < 1 && !micActive && !audioMuted) {
+      fadeRAF = requestAnimationFrame(fadeStep);
+    }
+  }
+  fadeRAF = requestAnimationFrame(fadeStep);
+}
+
 function initAudio() {
-  if (!ENABLE_AMBIENT_MUSIC) return;
   if (audioReady) return;
   try {
     // 1. Create AudioContext inside user gesture (required by iOS)
@@ -1573,6 +1600,10 @@ function initAudio() {
       const fadeStart = performance.now();
       const FADE_MS = 3000;
       function fadeStep(now) {
+        if (micActive) {
+          duckAmbientWhileMicOn();
+          return;
+        }
         if (audioMuted) {
           // Muted during fade — zero out and stop
           if (gainNode) gainNode.gain.value = 0;
@@ -1601,7 +1632,6 @@ function initAudio() {
 // Debounce guard: iOS standalone can fire both touchend and click
 let lastToggleTime = 0;
 function handleAudioToggle(e) {
-  if (!ENABLE_AMBIENT_MUSIC) return;
   if (e) e.preventDefault();
   const now = Date.now();
   if (now - lastToggleTime < 300) return;   // ignore duplicate within 300ms
@@ -1625,23 +1655,28 @@ function handleAudioToggle(e) {
     // Silence via gain node or HTML volume
     if (gainNode) gainNode.gain.value = 0;
     if (audioElement) audioElement.volume = gainNode ? 1 : 0;
-    // Suspend the AudioContext — iOS standalone respects this
-    if (audioCtx && audioCtx.state === 'running') {
+    // Suspend context only when mic is off — mic shares this context
+    if (audioCtx && audioCtx.state === 'running' && !micActive) {
       audioCtx.suspend().catch(() => {});
     }
-    // Also pause the media element as belt-and-suspenders
     if (audioElement) audioElement.pause();
   } else {
     // Resume AudioContext first (must happen in user gesture on iOS)
     if (audioCtx && audioCtx.state === 'suspended') {
       audioCtx.resume().catch(() => {});
     }
-    // Resume media element
+    if (micActive) {
+      if (audioElement) {
+        audioElement.volume = gainNode ? 1 : AUDIO_VOLUME;
+        audioElement.play().catch(() => {});
+      }
+      duckAmbientWhileMicOn();
+      return;
+    }
     if (audioElement) {
       audioElement.volume = gainNode ? 1 : AUDIO_VOLUME;
       audioElement.play().catch(() => {});
     }
-    // Restore gain
     if (gainNode) gainNode.gain.value = AUDIO_VOLUME;
   }
 }
@@ -1649,10 +1684,6 @@ function handleAudioToggle(e) {
 if (audioToggle) {
   audioToggle.addEventListener('click', handleAudioToggle);
   audioToggle.addEventListener('touchend', handleAudioToggle);
-}
-if (!ENABLE_AMBIENT_MUSIC && audioToggle) {
-  audioToggle.style.display = 'none';
-  audioToggle.setAttribute('aria-hidden', 'true');
 }
 
 // ─── AUDIO-REACTIVE GEOMETRY — breath-responsive mandala ───
@@ -1802,15 +1833,10 @@ function updateAudioBreath() {
     // tanh gives a smooth ceiling that compresses loud input without clipping.
     const clampedMic = micActive ? Math.tanh(micEnergy * 1.5) * 0.6 : 0;
 
-    // Blend: with ambient music, ambient dominates; mic-only mode uses the mic alone.
-    let rawEnergy;
-    if (!ENABLE_AMBIENT_MUSIC) {
-      rawEnergy = micActive ? clampedMic : 0;
-    } else {
-      rawEnergy = micActive
-        ? ambientEnergy * 0.65 + clampedMic * 0.35
-        : ambientEnergy;
-    }
+    // Mic on: ambient MP3 is ducked — breath follows mic. Mic off: blend / ambient as before.
+    const rawEnergy = micActive
+      ? clampedMic
+      : ambientEnergy;
 
     // Map to 0..1 with a floor and ceiling — wide flat distribution
     const mapped = Math.max(0, Math.min(1, (rawEnergy - 0.02) / 0.5));
@@ -1963,6 +1989,8 @@ async function enableMic() {
     micActive = true;
     if (micToggle) { micToggle.classList.add('active'); micToggle.setAttribute('aria-pressed', 'true'); }
 
+    duckAmbientWhileMicOn();
+
   } catch (err) {
     // Catch-all: user denied, or any unexpected failure
     const reason = err.name || err.message || 'unknown';
@@ -1972,6 +2000,7 @@ async function enableMic() {
 }
 
 function disableMic() {
+  const hadMic = micActive;
   micActive = false;
   micZeroFrames = 0;
   if (micToggle) { micToggle.classList.remove('active'); micToggle.setAttribute('aria-pressed', 'false'); }
@@ -1985,6 +2014,8 @@ function disableMic() {
   }
   micAnalyser = null;
   micFreqData = null;
+
+  if (hadMic) unduckAmbientAfterMicOff();
 }
 
 // Debounce guard for mic toggle (same pattern as audio toggle)
