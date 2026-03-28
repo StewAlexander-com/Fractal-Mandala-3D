@@ -1,5 +1,0 @@
-# https://stewalexander-com.github.io/Fractal-Mandala-3D/
-User-agent: *
-Allow: /
-
-Sitemap: https://stewalexander-com.github.io/Fractal-Mandala-3D/sitemap.xml
