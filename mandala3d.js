@@ -2,10 +2,21 @@
    THE FRACTAL MANDALA — 3D Quantum Orbital Sacred Geometry
    Each layer = a quantum orbital shell of awareness
    Navigate inward/outward through concentric consciousness
+
+   ARCHITECTURE ↔ WORLDVIEW (isomorphic)
+   • Invariant ontology — LAYERS (seven), language, geometry ids, inward/out path.
+   • Invariant dynamics — one field of laws: build*, animate; navigation + resilience.
+   • Variable relation only — GENESIS: seed + INITIAL_CONDITIONS, applied once; never
+     rewrites teachings or redefines layers. Initial state in a bounded basin.
+   • Constraint / freedom — no false dichotomy: GENESIS_BOUNDS is the vessel; lawful
+     variation inside is the freedom. Same gesture as “order amid change, change amid
+     order” (Whitehead): rigor and play are one structure at different resolutions.
+   • Fault — fall back to canonical conditions; meaning persists; atmosphere may reset.
+
    ═══════════════════════════════════════════════════════════ */
 
 // ─── RESILIENCE LAYER — fault-tolerant foundation ───
-// Clamp delta-time to prevent physics explosions after tab-refocus
+// dt clamp: accept finitude; preserve continuity (no runaway state on resume)
 const MAX_DT = 0.1;          // 100ms — anything larger is a tab resume spike
 const SAFE_NUM = (v, fallback = 0) => Number.isFinite(v) ? v : fallback;
 
@@ -19,6 +30,7 @@ reducedMotionQuery.addEventListener('change', (e) => { prefersReducedMotion = e.
 
 import * as THREE from 'three';
 
+// ─── ONTOLOGY (invariant — do not treat as tunable “content”) ───
 // ─── LAYER TEACHINGS ───
 const LAYERS = [
   {
@@ -207,8 +219,9 @@ const TAU = Math.PI * 2;
 const LAYER_COUNT = LAYERS.length;
 const LAYER_SPACING = 16;
 
-// ─── GENESIS — session seed + bounded initial conditions (applied once before animate) ───
-// Replay: set window.__FM3D_SEED__ (string) in the page before this module loads.
+// ─── GENESIS (Accipio Ludo in code) — session seed + bounded initial conditions ───
+// Structure accepted whole; freedom = lawful variation of starting coordinates only.
+// Replay: set window.__FM3D_SEED__ (string) before this module loads.
 const GENESIS_VERSION = 1;
 const CANONICAL_GENESIS_SEED = 'fm3d-canonical-v1';
 
@@ -247,6 +260,7 @@ function rngSigned(rng, mag, fb = 0) {
   return rngBetween(rng, -m, m, 0);
 }
 
+// Envelopes: outward rigor that makes inward variation trustworthy (same gesture, two scales).
 const GENESIS_BOUNDS = Object.freeze({
   maxCameraAzimuthDeg: 12,
   maxCameraElevationDeg: 6,
@@ -488,6 +502,7 @@ let dustParticlePhases; // per-dust-particle animation phase offsets
 let dustParticleSpeeds; // per-dust-particle animation rates
 let dustBaseOpacities;  // per-dust-particle base brightness (varied)
 
+// One-time perturbation of state vectors only — no new semantics, no rewiring.
 function applyInitialConditions(ctx) {
   const ic = (ctx && ctx.initialConditions) || INITIAL_CONDITIONS || CANONICAL_INITIAL_CONDITIONS;
   if (!ctx) return;
@@ -2610,6 +2625,7 @@ window.addEventListener('orientationchange', () => {
   setTimeout(handleResize, 150);  // slight delay for layout to settle
 });
 
+// ─── EVOLUTION — fixed laws; state = genesis + user + time (ontology unchanged) ───
 // ─── ANIMATION LOOP (fault-isolated — no single subsystem can kill the loop) ───
 function animate() {
   requestAnimationFrame(animate);
