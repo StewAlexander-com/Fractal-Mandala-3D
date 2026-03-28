@@ -6,9 +6,13 @@
 
 ## [Enter the Mandala → stewalexander-com.github.io/Fractal-Mandala-3D](https://stewalexander-com.github.io/Fractal-Mandala-3D/)
 
-A 3D interactive sacred geometry mandala of presence and liberation. Seven concentric layers of metacognitive awareness rendered as quantum orbital shells — fly through them in your browser. Built with Three.js, set in an astronomically-inspired nebula star field with ambient meditation audio.
+A 3D interactive sacred geometry mandala of presence and liberation. Seven concentric layers of metacognitive awareness rendered as quantum orbital shells — fly through them in your browser. Built with Three.js, set in an astronomically-inspired nebula star field with layered ambient audio (meditation + subtle ocean bed).
 
 The teachings distill converging ideas from Buddhism, Hinduism, Stoicism, Sufism, Taoism, and Christian mysticism, interwoven with modern physics, neuroscience, cognitive-behavioral research, process philosophy, and the mathematics of fractals and calculus — drawn from cultures across Asia, Africa, Europe, and the Americas. Where traditions separated by thousands of miles and thousands of years arrive at the same insight, that convergence is the signal.
+
+## Layered ambient sound
+
+Two looping beds are summed in one Web Audio graph (with HTML5 `<audio>` fallback when `MediaElementSource` fails): the main meditation track and a CC0 ocean-wave loop (see `AUDIO-CREDITS.txt`). Meditation sits at ~33% linear gain with a ~3s fade-in; waves are **20% of that** so the music leads. Speaker mute/resume and context suspend apply to both. Breath-reactive visuals still analyse the **meditation** source only.
 
 ---
 
@@ -71,7 +75,7 @@ The background environment is modeled after Hubble imagery of stellar nurseries 
 - **Cosmic dust ring** — 600-particle toroidal band at the midpoint, glacial rotation
 - **Nebula accent lights** — rose, lavender, blue, and warm backlight point lights
 - **ACES filmic tone mapping** at exposure 2.0 for cinematic dynamic range
-- **Ambient meditation audio** — looping at 33% volume with fade-in
+- **Layered ambient audio** — meditation loop ~33% linear gain + ocean bed at 20% of that; shared fade-in and mute
 
 ## UI & Design
 
@@ -104,7 +108,7 @@ The practice is fractal: Meditate → Let revelation emerge → Ask questions �
 - **Gesture system** — unified intent-locked input: mouse drag, scroll, touch swipe, pinch zoom, keyboard, slider drag
 - **6-DOF camera** — auto-orbit + user orbit + parallax bob + zoom Z-offset, all lerped with exponential ease
 - **iOS hardened** — `visualViewport` API sizing, `100dvh` fallback, `viewport-fit=cover`, safe-area insets
-- **Audio** — Web Audio API pipeline (AudioContext → GainNode → destination) with HTML5 Audio fallback; autoplay gate; fade-in; loop; iOS standalone safe
+- **Audio** — Web Audio API: two `<audio>` loops (meditation + ocean), each optional MediaElementSource → GainNode → destination; HTML volume fallback if CORS/source creation fails; autoplay gate; shared fade-in/mute; iOS standalone safe
 - **Audio-reactive geometry** — ambient track AnalyserNode + optional microphone input blended into a single normalized breath signal. Smoothed with asymmetric exponential rates (rise 0.015, fall 0.008) to feel like breathing, not a VU meter. Drives: emissive intensity/warmth, rotation speed, camera bob amplitude, particle drift rate, core glow, star brightness, fog warmth. Mic input soft-limited with `tanh()` before blending (ambient 65% / mic 35%) so the ambient track always dominates
 - **Performance** — star twinkle in rolling batches (~350/frame), additive blending, depth-write disabled on particles, `powerPreference: 'high-performance'`
 
@@ -119,7 +123,7 @@ The mandala is designed to run unattended without degradation:
 - **Fault-isolated animation loop** — each subsystem (orbitals, core glow, star twinkle, shooting stars, cosmic dust, nebula clouds) wrapped in independent try/catch
 - **Global error handler** — catches CDN/module failures and shows graceful "unable to load" message instead of blank screen
 - **CDN preconnect** — `<link rel="preconnect">` hints for jsdelivr and Google Fonts
-- **Audio preload** — `<link rel="preload" as="fetch">` hint for ambient track
+- **Audio preload** — `<link rel="preload" as="audio">` for meditation and ocean MP3s
 - **Font fallback** — `display=swap` ensures visible text during font load
 
 ### Mic Fault Tolerance
@@ -162,6 +166,8 @@ npx serve . -l 3000
 ## Audio Credits
 
 Ambient meditation track: "Angelic Meditation" from [Pixabay](https://pixabay.com/music/meditationspiritual-angelic-meditation-172334/) — Pixabay Content License (free for all use, no attribution required).
+
+Ocean wave bed: CC0 clip credited in [`AUDIO-CREDITS.txt`](AUDIO-CREDITS.txt) (Freesound).
 
 ---
 
