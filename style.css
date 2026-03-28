@@ -678,13 +678,19 @@ canvas {
 .teaching-wrap--collapsed .teaching-panel-toggle__icon--show {
   display: block;
 }
-/* Collapsed: centered “show key ideas” chip — same row as panel was */
+/*
+ * Collapsed: “show key ideas” chip — fixed to viewport so it stays truly centered
+ * (the wrap is only min(640px, 92vw); centering inside it skewed the pill on wide screens).
+ */
 .teaching-wrap--collapsed .teaching-panel-toggle {
+  position: fixed;
   top: auto;
   right: auto;
-  bottom: 0;
   left: 50%;
   transform: translateX(-50%);
+  /* Match .teaching-wrap bottom (overridden in mobile / landscape blocks below) */
+  bottom: clamp(80px, 12vh, 140px);
+  z-index: 40;
   width: auto;
   min-width: 44px;
   height: 40px;
@@ -1638,6 +1644,7 @@ canvas {
     height: 36px;
     padding: 0 12px;
     font-size: 0.65rem;
+    bottom: clamp(70px, 10vh, 100px);
   }
 }
 
@@ -1734,6 +1741,7 @@ canvas {
     height: 36px;
     padding: 0 11px;
     font-size: 0.62rem;
+    bottom: 56px;
   }
 
   /* Welcome screen — compact */
