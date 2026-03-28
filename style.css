@@ -322,30 +322,47 @@ canvas {
 .welcome-convergence-details > summary::-webkit-details-marker { display: none; }
 .welcome-convergence-details > summary::marker { content: ""; }
 
-/* Chevron affordance — visible but in palette (gold + soft glow) */
-.welcome-convergence-summary::after {
-  content: "▾";
-  font-size: clamp(0.88rem, 2.15vmin, 1.05rem);
-  color: var(--gold);
-  opacity: 0.92;
-  line-height: 1;
-  letter-spacing: 0;
-  text-shadow:
-    0 0 14px rgba(240, 200, 80, 0.55),
-    0 0 4px rgba(240, 200, 80, 0.35),
-    0 1px 3px rgba(0, 0, 0, 0.55);
-  transition: opacity 0.2s var(--ease-out), color 0.2s var(--ease-out), text-shadow 0.2s var(--ease-out);
+/* Stroke chevrons: geometry is #mandala-chevron-up / #mandala-chevron-down in index.html */
+.welcome-convergence-summary__chevron {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  line-height: 0;
+  color: #f0d9a0;
+  filter: drop-shadow(0 0 4px rgba(240, 200, 100, 0.7))
+         drop-shadow(0 0 8px rgba(200, 160, 60, 0.35));
+  transition: color 0.2s var(--ease-out), filter 0.2s var(--ease-out);
 }
-.welcome-convergence-summary:hover::after {
-  opacity: 1;
-  color: #f8dc78;
-  text-shadow:
-    0 0 18px rgba(248, 220, 120, 0.65),
-    0 0 6px rgba(240, 200, 80, 0.45),
-    0 1px 3px rgba(0, 0, 0, 0.55);
+.welcome-convergence-summary:hover .welcome-convergence-summary__chevron {
+  color: #f8f0c8;
+  filter: drop-shadow(0 0 6px rgba(248, 220, 140, 0.85))
+         drop-shadow(0 0 12px rgba(220, 180, 80, 0.45));
 }
-.welcome-convergence-details[open] .welcome-convergence-summary::after {
-  content: "▴";
+.welcome-convergence-summary__chevron-icon {
+  display: block;
+}
+.welcome-convergence-summary__chevron-icon--down {
+  animation: welcomeChevronBounceDown 2.4s ease-in-out infinite;
+}
+.welcome-convergence-summary__chevron-icon--up {
+  display: none;
+  animation: welcomeChevronBounceUp 2.4s ease-in-out infinite;
+}
+.welcome-convergence-details[open] .welcome-convergence-summary__chevron-icon--down {
+  display: none;
+}
+.welcome-convergence-details[open] .welcome-convergence-summary__chevron-icon--up {
+  display: block;
+}
+
+@keyframes welcomeChevronBounceDown {
+  0%, 100% { transform: translateY(0); }
+  50%      { transform: translateY(5px); }
+}
+@keyframes welcomeChevronBounceUp {
+  0%, 100% { transform: translateY(0); }
+  50%      { transform: translateY(-5px); }
 }
 
 .welcome-convergence-summary:hover {

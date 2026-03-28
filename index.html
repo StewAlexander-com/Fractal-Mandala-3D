@@ -153,9 +153,21 @@
 <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,300;1,400&family=Jost:wght@300;400;500&family=Lora:ital,wght@0,400;0,500;1,400;1,500&display=swap" rel="stylesheet">
 <!-- Preload audio hint — browser can start fetching before user enters -->
 <link rel="preload" href="ambient-meditation.mp3" as="audio" crossorigin type="audio/mpeg">
-<link rel="stylesheet" href="style.css?v=welcome-chevron-v1">
+<link rel="stylesheet" href="style.css?v=mandala-chevron-sprite-v1">
 </head>
 <body>
+
+<!-- Single source for chevron paths — used by .scroll-hint and welcome convergence summary -->
+<svg xmlns="http://www.w3.org/2000/svg" style="position:absolute;width:0;height:0;overflow:hidden" aria-hidden="true">
+  <defs>
+    <symbol id="mandala-chevron-up" viewBox="0 0 20 10">
+      <path d="M2 9L10 2L18 9" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
+    </symbol>
+    <symbol id="mandala-chevron-down" viewBox="0 0 20 10">
+      <path d="M2 1L10 8L18 1" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
+    </symbol>
+  </defs>
+</svg>
 
 <main id="main-content">
 <canvas id="canvas" aria-hidden="true"></canvas>
@@ -175,10 +187,10 @@
       <div class="teaching-inner" id="teachingInner" tabindex="0" role="region" aria-label="Layer teaching content"></div>
     </div>
     <div class="scroll-hint scroll-hint--up" id="scrollHintUp">
-      <svg width="28" height="14" viewBox="0 0 20 10" fill="none"><path d="M2 9L10 2L18 9" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      <svg width="28" height="14" viewBox="0 0 20 10" fill="none"><use href="#mandala-chevron-up"/></svg>
     </div>
     <div class="scroll-hint scroll-hint--down" id="scrollHintDown">
-      <svg width="28" height="14" viewBox="0 0 20 10" fill="none"><path d="M2 1L10 8L18 1" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      <svg width="28" height="14" viewBox="0 0 20 10" fill="none"><use href="#mandala-chevron-down"/></svg>
     </div>
   </div>
 
@@ -209,7 +221,13 @@
     <p class="welcome-instruction">Scroll, arrow keys, or the gold track at right. On a phone: swipe up or down on the scene.</p>
     <button class="enter-btn" id="enterBtn">enter the mandala</button>
     <details class="welcome-convergence-details">
-      <summary class="welcome-convergence-summary"><span class="welcome-convergence-summary__text">Lineages from Buddhism to physics — open to explore a convergence of multiple ideas over the centuries …</span></summary>
+      <summary class="welcome-convergence-summary">
+        <span class="welcome-convergence-summary__text">Lineages from Buddhism to physics — open to explore a convergence of multiple ideas over the centuries …</span>
+        <span class="welcome-convergence-summary__chevron" aria-hidden="true">
+          <svg class="welcome-convergence-summary__chevron-icon welcome-convergence-summary__chevron-icon--down" width="28" height="14" viewBox="0 0 20 10" fill="none" focusable="false"><use href="#mandala-chevron-down"/></svg>
+          <svg class="welcome-convergence-summary__chevron-icon welcome-convergence-summary__chevron-icon--up" width="28" height="14" viewBox="0 0 20 10" fill="none" focusable="false"><use href="#mandala-chevron-up"/></svg>
+        </span>
+      </summary>
       <ul class="welcome-convergence" aria-label="Sources of convergence">
         <li><strong>Buddhism</strong>&mdash;second arrow, anicca (impermanence), sati (mindfulness)</li>
         <li><strong>Stoicism</strong>&mdash;Epictetus, Marcus Aurelius; amor fati, acceptance of what is</li>
