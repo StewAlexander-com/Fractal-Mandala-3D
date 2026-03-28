@@ -1516,8 +1516,8 @@ document.addEventListener('keydown', (e) => {
 
 // ─── AMBIENT AUDIO (Web Audio API — works in all environments inc. iOS standalone) ───
 const AUDIO_VOLUME = 0.33;
-// Ocean bed (CC0 — see AUDIO-CREDITS.txt): same bus shape as meditation, 33% of its linear gain
-const OCEAN_TO_MUSIC_GAIN = 0.33;
+// Ocean bed (CC0 — see AUDIO-CREDITS.txt): same bus shape as meditation, 25% of its linear gain
+const OCEAN_TO_MUSIC_GAIN = 0.25;
 const oceanTargetGain = () => AUDIO_VOLUME * OCEAN_TO_MUSIC_GAIN;
 
 let audioCtx = null;          // AudioContext — created on first user gesture
