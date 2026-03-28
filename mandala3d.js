@@ -2102,8 +2102,8 @@ document.addEventListener('webkitfullscreenchange', updateFsIcon);
 // ─── LAYER-ADAPTIVE PANEL OPACITY ───
 // Panel darkens progressively toward the bright inner layers
 // so text stays readable against luminous core geometry.
-const PANEL_BASE_ALPHA = 0.40;
-const PANEL_DEPTH_BOOST = 0.22; // extra alpha added at innermost layer
+const PANEL_BASE_ALPHA = 0.44;
+const PANEL_DEPTH_BOOST = 0.242; // ~10% stronger panel vs prior 0.40 / 0.22
 
 function updatePanelOpacity(layerIndex) {
   if (!teachingPanel) return;
