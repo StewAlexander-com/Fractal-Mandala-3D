@@ -1649,21 +1649,22 @@ canvas {
        (slider-track::before inset -22px). Nudge left so the two controls read as distinct. */
     transform: translateX(calc(-50% - clamp(20px, 6vw, 46px)));
   }
+}
 
-  /* Portrait phones: expanded hide/show control was top-right of the panel and sat on the
-     layer slider. Center it above the panel; lift scroll-up so both stay tappable. */
-  @media (orientation: portrait) {
-    .teaching-wrap:not(.teaching-wrap--collapsed) .teaching-panel-toggle {
-      left: 50%;
-      right: auto;
-      top: auto;
-      bottom: calc(100% + 10px);
-      transform: translateX(-50%);
-    }
-    .teaching-wrap .scroll-hint--up {
-      bottom: calc(100% + 56px);
-      margin-bottom: 0;
-    }
+/* Same rules as above, expressed as a single @media (no nested @media) so engines without
+   full CSS nesting support for @rules (older Firefox, etc.) still apply portrait layout.
+   Arc uses Chromium and is unaffected; this is for Gecko / odd embeds. */
+@media (max-width: 768px) and (orientation: portrait) {
+  .teaching-wrap:not(.teaching-wrap--collapsed) .teaching-panel-toggle {
+    left: 50%;
+    right: auto;
+    top: auto;
+    bottom: calc(100% + 10px);
+    transform: translateX(-50%);
+  }
+  .teaching-wrap .scroll-hint--up {
+    bottom: calc(100% + 56px);
+    margin-bottom: 0;
   }
 }
 
