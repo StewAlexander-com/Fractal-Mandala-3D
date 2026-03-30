@@ -406,46 +406,47 @@ function applyGyroBackgroundParallax(dt) {
   // This yields a “3D field” feel rather than one plane sliding around.
   const yaw = gyroBg.yaw;
   const pitch = gyroBg.pitch;
-  // Balance: reduce horizontal travel while making vertical a touch stronger.
-  let px = yaw * 520;      // overall horizontal parallax scalar (world units)
-  let py = -pitch * 660;   // overall vertical parallax scalar (world units)
+  // Balance: keep overall motion subtle but increase perceived depth separation.
+  let px = yaw * 460;      // overall horizontal parallax scalar (world units)
+  let py = -pitch * 720;   // overall vertical parallax scalar (world units)
 
   // Subtle "gravity": the greater the tilt, the more the background drifts
   // in the direction of that tilt, with damping. This creates a natural 3D pull
   // without affecting HUD or inducing nausea.
   const gNormX = Math.max(-1, Math.min(1, gyroBg.filtGamma / 30)); // degrees → [-1,1]
   const gNormY = Math.max(-1, Math.min(1, gyroBg.filtBeta / 30));
-  const accelX = gNormX * 22;   // world units / s^2 (subtle)
-  const accelY = -gNormY * 28;  // invert so "tilt up" drifts upward
-  const damp = Math.exp(-dt / 0.95); // ~0.95s time constant
+  // Dampen gravity drift: barely-there bias, mostly felt at larger tilts.
+  const accelX = gNormX * 10;   // world units / s^2 (subtle)
+  const accelY = -gNormY * 12;  // invert so "tilt up" drifts upward
+  const damp = Math.exp(-dt / 0.65); // faster damping (less lingering drift)
   gyroBg.gravVX = gyroBg.gravVX * damp + accelX * dt;
   gyroBg.gravVY = gyroBg.gravVY * damp + accelY * dt;
-  const maxV = 18;
+  const maxV = 8;
   gyroBg.gravVX = Math.max(-maxV, Math.min(maxV, gyroBg.gravVX));
   gyroBg.gravVY = Math.max(-maxV, Math.min(maxV, gyroBg.gravVY));
 
   px += gyroBg.gravVX;
   py += gyroBg.gravVY;
 
-  // Far layer: star fields (subtle)
+  // Far layer: star fields (subtle) — smallest movement
   if (nebulaStars) {
     // Far objects move least, especially horizontally.
-    nebulaStars.position.x = px * 0.085;
-    nebulaStars.position.y = py * 0.11;
+    nebulaStars.position.x = px * 0.060;
+    nebulaStars.position.y = py * 0.090;
     // Slight differential rotation for depth cue (kept conservative).
     nebulaStars.rotation.y += yaw * 0.002;
     nebulaStars.rotation.x += pitch * 0.001;
   }
   if (radiantStars) {
-    radiantStars.position.x = px * 0.11;
-    radiantStars.position.y = py * 0.15;
+    radiantStars.position.x = px * 0.075;
+    radiantStars.position.y = py * 0.115;
     radiantStars.rotation.y += yaw * 0.002;
     radiantStars.rotation.x += pitch * 0.001;
   }
   // Mid layer: dust (more noticeable)
   if (cosmicDust) {
-    cosmicDust.position.x = px * 0.18;
-    cosmicDust.position.y = py * 0.26;
+    cosmicDust.position.x = px * 0.14;
+    cosmicDust.position.y = py * 0.22;
     cosmicDust.rotation.y += yaw * 0.003;
     cosmicDust.rotation.x += pitch * 0.002;
   }
@@ -461,8 +462,8 @@ function applyGyroBackgroundParallax(dt) {
       const size = Number.isFinite(s.userData.baseSize) ? s.userData.baseSize : s.scale.x;
       const w = Math.max(0.7, Math.min(1.8, size / 55)); // normalize around typical sizes
       // Near layer moves most; keep stronger vertical than horizontal.
-      s.position.x = bx + px * 0.34 * w;
-      s.position.y = by + py * 0.46 * w;
+      s.position.x = bx + px * 0.33 * w;
+      s.position.y = by + py * 0.52 * w;
       // Tiny z breathing to enhance depth without changing composition.
       s.position.z = bz + (yaw * 28 - pitch * 18) * 0.035 * w;
     }
