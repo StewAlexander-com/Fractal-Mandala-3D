@@ -417,7 +417,15 @@ function applyGyroBackgroundParallax(dt, breath = 0, layerIndex = 0) {
   // If the phone stops moving (or events pause), gently settle toward neutral.
   // This reduces seasick feeling from persistent tilt offsets.
   const stillHint = gyroBg._stillHint ? 1 : 0;
-  gyroBg.stillMs = stillHint ? (gyroBg.stillMs + dt * 1000) : 0;
+  // Never hard-reset stillness: decay smoothly so "still → moving" has no step.
+  if (stillHint) {
+    gyroBg.stillMs = Math.min(20000, gyroBg.stillMs + dt * 1000);
+  } else {
+    const decayTau = 0.75; // seconds — how quickly stillness relaxes when movement resumes
+    const k = Math.exp(-dt / decayTau);
+    gyroBg.stillMs *= k;
+    if (gyroBg.stillMs < 1) gyroBg.stillMs = 0;
+  }
   const nowMs = (typeof performance !== 'undefined' && performance.now) ? performance.now() : Date.now();
   const sinceEvt = gyroBg.lastEvtMs ? (nowMs - gyroBg.lastEvtMs) : 0;
   const shouldSettle = gyroBg.stillMs > 260 || sinceEvt > 450;
