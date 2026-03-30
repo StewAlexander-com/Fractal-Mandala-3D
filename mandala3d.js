@@ -13,7 +13,8 @@
      order” (Whitehead): rigor and play are one structure at different resolutions.
    • Fault — fall back to canonical conditions; meaning persists; atmosphere may reset.
    • Modules — ontology.js (invariant data), genesis.js (bounded initial relation),
-     mandala3d.js (dynamics, perception, UI). Same split as worldview layers above.
+     mandala3d.js (dynamics, perception, UI), gyroParallaxSubsystem.js (device tilt →
+     background parallax only). Same split as worldview layers above.
 
    ═══════════════════════════════════════════════════════════ */
 
@@ -30,6 +31,7 @@ import {
   INITIAL_CONDITIONS,
   applyInitialConditions,
 } from './genesis.js';
+import { createGyroParallaxSubsystem } from './gyroParallaxSubsystem.js';
 
 // DYNAMICS + PRESENTATION — everything below orchestrates Three.js, input, and the loop.
 // Ontology and genesis are imported; they are not duplicated here.
@@ -235,375 +237,18 @@ let dustParticlePhases; // per-dust-particle animation phase offsets
 let dustParticleSpeeds; // per-dust-particle animation rates
 let dustBaseOpacities;  // per-dust-particle base brightness (varied)
 
-// ─── OPTIONAL: GYRO BACKGROUND PARALLAX (phones only) ───
-// Non-intrusive: affects only the WebGL background elements (stars/nebula/dust),
-// never the HTML HUD (key ideas panel, icons, slider).
-const gyroBg = {
-  supported: false,
-  enabled: false,
-  started: false,
-  // target offsets (radians)
-  targetYaw: 0,
-  targetPitch: 0,
-  // applied offsets (radians)
-  yaw: 0,
-  pitch: 0,
-  // stillness detection (to settle back toward neutral and reduce nausea)
-  lastEvtMs: 0,
-  lastOriMs: 0,
-  lastGamma: 0,
-  lastBeta: 0,
-  stillMs: 0,
-  // filtered raw angles (degrees) to suppress micro-tremor flutter
-  filtGamma: 0,
-  filtBeta: 0,
-  // dead-zone hysteresis state (prevents chatter near threshold)
-  deadYaw: true,
-  deadPitch: true,
-  _stillHint: 0,
-  // subtle "gravity" drift (world-units velocity) for depth embodiment
-  gravVX: 0,
-  gravVY: 0,
-  // baseline calibration (neutral holding angle)
-  baseGamma: 0,
-  baseBeta: 0,
-  calibrating: false,
-  calibrateMs: 0,
-  // user control
-  motionOn: true,
-  // smoothed stillness reward (prevents step when crossing thresholds)
-  stillReward: 1,
-  // Bezier-eased camera-follow offsets (world units)
-  parX: 0,
-  parY: 0,
-};
-
-// Cubic-bezier easing helper (x in [0..1] → y in [0..1]).
-// We solve for t from x via a few Newton steps; falls back safely.
-function _bezierEase01(x, p1x, p1y, p2x, p2y) {
-  const clamp01 = (v) => v < 0 ? 0 : v > 1 ? 1 : v;
-  const cx = 3 * p1x;
-  const bx = 3 * (p2x - p1x) - cx;
-  const ax = 1 - cx - bx;
-  const cy = 3 * p1y;
-  const by = 3 * (p2y - p1y) - cy;
-  const ay = 1 - cy - by;
-
-  const sampleX = (t) => ((ax * t + bx) * t + cx) * t;
-  const sampleDX = (t) => (3 * ax * t + 2 * bx) * t + cx;
-  const sampleY = (t) => ((ay * t + by) * t + cy) * t;
-
-  const xx = clamp01(x);
-  let t = xx; // good starting guess
-  for (let i = 0; i < 5; i++) {
-    const dx = sampleX(t) - xx;
-    const d = sampleDX(t);
-    if (Math.abs(dx) < 1e-5 || Math.abs(d) < 1e-6) break;
-    t = clamp01(t - dx / d);
-  }
-  return clamp01(sampleY(t));
-}
-
-function initGyroBackgroundParallax() {
-  if (gyroBg.started) return;
-  gyroBg.started = true;
-
-  const hasDeviceOrientation = typeof window !== 'undefined' && 'DeviceOrientationEvent' in window;
-  if (!hasDeviceOrientation) return;
-  gyroBg.supported = true;
-
-  const clamp = (v, min, max) => Math.max(min, Math.min(max, v));
-  const toNorm = (deg, limitDeg) => clamp((Number.isFinite(deg) ? deg : 0) / limitDeg, -1, 1);
-  // Make the effect clearly perceptible on real devices (including iOS PWA),
-  // while still staying below “UI motion” territory.
-  const MAX_YAW = 0.14;    // ~8.0°
-  const MAX_PITCH = 0.10;  // ~5.7°
-
-  const onOrientation = (ev) => {
-    // gamma: left/right tilt (-90..90), beta: front/back (-180..180)
-    // Map to gentle parallax, clamp to avoid discomfort.
-    const gamma = ev && typeof ev.gamma === 'number' ? ev.gamma : 0;
-    const beta  = ev && typeof ev.beta === 'number' ? ev.beta : 0;
-    const nowMs = (typeof performance !== 'undefined' && performance.now) ? performance.now() : Date.now();
-    gyroBg.lastEvtMs = nowMs;
-
-    // Track stillness based on sensor deltas (degrees). When deltas are tiny for a while,
-    // we slowly return to neutral so the user doesn't feel "stuck off-center".
-    const dG = Math.abs(gamma - gyroBg.lastGamma);
-    const dB = Math.abs(beta - gyroBg.lastBeta);
-    gyroBg.lastGamma = gamma;
-    gyroBg.lastBeta = beta;
-    const isStill = dG < 0.5 && dB < 0.5; // slightly wider to treat tremor as still
-    // We'll accumulate still time in apply() using dt; here we only mark intent.
-    gyroBg._stillHint = isStill ? 1 : 0;
-
-    // Natural feel: in portrait, people tilt phone "toward/away" (beta) more than
-    // they twist side-to-side (gamma). In landscape the intuition flips.
-    const isLandscape = (window.innerWidth > window.innerHeight)
-      || (typeof window.orientation === 'number' && Math.abs(window.orientation) === 90);
-
-    // Full-scale tilt thresholds (degrees): lower = more sensitive.
-    const yawFull = isLandscape ? 14 : 22;     // portrait: constrain side-to-side
-    const pitchFull = isLandscape ? 20 : 12;   // portrait: boost up/down
-
-    // Amplitude multipliers: keep within MAX_* but bias the perceived motion axis.
-    // Portrait: damp side-to-side (gamma) further; slightly boost up/down (beta).
-    const yawAmp = isLandscape ? 1.0 : 0.42;
-    const pitchAmp = isLandscape ? 0.7 : 1.28;
-
-    // Low-pass filter raw angles so tiny hand jitter doesn't constantly retarget.
-    // deviceorientation can arrive at 60–120Hz on iPhone; this keeps motion calm.
-    const a = 0.045; // smaller = smoother / less flutter (more damping)
-    gyroBg.filtGamma += (gamma - gyroBg.filtGamma) * a;
-    gyroBg.filtBeta  += (beta  - gyroBg.filtBeta)  * a;
-
-    // Baseline calibration: treat how the user naturally holds the phone as "neutral".
-    // We update base slowly during a brief calibration window after Enter / recenter.
-    if (gyroBg.calibrating) {
-      gyroBg.calibrateMs = Math.min(1200, gyroBg.calibrateMs + 16); // approximate; corrected in apply()
-      const k = 0.06;
-      gyroBg.baseGamma += (gyroBg.filtGamma - gyroBg.baseGamma) * k;
-      gyroBg.baseBeta  += (gyroBg.filtBeta  - gyroBg.baseBeta)  * k;
-    }
-    const relGamma = gyroBg.filtGamma - gyroBg.baseGamma;
-    const relBeta  = gyroBg.filtBeta  - gyroBg.baseBeta;
-
-    const rawYaw = toNorm(relGamma, yawFull) * MAX_YAW * yawAmp;
-    const rawPitch = toNorm(relBeta, pitchFull) * MAX_PITCH * pitchAmp;
-
-    // Soft dead-zone: ramp in smoothly so "still → moving" never stutters.
-    const DEAD_IN = 0.011;  // radians (no motion)
-    const DEAD_OUT = 0.018; // radians (full motion)
-    const soft = (v) => {
-      const av = Math.abs(v);
-      if (av <= DEAD_IN) return 0;
-      const t = Math.max(0, Math.min(1, (av - DEAD_IN) / (DEAD_OUT - DEAD_IN)));
-      // smoothstep
-      const s = t * t * (3 - 2 * t);
-      return Math.sign(v) * av * s;
-    };
-    const desiredYaw = soft(rawYaw);
-    const desiredPitch = soft(rawPitch);
-
-    // Slew-rate limiter: iOS deviceorientation can arrive in uneven bursts, producing
-    // perceptible "jerks" even with filters. Cap target change per second.
-    const last = Number.isFinite(gyroBg.lastOriMs) && gyroBg.lastOriMs > 0 ? gyroBg.lastOriMs : nowMs;
-    gyroBg.lastOriMs = nowMs;
-    const dts = Math.max(1 / 120, Math.min(0.06, (nowMs - last) / 1000));
-    const maxYawRate = 0.55;   // rad/s
-    const maxPitchRate = 0.45; // rad/s
-    const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
-    const dy = clamp(desiredYaw - gyroBg.targetYaw, -maxYawRate * dts, maxYawRate * dts);
-    const dp = clamp(desiredPitch - gyroBg.targetPitch, -maxPitchRate * dts, maxPitchRate * dts);
-    gyroBg.targetYaw += dy;
-    gyroBg.targetPitch += dp;
-  };
-
-  const start = () => {
-    if (gyroBg.enabled) return;
-    try {
-      window.addEventListener('deviceorientation', onOrientation, { passive: true });
-      gyroBg.enabled = true;
-    } catch (_) { /* ignore */ }
-  };
-
-  // iOS Safari requires explicit permission from a user gesture.
-  try {
-    const DOE = window.DeviceOrientationEvent;
-    if (DOE && typeof DOE.requestPermission === 'function') {
-      DOE.requestPermission().then((res) => {
-        if (res === 'granted') start();
-      }).catch(() => { /* ignore */ });
-    } else {
-      start();
-    }
-  } catch (_) { /* ignore */ }
-}
-
-function applyGyroBackgroundParallax(dt, breath = 0, layerIndex = 0) {
-  if (!gyroBg.enabled || !gyroBg.motionOn) return;
-  if (!(nebulaStars || cosmicDust || radiantStars || (nebulaClouds && nebulaClouds.length))) return;
-
-  // Defensive: if dt is weird, clamp to something sane so smoothing can't explode.
-  if (!Number.isFinite(dt) || dt <= 0) dt = 1 / 60;
-  if (dt > 0.2) dt = 0.2;
-
-  // If the phone stops moving (or events pause), gently settle toward neutral.
-  // This reduces seasick feeling from persistent tilt offsets.
-  const stillHint = gyroBg._stillHint ? 1 : 0;
-  // Never hard-reset stillness: decay smoothly so "still → moving" has no step.
-  if (stillHint) {
-    gyroBg.stillMs = Math.min(20000, gyroBg.stillMs + dt * 1000);
-  } else {
-    const decayTau = 0.75; // seconds — how quickly stillness relaxes when movement resumes
-    const k = Math.exp(-dt / decayTau);
-    gyroBg.stillMs *= k;
-    if (gyroBg.stillMs < 1) gyroBg.stillMs = 0;
-  }
-  const nowMs = (typeof performance !== 'undefined' && performance.now) ? performance.now() : Date.now();
-  const sinceEvt = gyroBg.lastEvtMs ? (nowMs - gyroBg.lastEvtMs) : 0;
-  const shouldSettle = gyroBg.stillMs > 260 || sinceEvt > 450;
-  if (shouldSettle) {
-    // Exponential decay toward 0 over ~1–1.5s (depends on dt).
-    const settle = Math.pow(0.06, dt); // smaller base => faster settle
-    gyroBg.targetYaw *= settle;
-    gyroBg.targetPitch *= settle;
-    if (Math.abs(gyroBg.targetYaw) < 1e-4) gyroBg.targetYaw = 0;
-    if (Math.abs(gyroBg.targetPitch) < 1e-4) gyroBg.targetPitch = 0;
-  }
-
-  // Stillness reward: after sustained stillness, slightly reduce depth amplitude.
-  // Smoothed to avoid any perceptible step when crossing the threshold.
-  const stillTarget = gyroBg.stillMs > 1200
-    ? Math.max(0.78, 1 - (gyroBg.stillMs - 1200) / 8000)  // approaches ~0.78
-    : 1.0;
-  const stillEase = 1 - Math.exp(-dt / 0.35); // ~350ms time constant
-  gyroBg.stillReward += (stillTarget - gyroBg.stillReward) * stillEase;
-  const stillReward = gyroBg.stillReward;
-
-  // Complete calibration timing using real dt (replaces approx increment above).
-  if (gyroBg.calibrating) {
-    gyroBg.calibrateMs = Math.min(1200, gyroBg.calibrateMs + dt * 1000);
-    if (gyroBg.calibrateMs >= 900) gyroBg.calibrating = false;
-  }
-
-  // Smooth with a real time-constant so transitions never “jump” (iOS sensors can
-  // update in bursts; dead-zone exits can step the target).
-  // tau ≈ 0.22s feels floaty but responsive; higher = smoother.
-  const tau = 0.32;
-  const ease = 1 - Math.exp(-Math.max(0, dt) / tau);
-  gyroBg.yaw += (gyroBg.targetYaw - gyroBg.yaw) * ease;
-  gyroBg.pitch += (gyroBg.targetPitch - gyroBg.pitch) * ease;
-
-  // NaN / runaway guard: if any browser feeds invalid sensor data, reset safely.
-  if (!Number.isFinite(gyroBg.yaw) || !Number.isFinite(gyroBg.pitch)) {
-    gyroBg.yaw = 0;
-    gyroBg.pitch = 0;
-    gyroBg.targetYaw = 0;
-    gyroBg.targetPitch = 0;
-    gyroBg.deadYaw = true;
-    gyroBg.deadPitch = true;
-    gyroBg.gravVX = 0;
-    gyroBg.gravVY = 0;
-    gyroBg.parX = 0;
-    gyroBg.parY = 0;
-  }
-
-  // Depth parallax: translate different background layers by different amounts.
-  // This yields a “3D field” feel rather than one plane sliding around.
-  const yaw = gyroBg.yaw;
-  const pitch = gyroBg.pitch;
-  // Vignette: gently increases with tilt magnitude (reduces motion discomfort).
-  try {
-    if (gyroVignette && gyroVignette.style) {
-      const mag = Math.min(1, Math.hypot(yaw, pitch) / 0.11);
-      const v = 0.06 + mag * 0.22; // ~0.06—0.28
-      gyroVignette.style.opacity = String(v.toFixed(3));
-    }
-  } catch (_) {}
-  // Breath coherence: inhale slightly deepens parallax; exhale softens.
-  const b = Number.isFinite(breath) ? Math.max(0, Math.min(1, breath)) : 0;
-  const breathDepth = 0.92 + b * 0.16; // ~0.92—1.08
-
-  // Layer-aware depth: outer layers can tolerate a touch more parallax; inner layers less.
-  const li = Number.isFinite(layerIndex) ? layerIndex : 0;
-  const depthNorm = Math.max(0, Math.min(1, li / Math.max(1, LAYER_COUNT - 1)));
-  const layerDepth = 1.10 - depthNorm * 0.18; // outer ~1.10, inner ~0.92
-
-  const depthMul = breathDepth * layerDepth * stillReward;
-
-  // Balance: keep overall motion subtle but increase perceived depth separation.
-  let px = yaw * 460 * depthMul;      // overall horizontal parallax scalar (world units)
-  let py = -pitch * 720 * depthMul;   // overall vertical parallax scalar (world units)
-
-  // Subtle "gravity": the greater the tilt, the more the background drifts
-  // in the direction of that tilt, with damping. This creates a natural 3D pull
-  // without affecting HUD or inducing nausea.
-  // Drive gravity from smoothed target (avoids tiny raw sensor jitter leaking in).
-  const gNormX = Math.max(-1, Math.min(1, gyroBg.targetYaw / 0.10));
-  const gNormY = Math.max(-1, Math.min(1, gyroBg.targetPitch / 0.10));
-  // Dampen gravity drift: barely-there bias, mostly felt at larger tilts.
-  const accelX = gNormX * 10;   // world units / s^2 (subtle)
-  const accelY = -gNormY * 12;  // invert so "tilt up" drifts upward
-  const damp = Math.exp(-dt / 0.65); // faster damping (less lingering drift)
-  gyroBg.gravVX = gyroBg.gravVX * damp + accelX * dt;
-  gyroBg.gravVY = gyroBg.gravVY * damp + accelY * dt;
-  const maxV = 8;
-  gyroBg.gravVX = Math.max(-maxV, Math.min(maxV, gyroBg.gravVX));
-  gyroBg.gravVY = Math.max(-maxV, Math.min(maxV, gyroBg.gravVY));
-
-  px += gyroBg.gravVX;
-  py += gyroBg.gravVY;
-
-  // Bezier-eased follow: smooth the translation target itself so stars don't "jump"
-  // when the phone target changes. Per-axis lag creates natural curved arcs.
-  const followTauX = 0.42;
-  const followTauY = 0.52;
-  const tx = 1 - Math.exp(-dt / followTauX);
-  const ty = 1 - Math.exp(-dt / followTauY);
-  const ex = _bezierEase01(tx, 0.22, 0.0, 0.36, 1.0);
-  const ey = _bezierEase01(ty, 0.22, 0.0, 0.36, 1.0);
-  gyroBg.parX += (px - gyroBg.parX) * ex;
-  gyroBg.parY += (py - gyroBg.parY) * ey;
-  px = gyroBg.parX;
-  py = gyroBg.parY;
-
-  // Far layer: star fields (subtle) — smallest movement
-  if (nebulaStars) {
-    // Far objects move least, especially horizontally.
-    nebulaStars.position.x = px * 0.060;
-    nebulaStars.position.y = py * 0.090;
-    // Slight differential rotation for depth cue (kept conservative).
-    nebulaStars.rotation.y += yaw * 0.002;
-    nebulaStars.rotation.x += pitch * 0.001;
-  }
-  if (radiantStars) {
-    radiantStars.position.x = px * 0.075;
-    radiantStars.position.y = py * 0.115;
-    radiantStars.rotation.y += yaw * 0.002;
-    radiantStars.rotation.x += pitch * 0.001;
-  }
-  // Mid layer: dust (more noticeable)
-  if (cosmicDust) {
-    cosmicDust.position.x = px * 0.14;
-    cosmicDust.position.y = py * 0.22;
-    cosmicDust.rotation.y += yaw * 0.003;
-    cosmicDust.rotation.x += pitch * 0.002;
-  }
-  // Near layer: cloud sprites (most noticeable; reversible via base position)
-  if (nebulaClouds && nebulaClouds.length) {
-    for (let i = 0; i < nebulaClouds.length; i++) {
-      const s = nebulaClouds[i];
-      if (!s || !s.position || !s.userData) continue;
-      const bx = Number.isFinite(s.userData.baseX) ? s.userData.baseX : s.position.x;
-      const by = Number.isFinite(s.userData.baseY) ? s.userData.baseY : s.position.y;
-      const bz = Number.isFinite(s.userData.baseZ) ? s.userData.baseZ : s.position.z;
-      // Individual depth weighting based on sprite size (bigger = "closer").
-      const size = Number.isFinite(s.userData.baseSize) ? s.userData.baseSize : s.scale.x;
-      const w = Math.max(0.7, Math.min(1.8, size / 55)); // normalize around typical sizes
-      // Near layer moves most; apply extra "water-like" easing so phone turns
-      // feel flowing rather than angular, especially on iOS sensor bursts.
-      const tx = bx + px * 0.33 * w;
-      const ty = by + py * 0.52 * w;
-      const tz = bz + (yaw * 28 - pitch * 18) * 0.035 * w;
-
-      if (!Number.isFinite(s.userData.gyroX)) s.userData.gyroX = s.position.x;
-      if (!Number.isFinite(s.userData.gyroY)) s.userData.gyroY = s.position.y;
-      if (!Number.isFinite(s.userData.gyroZ)) s.userData.gyroZ = s.position.z;
-
-      const cloudTau = 0.72; // higher = more liquid / slower response
-      const t = 1 - Math.exp(-dt / cloudTau);
-      const e = _bezierEase01(t, 0.18, 0.0, 0.30, 1.0);
-      s.userData.gyroX += (tx - s.userData.gyroX) * e;
-      s.userData.gyroY += (ty - s.userData.gyroY) * e;
-      s.userData.gyroZ += (tz - s.userData.gyroZ) * e;
-
-      s.position.x = s.userData.gyroX;
-      s.position.y = s.userData.gyroY;
-      s.position.z = s.userData.gyroZ;
-    }
-  }
-}
+// ─── Gyro parallax subsystem (see gyroParallaxSubsystem.js) ───
+const gyroParallax = createGyroParallaxSubsystem({
+  LAYER_COUNT,
+  getSceneRefs: () => ({
+    nebulaStars,
+    radiantStars,
+    cosmicDust,
+    nebulaClouds,
+  }),
+  getVignetteEl: () => gyroVignette,
+});
+gyroParallax.bindBreathGestures(breathEl);
 
 // One-time perturbation of state vectors only — no new semantics, no rewiring.
 
@@ -2753,12 +2398,8 @@ function handleEnter(e) {
   if (teachingWrap) teachingWrap.classList.add('teaching-wrap--in-scene');
   initAudio();  // user gesture — safe to start audio
   // Same user gesture is required on iOS to request motion permission.
-  initGyroBackgroundParallax();
-  // Auto-calibrate neutral hold for the first moment in-scene.
-  gyroBg.baseGamma = gyroBg.filtGamma || 0;
-  gyroBg.baseBeta = gyroBg.filtBeta || 0;
-  gyroBg.calibrating = true;
-  gyroBg.calibrateMs = 0;
+  gyroParallax.init();
+  gyroParallax.onEnterScene();
 }
 
 function resetToSplash() {
@@ -2823,63 +2464,7 @@ if (exitBtn) {
   exitBtn.addEventListener('touchend', handleExitToSplash);
 }
 
-// ─── MOTION CONTROL (gesture-only, non-intrusive) ───
-// Long-press the "breathe" word to recenter (recalibrate baseline).
-// Double-tap it to toggle motion on/off.
-(function bindBreathMotionGestures() {
-  if (!breathEl) return;
-  let pressTimer = 0;
-  let lastTapAt = 0;
-  const LONG_MS = 520;
-  const TAP_MS = 320;
-
-  const clear = () => {
-    if (pressTimer) { clearTimeout(pressTimer); pressTimer = 0; }
-  };
-
-  const recenter = () => {
-    gyroBg.baseGamma = gyroBg.filtGamma || 0;
-    gyroBg.baseBeta = gyroBg.filtBeta || 0;
-    gyroBg.calibrating = true;
-    gyroBg.calibrateMs = 0;
-  };
-
-  const toggleMotion = () => {
-    gyroBg.motionOn = !gyroBg.motionOn;
-    if (!gyroBg.motionOn) {
-      gyroBg.targetYaw = 0; gyroBg.targetPitch = 0;
-      gyroBg.yaw = 0; gyroBg.pitch = 0;
-      gyroBg.gravVX = 0; gyroBg.gravVY = 0;
-      gyroBg.parX = 0; gyroBg.parY = 0;
-    }
-  };
-
-  const onTouchStart = (e) => {
-    if (e && e.touches && e.touches.length > 1) return;
-    clear();
-    pressTimer = setTimeout(() => {
-      pressTimer = 0;
-      recenter();
-    }, LONG_MS);
-  };
-
-  const onTouchEnd = (e) => {
-    clear();
-    const now = Date.now();
-    if (now - lastTapAt < TAP_MS) {
-      lastTapAt = 0;
-      toggleMotion();
-    } else {
-      lastTapAt = now;
-    }
-    if (e && e.type === 'touchend') e.preventDefault();
-  };
-
-  breathEl.addEventListener('touchstart', onTouchStart, { passive: true });
-  breathEl.addEventListener('touchend', onTouchEnd, { passive: false });
-  breathEl.addEventListener('touchcancel', clear, { passive: true });
-  breathEl.addEventListener('dblclick', () => toggleMotion());
-})();
+// Motion on “breathe”: long-press recenter / double-tap toggle — wired in gyroParallax.bindBreathGestures.
 
 // ─── ROBUST RESIZE — works with iOS safe-area, dynamic toolbar, notch ───
 function handleResize() {
@@ -2940,7 +2525,7 @@ function animate() {
   // and micro-bob so the whole field feels safer and calmer (no explicit prompts).
   let stillCalm = 0; // 0..1
   try {
-    const ms = (gyroBg && gyroBg.enabled && gyroBg.motionOn && Number.isFinite(gyroBg.stillMs)) ? gyroBg.stillMs : 0;
+    const ms = gyroParallax.getStillMs();
     // Fade in from 5s → 10s of stillness.
     const t = Math.max(0, Math.min(1, (ms - 5000) / 5000));
     // Smoothstep for a soft onset.
@@ -3365,7 +2950,7 @@ function animate() {
   });
 
   // Optional gyro parallax: affects only background meshes/sprites.
-  try { applyGyroBackgroundParallax(dt, b, currentLayer); } catch (_) {}
+  try { gyroParallax.apply(dt, b, currentLayer); } catch (_) {}
 
   // NaN guard — if camera position corrupted, reset to last known-good
   if (!Number.isFinite(camera.position.z)) {
