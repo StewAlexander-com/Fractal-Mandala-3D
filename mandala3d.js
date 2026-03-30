@@ -2912,6 +2912,19 @@ function animate() {
   // scene should still feel alive, just calm enough to avoid vestibular triggers)
   const motionScale = prefersReducedMotion ? 0.05 : 1.0;
 
+  // ── Quiet stillness response (mobile gyro) ──
+  // When the device is held steady for ~5–10s, we gently reduce background drift
+  // and micro-bob so the whole field feels safer and calmer (no explicit prompts).
+  let stillCalm = 0; // 0..1
+  try {
+    const ms = (gyroBg && gyroBg.enabled && gyroBg.motionOn && Number.isFinite(gyroBg.stillMs)) ? gyroBg.stillMs : 0;
+    // Fade in from 5s → 10s of stillness.
+    const t = Math.max(0, Math.min(1, (ms - 5000) / 5000));
+    // Smoothstep for a soft onset.
+    stillCalm = t * t * (3 - 2 * t);
+  } catch (_) {}
+  const calmMul = 1 - stillCalm * 0.28; // up to ~28% calmer when held still
+
   // ── Audio-reactive breath signal ──
   updateAudioBreath();
 
@@ -2946,7 +2959,7 @@ function animate() {
   cameraZ += (targetCameraZ - cameraZ) * dt * lerpSpeed;
 
   // ── Combined orbit: gentle auto-drift + user orbit ──
-  const autoAngle = elapsed * 0.08 * motionScale;
+  const autoAngle = elapsed * 0.08 * motionScale * calmMul;
   const genAz = (camera && camera.userData && camera.userData.genesisAzimuth) || 0;
   const genEl = (camera && camera.userData && camera.userData.genesisElevation) || 0;
   const totalAngle = autoAngle + userOrbitAngle + genAz;
@@ -2956,9 +2969,9 @@ function animate() {
   // Audio-reactive: breath gently amplifies the bob (1.0—1.15x)
   const bobBreathMul = 1.0 + b * 0.15;
   const bobX = (Math.sin(totalAngle) * BASE_ORBIT_RADIUS * bobBreathMul
-             + Math.sin(elapsed * 0.23) * 0.6) * motionScale;    // slow lateral drift
+             + Math.sin(elapsed * 0.23) * 0.6) * motionScale * calmMul;    // slow lateral drift
   const bobY = (Math.cos(elapsed * 0.12) * BASE_ORBIT_RADIUS * 0.5 * bobBreathMul
-             + Math.cos(elapsed * 0.17) * 0.4) * motionScale;    // secondary vertical drift
+             + Math.cos(elapsed * 0.17) * 0.4) * motionScale * calmMul;    // secondary vertical drift
 
   camera.position.x = bobX;
   camera.position.y = bobY + genEl * 6;
