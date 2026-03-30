@@ -251,6 +251,9 @@ const gyroBg = {
   lastGamma: 0,
   lastBeta: 0,
   stillMs: 0,
+  // filtered raw angles (degrees) to suppress micro-tremor flutter
+  filtGamma: 0,
+  filtBeta: 0,
 };
 
 function initGyroBackgroundParallax() {
@@ -282,7 +285,7 @@ function initGyroBackgroundParallax() {
     const dB = Math.abs(beta - gyroBg.lastBeta);
     gyroBg.lastGamma = gamma;
     gyroBg.lastBeta = beta;
-    const isStill = dG < 0.35 && dB < 0.35; // ~sub-degree jitter threshold
+    const isStill = dG < 0.5 && dB < 0.5; // slightly wider to treat tremor as still
     // We'll accumulate still time in apply() using dt; here we only mark intent.
     gyroBg._stillHint = isStill ? 1 : 0;
 
@@ -300,8 +303,19 @@ function initGyroBackgroundParallax() {
     const yawAmp = isLandscape ? 1.0 : 0.42;
     const pitchAmp = isLandscape ? 0.7 : 1.28;
 
-    gyroBg.targetYaw = toNorm(gamma, yawFull) * MAX_YAW * yawAmp;
-    gyroBg.targetPitch = toNorm(beta, pitchFull) * MAX_PITCH * pitchAmp;
+    // Low-pass filter raw angles so tiny hand jitter doesn't constantly retarget.
+    // deviceorientation can arrive at 60–120Hz on iPhone; this keeps motion calm.
+    const a = 0.10; // smaller = smoother / less flutter
+    gyroBg.filtGamma += (gamma - gyroBg.filtGamma) * a;
+    gyroBg.filtBeta  += (beta  - gyroBg.filtBeta)  * a;
+
+    const rawYaw = toNorm(gyroBg.filtGamma, yawFull) * MAX_YAW * yawAmp;
+    const rawPitch = toNorm(gyroBg.filtBeta, pitchFull) * MAX_PITCH * pitchAmp;
+
+    // Dead-zone: ignore tiny offsets near neutral to prevent visible shimmer.
+    const DEAD = 0.006; // radians
+    gyroBg.targetYaw = Math.abs(rawYaw) < DEAD ? 0 : rawYaw;
+    gyroBg.targetPitch = Math.abs(rawPitch) < DEAD ? 0 : rawPitch;
   };
 
   const start = () => {
