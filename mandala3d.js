@@ -233,6 +233,106 @@ let dustParticlePhases; // per-dust-particle animation phase offsets
 let dustParticleSpeeds; // per-dust-particle animation rates
 let dustBaseOpacities;  // per-dust-particle base brightness (varied)
 
+// ─── OPTIONAL: GYRO BACKGROUND PARALLAX (phones only) ───
+// Non-intrusive: affects only the WebGL background elements (stars/nebula/dust),
+// never the HTML HUD (key ideas panel, icons, slider).
+const gyroBg = {
+  supported: false,
+  enabled: false,
+  started: false,
+  // target offsets (radians)
+  targetYaw: 0,
+  targetPitch: 0,
+  // applied offsets (radians)
+  yaw: 0,
+  pitch: 0,
+};
+
+function initGyroBackgroundParallax() {
+  if (gyroBg.started) return;
+  gyroBg.started = true;
+
+  const hasDeviceOrientation = typeof window !== 'undefined' && 'DeviceOrientationEvent' in window;
+  if (!hasDeviceOrientation) return;
+  gyroBg.supported = true;
+
+  const clamp = (v, min, max) => Math.max(min, Math.min(max, v));
+  const toNorm = (deg, limitDeg) => clamp((Number.isFinite(deg) ? deg : 0) / limitDeg, -1, 1);
+  const MAX_YAW = 0.06;    // ~3.4° — subtle
+  const MAX_PITCH = 0.04;  // ~2.3° — subtle
+
+  const onOrientation = (ev) => {
+    // gamma: left/right tilt (-90..90), beta: front/back (-180..180)
+    // Map to gentle parallax, clamp to avoid discomfort.
+    const gamma = ev && typeof ev.gamma === 'number' ? ev.gamma : 0;
+    const beta  = ev && typeof ev.beta === 'number' ? ev.beta : 0;
+
+    // Keep the response conservative: treat ±25° as full scale.
+    gyroBg.targetYaw = toNorm(gamma, 25) * MAX_YAW;
+    gyroBg.targetPitch = toNorm(beta, 25) * MAX_PITCH;
+  };
+
+  const start = () => {
+    if (gyroBg.enabled) return;
+    try {
+      window.addEventListener('deviceorientation', onOrientation, { passive: true });
+      gyroBg.enabled = true;
+    } catch (_) { /* ignore */ }
+  };
+
+  // iOS Safari requires explicit permission from a user gesture.
+  try {
+    const DOE = window.DeviceOrientationEvent;
+    if (DOE && typeof DOE.requestPermission === 'function') {
+      DOE.requestPermission().then((res) => {
+        if (res === 'granted') start();
+      }).catch(() => { /* ignore */ });
+    } else {
+      start();
+    }
+  } catch (_) { /* ignore */ }
+}
+
+function applyGyroBackgroundParallax(dt) {
+  if (!gyroBg.enabled) return;
+  if (!(nebulaStars || cosmicDust || radiantStars || (nebulaClouds && nebulaClouds.length))) return;
+
+  // Smooth (critically damped-ish) so it feels “floating”, not twitchy.
+  const ease = 1 - Math.pow(0.001, Math.min(1, dt * 60)); // dt-normalized
+  const prevYaw = gyroBg.yaw;
+  const prevPitch = gyroBg.pitch;
+  gyroBg.yaw += (gyroBg.targetYaw - gyroBg.yaw) * ease;
+  gyroBg.pitch += (gyroBg.targetPitch - gyroBg.pitch) * ease;
+
+  const dYaw = gyroBg.yaw - prevYaw;
+  const dPitch = gyroBg.pitch - prevPitch;
+
+  // Apply deltas so existing background rotations/drifts remain intact.
+  if (nebulaStars) {
+    nebulaStars.rotation.y += dYaw * 1.0;
+    nebulaStars.rotation.x += dPitch * 0.35;
+  }
+  if (radiantStars) {
+    radiantStars.rotation.y += dYaw * 1.0;
+    radiantStars.rotation.x += dPitch * 0.35;
+  }
+  if (cosmicDust) {
+    cosmicDust.rotation.y += dYaw * 0.85;
+    cosmicDust.rotation.x += dPitch * 0.55;
+  }
+  if (nebulaClouds && nebulaClouds.length) {
+    // Sprites drift already; add a tiny reversible parallax nudge.
+    const px = dYaw * 45;
+    const py = -dPitch * 35;
+    for (let i = 0; i < nebulaClouds.length; i++) {
+      const s = nebulaClouds[i];
+      if (!s || !s.position) continue;
+      s.position.x += px;
+      s.position.y += py;
+    }
+  }
+}
+
 // One-time perturbation of state vectors only — no new semantics, no rewiring.
 
 // ─── INIT THREE.JS ───
@@ -2357,6 +2457,8 @@ function handleEnter(e) {
   goToLayer(0);
   if (teachingWrap) teachingWrap.classList.add('teaching-wrap--in-scene');
   initAudio();  // user gesture — safe to start audio
+  // Same user gesture is required on iOS to request motion permission.
+  initGyroBackgroundParallax();
 }
 
 function resetToSplash() {
@@ -2890,6 +2992,9 @@ function animate() {
       sprite.material.opacity = Math.max(0.005, Math.min(base * 2.0, base * breath));
     } catch (e) { /* cloud breathing fallback */ }
   });
+
+  // Optional gyro parallax: affects only background meshes/sprites.
+  try { applyGyroBackgroundParallax(dt); } catch (_) {}
 
   // NaN guard — if camera position corrupted, reset to last known-good
   if (!Number.isFinite(camera.position.z)) {
