@@ -299,36 +299,52 @@ function applyGyroBackgroundParallax(dt) {
 
   // Smooth (critically damped-ish) so it feels “floating”, not twitchy.
   const ease = 1 - Math.pow(0.001, Math.min(1, dt * 60)); // dt-normalized
-  const prevYaw = gyroBg.yaw;
-  const prevPitch = gyroBg.pitch;
   gyroBg.yaw += (gyroBg.targetYaw - gyroBg.yaw) * ease;
   gyroBg.pitch += (gyroBg.targetPitch - gyroBg.pitch) * ease;
 
-  const dYaw = gyroBg.yaw - prevYaw;
-  const dPitch = gyroBg.pitch - prevPitch;
+  // Depth parallax: translate different background layers by different amounts.
+  // This yields a “3D field” feel rather than one plane sliding around.
+  const yaw = gyroBg.yaw;
+  const pitch = gyroBg.pitch;
+  const px = yaw * 320;      // overall horizontal parallax scalar (world units)
+  const py = -pitch * 260;   // overall vertical parallax scalar (world units)
 
-  // Apply deltas so existing background rotations/drifts remain intact.
+  // Far layer: star fields (subtle)
   if (nebulaStars) {
-    nebulaStars.rotation.y += dYaw * 1.0;
-    nebulaStars.rotation.x += dPitch * 0.35;
+    nebulaStars.position.x = px * 0.08;
+    nebulaStars.position.y = py * 0.06;
+    // Slight differential rotation for depth cue (kept conservative).
+    nebulaStars.rotation.y += yaw * 0.002;
+    nebulaStars.rotation.x += pitch * 0.001;
   }
   if (radiantStars) {
-    radiantStars.rotation.y += dYaw * 1.0;
-    radiantStars.rotation.x += dPitch * 0.35;
+    radiantStars.position.x = px * 0.11;
+    radiantStars.position.y = py * 0.085;
+    radiantStars.rotation.y += yaw * 0.002;
+    radiantStars.rotation.x += pitch * 0.001;
   }
+  // Mid layer: dust (more noticeable)
   if (cosmicDust) {
-    cosmicDust.rotation.y += dYaw * 0.85;
-    cosmicDust.rotation.x += dPitch * 0.55;
+    cosmicDust.position.x = px * 0.18;
+    cosmicDust.position.y = py * 0.14;
+    cosmicDust.rotation.y += yaw * 0.003;
+    cosmicDust.rotation.x += pitch * 0.002;
   }
+  // Near layer: cloud sprites (most noticeable; reversible via base position)
   if (nebulaClouds && nebulaClouds.length) {
-    // Sprites drift already; add a tiny reversible parallax nudge.
-    const px = dYaw * 45;
-    const py = -dPitch * 35;
     for (let i = 0; i < nebulaClouds.length; i++) {
       const s = nebulaClouds[i];
-      if (!s || !s.position) continue;
-      s.position.x += px;
-      s.position.y += py;
+      if (!s || !s.position || !s.userData) continue;
+      const bx = Number.isFinite(s.userData.baseX) ? s.userData.baseX : s.position.x;
+      const by = Number.isFinite(s.userData.baseY) ? s.userData.baseY : s.position.y;
+      const bz = Number.isFinite(s.userData.baseZ) ? s.userData.baseZ : s.position.z;
+      // Individual depth weighting based on sprite size (bigger = "closer").
+      const size = Number.isFinite(s.userData.baseSize) ? s.userData.baseSize : s.scale.x;
+      const w = Math.max(0.7, Math.min(1.8, size / 55)); // normalize around typical sizes
+      s.position.x = bx + px * 0.28 * w;
+      s.position.y = by + py * 0.22 * w;
+      // Tiny z breathing to enhance depth without changing composition.
+      s.position.z = bz + (yaw * 18 - pitch * 12) * 0.02 * w;
     }
   }
 }
@@ -761,6 +777,11 @@ function buildNebulaBackground() {
     sprite.userData.driftSpeed = 0.003 + Math.random() * 0.008;
     sprite.userData.driftAngle = Math.random() * TAU;
     sprite.userData.baseOpacity = pick.opacity;
+    // Cache baseline position for gyro parallax (so offsets are reversible).
+    sprite.userData.baseX = sprite.position.x;
+    sprite.userData.baseY = sprite.position.y;
+    sprite.userData.baseZ = sprite.position.z;
+    sprite.userData.baseSize = sz;
     scene.add(sprite);
     nebulaClouds.push(sprite);
   };
