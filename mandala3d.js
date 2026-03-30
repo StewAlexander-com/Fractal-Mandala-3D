@@ -269,9 +269,21 @@ function initGyroBackgroundParallax() {
     const gamma = ev && typeof ev.gamma === 'number' ? ev.gamma : 0;
     const beta  = ev && typeof ev.beta === 'number' ? ev.beta : 0;
 
-    // Increase sensitivity: treat ±14° as full scale.
-    gyroBg.targetYaw = toNorm(gamma, 14) * MAX_YAW;
-    gyroBg.targetPitch = toNorm(beta, 14) * MAX_PITCH;
+    // Natural feel: in portrait, people tilt phone "toward/away" (beta) more than
+    // they twist side-to-side (gamma). In landscape the intuition flips.
+    const isLandscape = (window.innerWidth > window.innerHeight)
+      || (typeof window.orientation === 'number' && Math.abs(window.orientation) === 90);
+
+    // Full-scale tilt thresholds (degrees): lower = more sensitive.
+    const yawFull = isLandscape ? 14 : 22;     // portrait: constrain side-to-side
+    const pitchFull = isLandscape ? 20 : 12;   // portrait: boost up/down
+
+    // Amplitude multipliers: keep within MAX_* but bias the perceived motion axis.
+    const yawAmp = isLandscape ? 1.0 : 0.55;
+    const pitchAmp = isLandscape ? 0.7 : 1.15;
+
+    gyroBg.targetYaw = toNorm(gamma, yawFull) * MAX_YAW * yawAmp;
+    gyroBg.targetPitch = toNorm(beta, pitchFull) * MAX_PITCH * pitchAmp;
   };
 
   const start = () => {
