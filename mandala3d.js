@@ -270,6 +270,8 @@ const gyroBg = {
   calibrateMs: 0,
   // user control
   motionOn: true,
+  // smoothed stillness reward (prevents step when crossing thresholds)
+  stillReward: 1,
 };
 
 function initGyroBackgroundParallax() {
@@ -339,22 +341,19 @@ function initGyroBackgroundParallax() {
     const rawYaw = toNorm(relGamma, yawFull) * MAX_YAW * yawAmp;
     const rawPitch = toNorm(relBeta, pitchFull) * MAX_PITCH * pitchAmp;
 
-    // Dead-zone with hysteresis: suppress micro-shake near neutral without "chatter".
-    // Enter dead-zone at DEAD_IN, exit at DEAD_OUT (slightly larger).
-    const DEAD_IN = 0.011;  // radians
-    const DEAD_OUT = 0.016; // radians
-    if (gyroBg.deadYaw) {
-      if (Math.abs(rawYaw) > DEAD_OUT) gyroBg.deadYaw = false;
-    } else {
-      if (Math.abs(rawYaw) < DEAD_IN) gyroBg.deadYaw = true;
-    }
-    if (gyroBg.deadPitch) {
-      if (Math.abs(rawPitch) > DEAD_OUT) gyroBg.deadPitch = false;
-    } else {
-      if (Math.abs(rawPitch) < DEAD_IN) gyroBg.deadPitch = true;
-    }
-    gyroBg.targetYaw = gyroBg.deadYaw ? 0 : rawYaw;
-    gyroBg.targetPitch = gyroBg.deadPitch ? 0 : rawPitch;
+    // Soft dead-zone: ramp in smoothly so "still → moving" never stutters.
+    const DEAD_IN = 0.011;  // radians (no motion)
+    const DEAD_OUT = 0.018; // radians (full motion)
+    const soft = (v) => {
+      const av = Math.abs(v);
+      if (av <= DEAD_IN) return 0;
+      const t = Math.max(0, Math.min(1, (av - DEAD_IN) / (DEAD_OUT - DEAD_IN)));
+      // smoothstep
+      const s = t * t * (3 - 2 * t);
+      return Math.sign(v) * av * s;
+    };
+    gyroBg.targetYaw = soft(rawYaw);
+    gyroBg.targetPitch = soft(rawPitch);
   };
 
   const start = () => {
@@ -403,10 +402,13 @@ function applyGyroBackgroundParallax(dt, breath = 0, layerIndex = 0) {
   }
 
   // Stillness reward: after sustained stillness, slightly reduce depth amplitude.
-  // (Motion stays available, but the scene becomes calmer when held steady.)
-  const stillReward = gyroBg.stillMs > 1200
+  // Smoothed to avoid any perceptible step when crossing the threshold.
+  const stillTarget = gyroBg.stillMs > 1200
     ? Math.max(0.78, 1 - (gyroBg.stillMs - 1200) / 8000)  // approaches ~0.78
     : 1.0;
+  const stillEase = 1 - Math.exp(-dt / 0.35); // ~350ms time constant
+  gyroBg.stillReward += (stillTarget - gyroBg.stillReward) * stillEase;
+  const stillReward = gyroBg.stillReward;
 
   // Complete calibration timing using real dt (replaces approx increment above).
   if (gyroBg.calibrating) {
