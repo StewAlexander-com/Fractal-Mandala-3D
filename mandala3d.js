@@ -250,6 +250,7 @@ const gyroBg = {
   pitch: 0,
   // stillness detection (to settle back toward neutral and reduce nausea)
   lastEvtMs: 0,
+  lastOriMs: 0,
   lastGamma: 0,
   lastBeta: 0,
   stillMs: 0,
@@ -381,8 +382,21 @@ function initGyroBackgroundParallax() {
       const s = t * t * (3 - 2 * t);
       return Math.sign(v) * av * s;
     };
-    gyroBg.targetYaw = soft(rawYaw);
-    gyroBg.targetPitch = soft(rawPitch);
+    const desiredYaw = soft(rawYaw);
+    const desiredPitch = soft(rawPitch);
+
+    // Slew-rate limiter: iOS deviceorientation can arrive in uneven bursts, producing
+    // perceptible "jerks" even with filters. Cap target change per second.
+    const last = Number.isFinite(gyroBg.lastOriMs) && gyroBg.lastOriMs > 0 ? gyroBg.lastOriMs : nowMs;
+    gyroBg.lastOriMs = nowMs;
+    const dts = Math.max(1 / 120, Math.min(0.06, (nowMs - last) / 1000));
+    const maxYawRate = 0.55;   // rad/s
+    const maxPitchRate = 0.45; // rad/s
+    const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
+    const dy = clamp(desiredYaw - gyroBg.targetYaw, -maxYawRate * dts, maxYawRate * dts);
+    const dp = clamp(desiredPitch - gyroBg.targetPitch, -maxPitchRate * dts, maxPitchRate * dts);
+    gyroBg.targetYaw += dy;
+    gyroBg.targetPitch += dp;
   };
 
   const start = () => {
@@ -505,8 +519,9 @@ function applyGyroBackgroundParallax(dt, breath = 0, layerIndex = 0) {
   // Subtle "gravity": the greater the tilt, the more the background drifts
   // in the direction of that tilt, with damping. This creates a natural 3D pull
   // without affecting HUD or inducing nausea.
-  const gNormX = Math.max(-1, Math.min(1, gyroBg.filtGamma / 30)); // degrees → [-1,1]
-  const gNormY = Math.max(-1, Math.min(1, gyroBg.filtBeta / 30));
+  // Drive gravity from smoothed target (avoids tiny raw sensor jitter leaking in).
+  const gNormX = Math.max(-1, Math.min(1, gyroBg.targetYaw / 0.10));
+  const gNormY = Math.max(-1, Math.min(1, gyroBg.targetPitch / 0.10));
   // Dampen gravity drift: barely-there bias, mostly felt at larger tilts.
   const accelX = gNormX * 10;   // world units / s^2 (subtle)
   const accelY = -gNormY * 12;  // invert so "tilt up" drifts upward
