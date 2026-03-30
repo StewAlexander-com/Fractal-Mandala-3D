@@ -272,7 +272,36 @@ const gyroBg = {
   motionOn: true,
   // smoothed stillness reward (prevents step when crossing thresholds)
   stillReward: 1,
+  // Bezier-eased camera-follow offsets (world units)
+  parX: 0,
+  parY: 0,
 };
+
+// Cubic-bezier easing helper (x in [0..1] → y in [0..1]).
+// We solve for t from x via a few Newton steps; falls back safely.
+function _bezierEase01(x, p1x, p1y, p2x, p2y) {
+  const clamp01 = (v) => v < 0 ? 0 : v > 1 ? 1 : v;
+  const cx = 3 * p1x;
+  const bx = 3 * (p2x - p1x) - cx;
+  const ax = 1 - cx - bx;
+  const cy = 3 * p1y;
+  const by = 3 * (p2y - p1y) - cy;
+  const ay = 1 - cy - by;
+
+  const sampleX = (t) => ((ax * t + bx) * t + cx) * t;
+  const sampleDX = (t) => (3 * ax * t + 2 * bx) * t + cx;
+  const sampleY = (t) => ((ay * t + by) * t + cy) * t;
+
+  const xx = clamp01(x);
+  let t = xx; // good starting guess
+  for (let i = 0; i < 5; i++) {
+    const dx = sampleX(t) - xx;
+    const d = sampleDX(t);
+    if (Math.abs(dx) < 1e-5 || Math.abs(d) < 1e-6) break;
+    t = clamp01(t - dx / d);
+  }
+  return clamp01(sampleY(t));
+}
 
 function initGyroBackgroundParallax() {
   if (gyroBg.started) return;
@@ -434,6 +463,8 @@ function applyGyroBackgroundParallax(dt, breath = 0, layerIndex = 0) {
     gyroBg.deadPitch = true;
     gyroBg.gravVX = 0;
     gyroBg.gravVY = 0;
+    gyroBg.parX = 0;
+    gyroBg.parY = 0;
   }
 
   // Depth parallax: translate different background layers by different amounts.
@@ -480,6 +511,19 @@ function applyGyroBackgroundParallax(dt, breath = 0, layerIndex = 0) {
 
   px += gyroBg.gravVX;
   py += gyroBg.gravVY;
+
+  // Bezier-eased follow: smooth the translation target itself so stars don't "jump"
+  // when the phone target changes. Per-axis lag creates natural curved arcs.
+  const followTauX = 0.42;
+  const followTauY = 0.52;
+  const tx = 1 - Math.exp(-dt / followTauX);
+  const ty = 1 - Math.exp(-dt / followTauY);
+  const ex = _bezierEase01(tx, 0.22, 0.0, 0.36, 1.0);
+  const ey = _bezierEase01(ty, 0.22, 0.0, 0.36, 1.0);
+  gyroBg.parX += (px - gyroBg.parX) * ex;
+  gyroBg.parY += (py - gyroBg.parY) * ey;
+  px = gyroBg.parX;
+  py = gyroBg.parY;
 
   // Far layer: star fields (subtle) — smallest movement
   if (nebulaStars) {
@@ -2766,6 +2810,7 @@ if (exitBtn) {
       gyroBg.targetYaw = 0; gyroBg.targetPitch = 0;
       gyroBg.yaw = 0; gyroBg.pitch = 0;
       gyroBg.gravVX = 0; gyroBg.gravVY = 0;
+      gyroBg.parX = 0; gyroBg.parY = 0;
     }
   };
 
