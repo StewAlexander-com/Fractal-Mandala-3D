@@ -254,6 +254,9 @@ const gyroBg = {
   // filtered raw angles (degrees) to suppress micro-tremor flutter
   filtGamma: 0,
   filtBeta: 0,
+  // dead-zone hysteresis state (prevents chatter near threshold)
+  deadYaw: true,
+  deadPitch: true,
 };
 
 function initGyroBackgroundParallax() {
@@ -305,17 +308,29 @@ function initGyroBackgroundParallax() {
 
     // Low-pass filter raw angles so tiny hand jitter doesn't constantly retarget.
     // deviceorientation can arrive at 60–120Hz on iPhone; this keeps motion calm.
-    const a = 0.10; // smaller = smoother / less flutter
+    const a = 0.06; // smaller = smoother / less flutter (more damping)
     gyroBg.filtGamma += (gamma - gyroBg.filtGamma) * a;
     gyroBg.filtBeta  += (beta  - gyroBg.filtBeta)  * a;
 
     const rawYaw = toNorm(gyroBg.filtGamma, yawFull) * MAX_YAW * yawAmp;
     const rawPitch = toNorm(gyroBg.filtBeta, pitchFull) * MAX_PITCH * pitchAmp;
 
-    // Dead-zone: ignore tiny offsets near neutral to prevent visible shimmer.
-    const DEAD = 0.006; // radians
-    gyroBg.targetYaw = Math.abs(rawYaw) < DEAD ? 0 : rawYaw;
-    gyroBg.targetPitch = Math.abs(rawPitch) < DEAD ? 0 : rawPitch;
+    // Dead-zone with hysteresis: suppress micro-shake near neutral without "chatter".
+    // Enter dead-zone at DEAD_IN, exit at DEAD_OUT (slightly larger).
+    const DEAD_IN = 0.010;  // radians
+    const DEAD_OUT = 0.014; // radians
+    if (gyroBg.deadYaw) {
+      if (Math.abs(rawYaw) > DEAD_OUT) gyroBg.deadYaw = false;
+    } else {
+      if (Math.abs(rawYaw) < DEAD_IN) gyroBg.deadYaw = true;
+    }
+    if (gyroBg.deadPitch) {
+      if (Math.abs(rawPitch) > DEAD_OUT) gyroBg.deadPitch = false;
+    } else {
+      if (Math.abs(rawPitch) < DEAD_IN) gyroBg.deadPitch = true;
+    }
+    gyroBg.targetYaw = gyroBg.deadYaw ? 0 : rawYaw;
+    gyroBg.targetPitch = gyroBg.deadPitch ? 0 : rawPitch;
   };
 
   const start = () => {
