@@ -1929,14 +1929,16 @@ const AUDIO_VOLUME = 0.33;
 const OCEAN_TO_MUSIC_GAIN = 0.2;
 const oceanTargetGain = () => AUDIO_VOLUME * OCEAN_TO_MUSIC_GAIN;
 
-// Slow volume swell — ~3 min crest-to-crest, wide Gaussian-like bump (both beds track together)
-const AMBIENT_LFO_PERIOD_MS = 180000;
-const AMBIENT_LFO_MIN = 0.24;   // trough: weird & quiet
-const AMBIENT_LFO_MAX = 1.0;    // crest: current nominal mix strength
+// Slow volume swell — calm breath-like rise/fall (both beds track together)
+// Longer period + slightly deeper trough yields a more perceptible, soothing "breath"
+// without ever pumping or drawing attention.
+const AMBIENT_LFO_PERIOD_MS = 260000;  // ~4.3 min crest-to-crest
+const AMBIENT_LFO_MIN = 0.16;          // quieter trough
+const AMBIENT_LFO_MAX = 1.0;           // crest: nominal mix strength
 // Large σ → gentle shoulders, long smooth climb/descent (narrow σ reads as a sharp spike)
-const AMBIENT_LFO_SIGMA = 0.44;
-// Exponential smooth toward target gain multiplier — long τ for natural LFO; short when catching up (fade/unmute)
-const AMBIENT_GAIN_SMOOTH_TAU_SLOW = 0.55;
+const AMBIENT_LFO_SIGMA = 0.56;
+// Exponential smooth toward target gain multiplier — slower τ for a calmer envelope
+const AMBIENT_GAIN_SMOOTH_TAU_SLOW = 0.9;
 const AMBIENT_GAIN_SMOOTH_TAU_FAST = 0.1;
 const AMBIENT_GAIN_ERR_FAST = 0.14; // above this |target−smoothed|, use fast τ
 
