@@ -258,6 +258,9 @@ const gyroBg = {
   deadYaw: true,
   deadPitch: true,
   _stillHint: 0,
+  // subtle "gravity" drift (world-units velocity) for depth embodiment
+  gravVX: 0,
+  gravVY: 0,
 };
 
 function initGyroBackgroundParallax() {
@@ -395,6 +398,8 @@ function applyGyroBackgroundParallax(dt) {
     gyroBg.targetPitch = 0;
     gyroBg.deadYaw = true;
     gyroBg.deadPitch = true;
+    gyroBg.gravVX = 0;
+    gyroBg.gravVY = 0;
   }
 
   // Depth parallax: translate different background layers by different amounts.
@@ -402,8 +407,25 @@ function applyGyroBackgroundParallax(dt) {
   const yaw = gyroBg.yaw;
   const pitch = gyroBg.pitch;
   // Balance: reduce horizontal travel while making vertical a touch stronger.
-  const px = yaw * 520;      // overall horizontal parallax scalar (world units)
-  const py = -pitch * 660;   // overall vertical parallax scalar (world units)
+  let px = yaw * 520;      // overall horizontal parallax scalar (world units)
+  let py = -pitch * 660;   // overall vertical parallax scalar (world units)
+
+  // Subtle "gravity": the greater the tilt, the more the background drifts
+  // in the direction of that tilt, with damping. This creates a natural 3D pull
+  // without affecting HUD or inducing nausea.
+  const gNormX = Math.max(-1, Math.min(1, gyroBg.filtGamma / 30)); // degrees → [-1,1]
+  const gNormY = Math.max(-1, Math.min(1, gyroBg.filtBeta / 30));
+  const accelX = gNormX * 22;   // world units / s^2 (subtle)
+  const accelY = -gNormY * 28;  // invert so "tilt up" drifts upward
+  const damp = Math.exp(-dt / 0.95); // ~0.95s time constant
+  gyroBg.gravVX = gyroBg.gravVX * damp + accelX * dt;
+  gyroBg.gravVY = gyroBg.gravVY * damp + accelY * dt;
+  const maxV = 18;
+  gyroBg.gravVX = Math.max(-maxV, Math.min(maxV, gyroBg.gravVX));
+  gyroBg.gravVY = Math.max(-maxV, Math.min(maxV, gyroBg.gravVY));
+
+  px += gyroBg.gravVX;
+  py += gyroBg.gravVY;
 
   // Far layer: star fields (subtle)
   if (nebulaStars) {
