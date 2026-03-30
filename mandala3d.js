@@ -558,11 +558,26 @@ function applyGyroBackgroundParallax(dt, breath = 0, layerIndex = 0) {
       // Individual depth weighting based on sprite size (bigger = "closer").
       const size = Number.isFinite(s.userData.baseSize) ? s.userData.baseSize : s.scale.x;
       const w = Math.max(0.7, Math.min(1.8, size / 55)); // normalize around typical sizes
-      // Near layer moves most; keep stronger vertical than horizontal.
-      s.position.x = bx + px * 0.33 * w;
-      s.position.y = by + py * 0.52 * w;
-      // Tiny z breathing to enhance depth without changing composition.
-      s.position.z = bz + (yaw * 28 - pitch * 18) * 0.035 * w;
+      // Near layer moves most; apply extra "water-like" easing so phone turns
+      // feel flowing rather than angular, especially on iOS sensor bursts.
+      const tx = bx + px * 0.33 * w;
+      const ty = by + py * 0.52 * w;
+      const tz = bz + (yaw * 28 - pitch * 18) * 0.035 * w;
+
+      if (!Number.isFinite(s.userData.gyroX)) s.userData.gyroX = s.position.x;
+      if (!Number.isFinite(s.userData.gyroY)) s.userData.gyroY = s.position.y;
+      if (!Number.isFinite(s.userData.gyroZ)) s.userData.gyroZ = s.position.z;
+
+      const cloudTau = 0.72; // higher = more liquid / slower response
+      const t = 1 - Math.exp(-dt / cloudTau);
+      const e = _bezierEase01(t, 0.18, 0.0, 0.30, 1.0);
+      s.userData.gyroX += (tx - s.userData.gyroX) * e;
+      s.userData.gyroY += (ty - s.userData.gyroY) * e;
+      s.userData.gyroZ += (tz - s.userData.gyroZ) * e;
+
+      s.position.x = s.userData.gyroX;
+      s.position.y = s.userData.gyroY;
+      s.position.z = s.userData.gyroZ;
     }
   }
 }
