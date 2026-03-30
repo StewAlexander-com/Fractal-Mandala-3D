@@ -374,8 +374,11 @@ function applyGyroBackgroundParallax(dt) {
     if (Math.abs(gyroBg.targetPitch) < 1e-4) gyroBg.targetPitch = 0;
   }
 
-  // Smooth (critically damped-ish) so it feels “floating”, not twitchy.
-  const ease = 1 - Math.pow(0.001, Math.min(1, dt * 60)); // dt-normalized
+  // Smooth with a real time-constant so transitions never “jump” (iOS sensors can
+  // update in bursts; dead-zone exits can step the target).
+  // tau ≈ 0.22s feels floaty but responsive; higher = smoother.
+  const tau = 0.22;
+  const ease = 1 - Math.exp(-Math.max(0, dt) / tau);
   gyroBg.yaw += (gyroBg.targetYaw - gyroBg.yaw) * ease;
   gyroBg.pitch += (gyroBg.targetPitch - gyroBg.pitch) * ease;
 
