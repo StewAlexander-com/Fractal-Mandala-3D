@@ -246,6 +246,11 @@ const gyroBg = {
   // applied offsets (radians)
   yaw: 0,
   pitch: 0,
+  // stillness detection (to settle back toward neutral and reduce nausea)
+  lastEvtMs: 0,
+  lastGamma: 0,
+  lastBeta: 0,
+  stillMs: 0,
 };
 
 function initGyroBackgroundParallax() {
@@ -268,6 +273,18 @@ function initGyroBackgroundParallax() {
     // Map to gentle parallax, clamp to avoid discomfort.
     const gamma = ev && typeof ev.gamma === 'number' ? ev.gamma : 0;
     const beta  = ev && typeof ev.beta === 'number' ? ev.beta : 0;
+    const nowMs = (typeof performance !== 'undefined' && performance.now) ? performance.now() : Date.now();
+    gyroBg.lastEvtMs = nowMs;
+
+    // Track stillness based on sensor deltas (degrees). When deltas are tiny for a while,
+    // we slowly return to neutral so the user doesn't feel "stuck off-center".
+    const dG = Math.abs(gamma - gyroBg.lastGamma);
+    const dB = Math.abs(beta - gyroBg.lastBeta);
+    gyroBg.lastGamma = gamma;
+    gyroBg.lastBeta = beta;
+    const isStill = dG < 0.35 && dB < 0.35; // ~sub-degree jitter threshold
+    // We'll accumulate still time in apply() using dt; here we only mark intent.
+    gyroBg._stillHint = isStill ? 1 : 0;
 
     // Natural feel: in portrait, people tilt phone "toward/away" (beta) more than
     // they twist side-to-side (gamma). In landscape the intuition flips.
@@ -311,6 +328,22 @@ function initGyroBackgroundParallax() {
 function applyGyroBackgroundParallax(dt) {
   if (!gyroBg.enabled) return;
   if (!(nebulaStars || cosmicDust || radiantStars || (nebulaClouds && nebulaClouds.length))) return;
+
+  // If the phone stops moving (or events pause), gently settle toward neutral.
+  // This reduces seasick feeling from persistent tilt offsets.
+  const stillHint = gyroBg._stillHint ? 1 : 0;
+  gyroBg.stillMs = stillHint ? (gyroBg.stillMs + dt * 1000) : 0;
+  const nowMs = (typeof performance !== 'undefined' && performance.now) ? performance.now() : Date.now();
+  const sinceEvt = gyroBg.lastEvtMs ? (nowMs - gyroBg.lastEvtMs) : 0;
+  const shouldSettle = gyroBg.stillMs > 260 || sinceEvt > 450;
+  if (shouldSettle) {
+    // Exponential decay toward 0 over ~1–1.5s (depends on dt).
+    const settle = Math.pow(0.06, dt); // smaller base => faster settle
+    gyroBg.targetYaw *= settle;
+    gyroBg.targetPitch *= settle;
+    if (Math.abs(gyroBg.targetYaw) < 1e-4) gyroBg.targetYaw = 0;
+    if (Math.abs(gyroBg.targetPitch) < 1e-4) gyroBg.targetPitch = 0;
+  }
 
   // Smooth (critically damped-ish) so it feels “floating”, not twitchy.
   const ease = 1 - Math.pow(0.001, Math.min(1, dt * 60)); // dt-normalized
