@@ -279,8 +279,9 @@ function initGyroBackgroundParallax() {
     const pitchFull = isLandscape ? 20 : 12;   // portrait: boost up/down
 
     // Amplitude multipliers: keep within MAX_* but bias the perceived motion axis.
-    const yawAmp = isLandscape ? 1.0 : 0.55;
-    const pitchAmp = isLandscape ? 0.7 : 1.15;
+    // Portrait: damp side-to-side (gamma) further; slightly boost up/down (beta).
+    const yawAmp = isLandscape ? 1.0 : 0.42;
+    const pitchAmp = isLandscape ? 0.7 : 1.28;
 
     gyroBg.targetYaw = toNorm(gamma, yawFull) * MAX_YAW * yawAmp;
     gyroBg.targetPitch = toNorm(beta, pitchFull) * MAX_PITCH * pitchAmp;
@@ -320,27 +321,29 @@ function applyGyroBackgroundParallax(dt) {
   // This yields a “3D field” feel rather than one plane sliding around.
   const yaw = gyroBg.yaw;
   const pitch = gyroBg.pitch;
-  const px = yaw * 700;      // overall horizontal parallax scalar (world units)
-  const py = -pitch * 560;   // overall vertical parallax scalar (world units)
+  // Balance: reduce horizontal travel while making vertical a touch stronger.
+  const px = yaw * 520;      // overall horizontal parallax scalar (world units)
+  const py = -pitch * 660;   // overall vertical parallax scalar (world units)
 
   // Far layer: star fields (subtle)
   if (nebulaStars) {
-    nebulaStars.position.x = px * 0.12;
-    nebulaStars.position.y = py * 0.09;
+    // Far objects move least, especially horizontally.
+    nebulaStars.position.x = px * 0.085;
+    nebulaStars.position.y = py * 0.11;
     // Slight differential rotation for depth cue (kept conservative).
     nebulaStars.rotation.y += yaw * 0.002;
     nebulaStars.rotation.x += pitch * 0.001;
   }
   if (radiantStars) {
-    radiantStars.position.x = px * 0.16;
-    radiantStars.position.y = py * 0.12;
+    radiantStars.position.x = px * 0.11;
+    radiantStars.position.y = py * 0.15;
     radiantStars.rotation.y += yaw * 0.002;
     radiantStars.rotation.x += pitch * 0.001;
   }
   // Mid layer: dust (more noticeable)
   if (cosmicDust) {
-    cosmicDust.position.x = px * 0.26;
-    cosmicDust.position.y = py * 0.20;
+    cosmicDust.position.x = px * 0.18;
+    cosmicDust.position.y = py * 0.26;
     cosmicDust.rotation.y += yaw * 0.003;
     cosmicDust.rotation.x += pitch * 0.002;
   }
@@ -355,8 +358,9 @@ function applyGyroBackgroundParallax(dt) {
       // Individual depth weighting based on sprite size (bigger = "closer").
       const size = Number.isFinite(s.userData.baseSize) ? s.userData.baseSize : s.scale.x;
       const w = Math.max(0.7, Math.min(1.8, size / 55)); // normalize around typical sizes
-      s.position.x = bx + px * 0.46 * w;
-      s.position.y = by + py * 0.36 * w;
+      // Near layer moves most; keep stronger vertical than horizontal.
+      s.position.x = bx + px * 0.34 * w;
+      s.position.y = by + py * 0.46 * w;
       // Tiny z breathing to enhance depth without changing composition.
       s.position.z = bz + (yaw * 28 - pitch * 18) * 0.035 * w;
     }
