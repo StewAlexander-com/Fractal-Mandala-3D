@@ -1568,6 +1568,8 @@ document.addEventListener('mouseup', () => {
 let touch = {
   startX: 0, startY: 0,
   lastX: 0, lastY: 0,
+  orbitDXAccum: 0,      // accumulate dx between rAF ticks (smoother on iOS)
+  orbitRaf: 0,          // rAF id for orbit updates
   startDist: 0,        // pinch starting distance
   startZoom: 1,        // zoom value when pinch started
   fingers: 0,
@@ -1588,6 +1590,8 @@ if (canvas) canvas.addEventListener('touchstart', (e) => {
   touch.fingers = e.touches.length;
   touch.intent = null;
   touch.locked = false;
+  touch.orbitDXAccum = 0;
+  if (touch.orbitRaf) { cancelAnimationFrame(touch.orbitRaf); touch.orbitRaf = 0; }
 
   if (e.touches.length === 1) {
     touch.startX = touch.lastX = e.touches[0].clientX;
@@ -1632,8 +1636,18 @@ if (canvas) canvas.addEventListener('touchmove', (e) => {
   }
 
   if (touch.intent === 'orbit') {
-    targetOrbitAngle += dx * 0.006;
-    lastOrbitInputTime = clock.getElapsedTime();
+    // iOS can deliver touchmove in uneven bursts; accumulate and apply once per frame.
+    touch.orbitDXAccum += dx;
+    if (!touch.orbitRaf) {
+      touch.orbitRaf = requestAnimationFrame(() => {
+        const accum = touch.orbitDXAccum;
+        touch.orbitDXAccum = 0;
+        touch.orbitRaf = 0;
+        // Slightly lower gain + per-frame application feels smoother on iPhone.
+        targetOrbitAngle += accum * 0.0048;
+        lastOrbitInputTime = clock.getElapsedTime();
+      });
+    }
   } else if (touch.intent === 'layer') {
     handleLayerScroll(-dy * 1.5);
   }
@@ -1646,6 +1660,8 @@ if (canvas) canvas.addEventListener('touchend', () => {
   touch.fingers = 0;
   touch.intent = null;
   touch.locked = false;
+  touch.orbitDXAccum = 0;
+  if (touch.orbitRaf) { cancelAnimationFrame(touch.orbitRaf); touch.orbitRaf = 0; }
 });
 
 // ── Keyboard ──
