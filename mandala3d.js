@@ -94,6 +94,8 @@ const sliderThumb    = $('sliderThumb');
 const sliderStops    = $('sliderStops');
 const sliderTooltip  = $('sliderTooltip');
 const layerContext   = $('layerContext');
+const breathEl       = $('breath');
+const gyroVignette   = $('gyroVignette');
 let visitedLayers = new Set();
 const audioToggle    = $('audioToggle');
 const micToggle      = $('micToggle');
@@ -261,6 +263,13 @@ const gyroBg = {
   // subtle "gravity" drift (world-units velocity) for depth embodiment
   gravVX: 0,
   gravVY: 0,
+  // baseline calibration (neutral holding angle)
+  baseGamma: 0,
+  baseBeta: 0,
+  calibrating: false,
+  calibrateMs: 0,
+  // user control
+  motionOn: true,
 };
 
 function initGyroBackgroundParallax() {
@@ -316,8 +325,19 @@ function initGyroBackgroundParallax() {
     gyroBg.filtGamma += (gamma - gyroBg.filtGamma) * a;
     gyroBg.filtBeta  += (beta  - gyroBg.filtBeta)  * a;
 
-    const rawYaw = toNorm(gyroBg.filtGamma, yawFull) * MAX_YAW * yawAmp;
-    const rawPitch = toNorm(gyroBg.filtBeta, pitchFull) * MAX_PITCH * pitchAmp;
+    // Baseline calibration: treat how the user naturally holds the phone as "neutral".
+    // We update base slowly during a brief calibration window after Enter / recenter.
+    if (gyroBg.calibrating) {
+      gyroBg.calibrateMs = Math.min(1200, gyroBg.calibrateMs + 16); // approximate; corrected in apply()
+      const k = 0.06;
+      gyroBg.baseGamma += (gyroBg.filtGamma - gyroBg.baseGamma) * k;
+      gyroBg.baseBeta  += (gyroBg.filtBeta  - gyroBg.baseBeta)  * k;
+    }
+    const relGamma = gyroBg.filtGamma - gyroBg.baseGamma;
+    const relBeta  = gyroBg.filtBeta  - gyroBg.baseBeta;
+
+    const rawYaw = toNorm(relGamma, yawFull) * MAX_YAW * yawAmp;
+    const rawPitch = toNorm(relBeta, pitchFull) * MAX_PITCH * pitchAmp;
 
     // Dead-zone with hysteresis: suppress micro-shake near neutral without "chatter".
     // Enter dead-zone at DEAD_IN, exit at DEAD_OUT (slightly larger).
@@ -358,8 +378,8 @@ function initGyroBackgroundParallax() {
   } catch (_) { /* ignore */ }
 }
 
-function applyGyroBackgroundParallax(dt) {
-  if (!gyroBg.enabled) return;
+function applyGyroBackgroundParallax(dt, breath = 0, layerIndex = 0) {
+  if (!gyroBg.enabled || !gyroBg.motionOn) return;
   if (!(nebulaStars || cosmicDust || radiantStars || (nebulaClouds && nebulaClouds.length))) return;
 
   // Defensive: if dt is weird, clamp to something sane so smoothing can't explode.
@@ -380,6 +400,18 @@ function applyGyroBackgroundParallax(dt) {
     gyroBg.targetPitch *= settle;
     if (Math.abs(gyroBg.targetYaw) < 1e-4) gyroBg.targetYaw = 0;
     if (Math.abs(gyroBg.targetPitch) < 1e-4) gyroBg.targetPitch = 0;
+  }
+
+  // Stillness reward: after sustained stillness, slightly reduce depth amplitude.
+  // (Motion stays available, but the scene becomes calmer when held steady.)
+  const stillReward = gyroBg.stillMs > 1200
+    ? Math.max(0.78, 1 - (gyroBg.stillMs - 1200) / 8000)  // approaches ~0.78
+    : 1.0;
+
+  // Complete calibration timing using real dt (replaces approx increment above).
+  if (gyroBg.calibrating) {
+    gyroBg.calibrateMs = Math.min(1200, gyroBg.calibrateMs + dt * 1000);
+    if (gyroBg.calibrateMs >= 900) gyroBg.calibrating = false;
   }
 
   // Smooth with a real time-constant so transitions never “jump” (iOS sensors can
@@ -406,9 +438,28 @@ function applyGyroBackgroundParallax(dt) {
   // This yields a “3D field” feel rather than one plane sliding around.
   const yaw = gyroBg.yaw;
   const pitch = gyroBg.pitch;
+  // Vignette: gently increases with tilt magnitude (reduces motion discomfort).
+  try {
+    if (gyroVignette && gyroVignette.style) {
+      const mag = Math.min(1, Math.hypot(yaw, pitch) / 0.11);
+      const v = 0.06 + mag * 0.22; // ~0.06—0.28
+      gyroVignette.style.opacity = String(v.toFixed(3));
+    }
+  } catch (_) {}
+  // Breath coherence: inhale slightly deepens parallax; exhale softens.
+  const b = Number.isFinite(breath) ? Math.max(0, Math.min(1, breath)) : 0;
+  const breathDepth = 0.92 + b * 0.16; // ~0.92—1.08
+
+  // Layer-aware depth: outer layers can tolerate a touch more parallax; inner layers less.
+  const li = Number.isFinite(layerIndex) ? layerIndex : 0;
+  const depthNorm = Math.max(0, Math.min(1, li / Math.max(1, LAYER_COUNT - 1)));
+  const layerDepth = 1.10 - depthNorm * 0.18; // outer ~1.10, inner ~0.92
+
+  const depthMul = breathDepth * layerDepth * stillReward;
+
   // Balance: keep overall motion subtle but increase perceived depth separation.
-  let px = yaw * 460;      // overall horizontal parallax scalar (world units)
-  let py = -pitch * 720;   // overall vertical parallax scalar (world units)
+  let px = yaw * 460 * depthMul;      // overall horizontal parallax scalar (world units)
+  let py = -pitch * 720 * depthMul;   // overall vertical parallax scalar (world units)
 
   // Subtle "gravity": the greater the tilt, the more the background drifts
   // in the direction of that tilt, with damping. This creates a natural 3D pull
@@ -2617,6 +2668,11 @@ function handleEnter(e) {
   initAudio();  // user gesture — safe to start audio
   // Same user gesture is required on iOS to request motion permission.
   initGyroBackgroundParallax();
+  // Auto-calibrate neutral hold for the first moment in-scene.
+  gyroBg.baseGamma = gyroBg.filtGamma || 0;
+  gyroBg.baseBeta = gyroBg.filtBeta || 0;
+  gyroBg.calibrating = true;
+  gyroBg.calibrateMs = 0;
 }
 
 function resetToSplash() {
@@ -2680,6 +2736,63 @@ if (exitBtn) {
   exitBtn.addEventListener('click', handleExitToSplash);
   exitBtn.addEventListener('touchend', handleExitToSplash);
 }
+
+// ─── MOTION CONTROL (gesture-only, non-intrusive) ───
+// Long-press the "breathe" word to recenter (recalibrate baseline).
+// Double-tap it to toggle motion on/off.
+(function bindBreathMotionGestures() {
+  if (!breathEl) return;
+  let pressTimer = 0;
+  let lastTapAt = 0;
+  const LONG_MS = 520;
+  const TAP_MS = 320;
+
+  const clear = () => {
+    if (pressTimer) { clearTimeout(pressTimer); pressTimer = 0; }
+  };
+
+  const recenter = () => {
+    gyroBg.baseGamma = gyroBg.filtGamma || 0;
+    gyroBg.baseBeta = gyroBg.filtBeta || 0;
+    gyroBg.calibrating = true;
+    gyroBg.calibrateMs = 0;
+  };
+
+  const toggleMotion = () => {
+    gyroBg.motionOn = !gyroBg.motionOn;
+    if (!gyroBg.motionOn) {
+      gyroBg.targetYaw = 0; gyroBg.targetPitch = 0;
+      gyroBg.yaw = 0; gyroBg.pitch = 0;
+      gyroBg.gravVX = 0; gyroBg.gravVY = 0;
+    }
+  };
+
+  const onTouchStart = (e) => {
+    if (e && e.touches && e.touches.length > 1) return;
+    clear();
+    pressTimer = setTimeout(() => {
+      pressTimer = 0;
+      recenter();
+    }, LONG_MS);
+  };
+
+  const onTouchEnd = (e) => {
+    clear();
+    const now = Date.now();
+    if (now - lastTapAt < TAP_MS) {
+      lastTapAt = 0;
+      toggleMotion();
+    } else {
+      lastTapAt = now;
+    }
+    if (e && e.type === 'touchend') e.preventDefault();
+  };
+
+  breathEl.addEventListener('touchstart', onTouchStart, { passive: true });
+  breathEl.addEventListener('touchend', onTouchEnd, { passive: false });
+  breathEl.addEventListener('touchcancel', clear, { passive: true });
+  breathEl.addEventListener('dblclick', () => toggleMotion());
+})();
 
 // ─── ROBUST RESIZE — works with iOS safe-area, dynamic toolbar, notch ───
 function handleResize() {
@@ -3152,7 +3265,7 @@ function animate() {
   });
 
   // Optional gyro parallax: affects only background meshes/sprites.
-  try { applyGyroBackgroundParallax(dt); } catch (_) {}
+  try { applyGyroBackgroundParallax(dt, b, currentLayer); } catch (_) {}
 
   // NaN guard — if camera position corrupted, reset to last known-good
   if (!Number.isFinite(camera.position.z)) {
