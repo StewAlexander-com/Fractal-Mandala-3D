@@ -257,6 +257,7 @@ const gyroBg = {
   // dead-zone hysteresis state (prevents chatter near threshold)
   deadYaw: true,
   deadPitch: true,
+  _stillHint: 0,
 };
 
 function initGyroBackgroundParallax() {
@@ -308,7 +309,7 @@ function initGyroBackgroundParallax() {
 
     // Low-pass filter raw angles so tiny hand jitter doesn't constantly retarget.
     // deviceorientation can arrive at 60–120Hz on iPhone; this keeps motion calm.
-    const a = 0.06; // smaller = smoother / less flutter (more damping)
+    const a = 0.045; // smaller = smoother / less flutter (more damping)
     gyroBg.filtGamma += (gamma - gyroBg.filtGamma) * a;
     gyroBg.filtBeta  += (beta  - gyroBg.filtBeta)  * a;
 
@@ -317,8 +318,8 @@ function initGyroBackgroundParallax() {
 
     // Dead-zone with hysteresis: suppress micro-shake near neutral without "chatter".
     // Enter dead-zone at DEAD_IN, exit at DEAD_OUT (slightly larger).
-    const DEAD_IN = 0.010;  // radians
-    const DEAD_OUT = 0.014; // radians
+    const DEAD_IN = 0.011;  // radians
+    const DEAD_OUT = 0.016; // radians
     if (gyroBg.deadYaw) {
       if (Math.abs(rawYaw) > DEAD_OUT) gyroBg.deadYaw = false;
     } else {
@@ -358,6 +359,10 @@ function applyGyroBackgroundParallax(dt) {
   if (!gyroBg.enabled) return;
   if (!(nebulaStars || cosmicDust || radiantStars || (nebulaClouds && nebulaClouds.length))) return;
 
+  // Defensive: if dt is weird, clamp to something sane so smoothing can't explode.
+  if (!Number.isFinite(dt) || dt <= 0) dt = 1 / 60;
+  if (dt > 0.2) dt = 0.2;
+
   // If the phone stops moving (or events pause), gently settle toward neutral.
   // This reduces seasick feeling from persistent tilt offsets.
   const stillHint = gyroBg._stillHint ? 1 : 0;
@@ -377,10 +382,20 @@ function applyGyroBackgroundParallax(dt) {
   // Smooth with a real time-constant so transitions never “jump” (iOS sensors can
   // update in bursts; dead-zone exits can step the target).
   // tau ≈ 0.22s feels floaty but responsive; higher = smoother.
-  const tau = 0.22;
+  const tau = 0.32;
   const ease = 1 - Math.exp(-Math.max(0, dt) / tau);
   gyroBg.yaw += (gyroBg.targetYaw - gyroBg.yaw) * ease;
   gyroBg.pitch += (gyroBg.targetPitch - gyroBg.pitch) * ease;
+
+  // NaN / runaway guard: if any browser feeds invalid sensor data, reset safely.
+  if (!Number.isFinite(gyroBg.yaw) || !Number.isFinite(gyroBg.pitch)) {
+    gyroBg.yaw = 0;
+    gyroBg.pitch = 0;
+    gyroBg.targetYaw = 0;
+    gyroBg.targetPitch = 0;
+    gyroBg.deadYaw = true;
+    gyroBg.deadPitch = true;
+  }
 
   // Depth parallax: translate different background layers by different amounts.
   // This yields a “3D field” feel rather than one plane sliding around.
