@@ -8,6 +8,10 @@
 
 A 3D interactive sacred geometry mandala of presence and liberation. Seven concentric layers of metacognitive awareness rendered as quantum orbital shells — fly through them in your browser. Built with Three.js, set in an astronomically-inspired nebula star field with layered ambient audio (meditation + subtle ocean bed).
 
+## Strategic Update (Mar 2026)
+
+The project has shifted to a mobile-first calm architecture: a dedicated gyro subsystem with burst damping and inner-layer attenuation, smartphone-safe fallbacks for media-query and canvas paths, and resilient runtime recovery for fractal halo textures on iPhone/PWA sessions. Visual strategy now layers a graded nebula backplate, evolving fractal gas fields, and nebula-toned ring gradients with depth shading so the scene remains immersive while preserving legibility. In portrait mobile, the backplate now starts from varied crops and migrates via an ultra-slow bounded walk to keep each session subtly unique without destabilizing the nervous system.
+
 The teachings distill converging ideas from Buddhism, Hinduism, Stoicism, Sufism, Taoism, and Christian mysticism, interwoven with modern physics, neuroscience, cognitive-behavioral research, process philosophy, and the mathematics of fractals and calculus — drawn from cultures across Asia, Africa, Europe, and the Americas. Where traditions separated by thousands of miles and thousands of years arrive at the same insight, that convergence is the signal.
 
 ## Layered ambient sound
