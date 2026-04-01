@@ -1677,9 +1677,7 @@ canvas {
     padding: 0 12px;
     font-size: 0.65rem;
     bottom: clamp(70px, 10vh, 100px);
-    /* Viewport-centered chip would intrude on the layer slider’s wide hit area
-       (slider-track::before inset -22px). Nudge left so the two controls read as distinct. */
-    transform: translateX(calc(-50% - clamp(20px, 6vw, 46px)));
+    transform: translateX(-50%);
   }
 }
 
@@ -1690,7 +1688,7 @@ canvas {
   .teaching-wrap--collapsed .teaching-panel-toggle {
     left: 50%;
     right: auto;
-    transform: translateX(-50%);
+    transform: translateX(-50%) !important;
   }
   .teaching-wrap:not(.teaching-wrap--collapsed) .teaching-panel-toggle {
     left: 50%;

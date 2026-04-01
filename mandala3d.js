@@ -335,6 +335,9 @@ const BASE_EXPOSURE = isMobileOledDark ? 1.92 : 2.0;
 const RING_EMISSIVE_BASE = isMobileOledDark ? 0.76 : 0.72;
 const RING_EMISSIVE_FLOOR = isMobileOledDark ? 0.09 : 0.07;
 const RING_EMISSIVE_BREATH = isMobileOledDark ? 0.18 : 0.16;
+// Backplate focal bias for portrait: nebula highlight sits slightly left/up of geometric center.
+const BACKPLATE_PORTRAIT_BIAS_X = -0.016;
+const BACKPLATE_PORTRAIT_BIAS_Y = -0.036;
 
 // Runtime guardrail: mobile browsers can regress compositor behavior over WebGL + HUD blur.
 try {
@@ -657,9 +660,13 @@ function updateBackplateUv() {
     backplateUv.randomStartSet = false;
   }
 
-  // iPhone portrait artifact guard: lock X to center to avoid right-edge sampling lines.
-  const composedX = isMobilePortrait ? 0 : (backplateUv.startX + backplateUv.walkX + backplateUv.driftX);
-  const composedY = backplateUv.startY + backplateUv.walkY + backplateUv.driftY;
+  // iPhone portrait artifact guard: lock X close to center and bias toward nebula focal region.
+  const portraitBiasX = Math.max(-safeMaxX, Math.min(safeMaxX, BACKPLATE_PORTRAIT_BIAS_X));
+  const portraitBiasY = Math.max(-safeMaxY, Math.min(safeMaxY, BACKPLATE_PORTRAIT_BIAS_Y));
+  const composedX = isMobilePortrait ? portraitBiasX : (backplateUv.startX + backplateUv.walkX + backplateUv.driftX);
+  const composedY = isMobilePortrait
+    ? (portraitBiasY + backplateUv.startY + backplateUv.walkY + backplateUv.driftY)
+    : (backplateUv.startY + backplateUv.walkY + backplateUv.driftY);
   const clampX = isMobilePortrait ? 0 : safeMaxX;
   const clampY = isMobilePortrait ? safeMaxY * 0.22 : safeMaxY;
   const dX = Math.max(-clampX, Math.min(clampX, composedX));
