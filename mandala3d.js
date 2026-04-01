@@ -592,6 +592,10 @@ function updateBackplateUv() {
   backplateUv.baseOffsetY = 0.5 - nebulaBackplateTexture.repeat.y * 0.5;
   const maxX = (1 - nebulaBackplateTexture.repeat.x) * 0.5;
   const maxY = (1 - nebulaBackplateTexture.repeat.y) * 0.5;
+  // Guard against edge sampling artifacts on mobile GPUs by keeping a safe inset.
+  const edgeGuard = 0.003;
+  const safeMaxX = Math.max(0, maxX - edgeGuard);
+  const safeMaxY = Math.max(0, maxY - edgeGuard);
 
   // Mobile portrait: start at a different crop each run.
   const vv = (typeof window !== 'undefined' && window.visualViewport) ? window.visualViewport : null;
@@ -599,14 +603,16 @@ function updateBackplateUv() {
   const vh = vv ? vv.height : window.innerHeight;
   const isMobilePortrait = isMobileScreen && vh >= vw;
   if (isMobilePortrait && !backplateUv.randomStartSet) {
-    const spanX = maxX * 0.9;
-    const spanY = maxY * 0.9;
+    // Portrait mobile should stay near center to avoid bright edge crops.
+    const spanX = safeMaxX * 0.18;
+    const spanY = safeMaxY * 0.22;
     backplateUv.startX = (Math.random() * 2 - 1) * spanX;
     backplateUv.startY = (Math.random() * 2 - 1) * spanY;
-    backplateUv.walkX = backplateUv.startX;
-    backplateUv.walkY = backplateUv.startY;
-    backplateUv.walkTargetX = backplateUv.startX;
-    backplateUv.walkTargetY = backplateUv.startY;
+    // Walk values are deltas around the random start, not absolute offsets.
+    backplateUv.walkX = 0;
+    backplateUv.walkY = 0;
+    backplateUv.walkTargetX = 0;
+    backplateUv.walkTargetY = 0;
     backplateUv.walkClock = 0;
     backplateUv.walkNextAt = 5 + Math.random() * 7;
     backplateUv.randomStartSet = true;
@@ -625,8 +631,10 @@ function updateBackplateUv() {
 
   const composedX = backplateUv.startX + backplateUv.walkX + backplateUv.driftX;
   const composedY = backplateUv.startY + backplateUv.walkY + backplateUv.driftY;
-  const dX = Math.max(-maxX, Math.min(maxX, composedX));
-  const dY = Math.max(-maxY, Math.min(maxY, composedY));
+  const clampX = isMobilePortrait ? safeMaxX * 0.78 : safeMaxX;
+  const clampY = isMobilePortrait ? safeMaxY * 0.82 : safeMaxY;
+  const dX = Math.max(-clampX, Math.min(clampX, composedX));
+  const dY = Math.max(-clampY, Math.min(clampY, composedY));
   nebulaBackplateTexture.offset.set(backplateUv.baseOffsetX + dX, backplateUv.baseOffsetY + dY);
   nebulaBackplateTexture.needsUpdate = true;
 }
@@ -654,8 +662,9 @@ function updateBackplateDrift(dt, elapsed, motionScale = 1, calmMul = 1) {
   if (isMobilePortrait && nebulaBackplateTexture) {
     const maxX = (1 - nebulaBackplateTexture.repeat.x) * 0.5;
     const maxY = (1 - nebulaBackplateTexture.repeat.y) * 0.5;
-    const spanX = maxX * 0.58;
-    const spanY = maxY * 0.58;
+    // Keep random migration calm and centered in portrait sessions.
+    const spanX = maxX * 0.18;
+    const spanY = maxY * 0.22;
     backplateUv.walkClock += dt;
     if (backplateUv.walkClock >= backplateUv.walkNextAt) {
       backplateUv.walkClock = 0;
