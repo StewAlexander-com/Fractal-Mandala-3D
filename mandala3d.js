@@ -241,6 +241,15 @@ const knotFractalState = {
   height: 128,
   lastUpdate: -1,
 };
+let innerHaloFractalTexture; // evolving fractal map for inner translucent halos
+const innerHaloFractalState = {
+  canvas: null,
+  ctx: null,
+  imageData: null,
+  width: 112,
+  height: 112,
+  lastUpdate: -1,
+};
 let radiantStars;       // sparse colored radiant stars (red/blue/yellow-shift)
 let radiantPulsePhases; // per-radiant-star pulse phase offsets
 let radiantPulseSpeeds; // per-radiant-star pulse rates
@@ -361,6 +370,52 @@ function updateKnotFractalTexture(elapsed) {
 
   st.ctx.putImageData(st.imageData, 0, 0);
   knotFractalTexture.needsUpdate = true;
+}
+
+function updateInnerHaloFractalTexture(elapsed) {
+  const st = innerHaloFractalState;
+  if (!innerHaloFractalTexture || !st.ctx || !st.imageData) return;
+  if (st.lastUpdate >= 0 && elapsed - st.lastUpdate < 0.22) return; // very slow updates
+  st.lastUpdate = elapsed;
+
+  const w = st.width;
+  const h = st.height;
+  const data = st.imageData.data;
+  const t = elapsed * 0.055;
+
+  let p = 0;
+  for (let y = 0; y < h; y++) {
+    const ny = (y / (h - 1)) * 2 - 1;
+    for (let x = 0; x < w; x++) {
+      const nx = (x / (w - 1)) * 2 - 1;
+      const r = Math.hypot(nx, ny);
+      const theta = Math.atan2(ny, nx);
+
+      const warpX = nx * 2.7 + (_noiseFbm2(nx * 2.8 + t * 0.9, ny * 2.2 - t * 0.6, 3) - 0.5) * 0.95;
+      const warpY = ny * 2.7 + (_noiseFbm2(nx * 2.2 - t * 0.7, ny * 2.9 + t * 0.8, 3) - 0.5) * 0.95;
+      const base = _noiseFbm2(warpX * 1.35 + 4.1, warpY * 1.35 - 2.4, 5);
+      const wisps = _noiseFbm2(warpX * 3.9 - t * 0.35, warpY * 3.9 + t * 0.32, 5);
+      const ring = 0.5 + 0.5 * Math.sin(theta * 2.0 + t * 2.1 + _noiseFbm2(nx * 3.1, ny * 3.1, 2) * 3.2);
+
+      const radial = Math.max(0, 1 - Math.max(0, r - 0.08) / 0.95);
+      const filament = Math.max(0, base * 0.7 + wisps * 0.6 + ring * 0.22 - (0.56 + r * 0.27));
+      const alpha = Math.max(0, Math.min(1, Math.pow(filament * radial * 2.1, 1.22)));
+
+      // Cool-lilac inner glow with warmer filaments for natural depth.
+      const warm = _noiseFbm2(warpX * 1.8 + 7.7, warpY * 1.8 - 1.2, 3);
+      const rr = Math.min(255, 176 + warm * 48 + base * 18);
+      const gg = Math.min(255, 170 + wisps * 34 + ring * 14);
+      const bb = Math.min(255, 220 + (1 - warm) * 34 + base * 20);
+
+      data[p++] = rr;
+      data[p++] = gg;
+      data[p++] = bb;
+      data[p++] = Math.floor(alpha * 255);
+    }
+  }
+
+  st.ctx.putImageData(st.imageData, 0, 0);
+  innerHaloFractalTexture.needsUpdate = true;
 }
 
 // Nebula-inspired ring gradients (from pink/violet/blue/copper gas palette).
@@ -565,6 +620,24 @@ function init() {
   glowCtx.globalCompositeOperation = 'source-over';
   starGlowTexture = new THREE.CanvasTexture(glowCanvas);
 
+  // Evolving fractal texture for the innermost translucent circles/halos.
+  try {
+    const hs = innerHaloFractalState;
+    hs.canvas = document.createElement('canvas');
+    hs.canvas.width = hs.width;
+    hs.canvas.height = hs.height;
+    hs.ctx = hs.canvas.getContext('2d', { willReadFrequently: true });
+    if (hs.ctx) {
+      hs.imageData = hs.ctx.createImageData(hs.width, hs.height);
+      innerHaloFractalTexture = new THREE.CanvasTexture(hs.canvas);
+      innerHaloFractalTexture.wrapS = THREE.ClampToEdgeWrapping;
+      innerHaloFractalTexture.wrapT = THREE.ClampToEdgeWrapping;
+      innerHaloFractalTexture.magFilter = THREE.LinearFilter;
+      innerHaloFractalTexture.minFilter = THREE.LinearFilter;
+      updateInnerHaloFractalTexture(0);
+    }
+  } catch (_) { /* fallback to starGlowTexture */ }
+
   // Lighting — warm core + nebula accent lights
   const ambient = new THREE.AmbientLight(0x1a1528, 0.6);
   scene.add(ambient);
@@ -699,7 +772,7 @@ function buildLayers() {
     // ── Depth glow halo (cue 5): soft additive disc under each ring ──
     const haloSize = torusR * 1.6;
     const haloSpriteMat = new THREE.SpriteMaterial({
-      map: starGlowTexture,
+      map: innerHaloFractalTexture || starGlowTexture,
       color: layer.emissive,
       transparent: true,
       opacity: 0.0,   // set dynamically based on proximity
@@ -720,6 +793,7 @@ function buildLayers() {
   const coreGeo = new THREE.SphereGeometry(3.5, 32, 32);
   const coreMat = new THREE.MeshBasicMaterial({
     color: 0xfff0dd,
+    map: innerHaloFractalTexture || starGlowTexture,
     transparent: true,
     opacity: 0.25,
     blending: THREE.AdditiveBlending,
@@ -733,6 +807,7 @@ function buildLayers() {
   const haloGeo = new THREE.SphereGeometry(7, 32, 32);
   const haloMat = new THREE.MeshBasicMaterial({
     color: 0xd4a574,
+    map: innerHaloFractalTexture || starGlowTexture,
     transparent: true,
     opacity: 0.08,
     blending: THREE.AdditiveBlending,
@@ -3255,6 +3330,7 @@ function animate() {
 
   // ── Nebula cloud drift + luminosity breathing ──
   try { updateKnotFractalTexture(elapsed); } catch (_) {}
+  try { updateInnerHaloFractalTexture(elapsed); } catch (_) {}
   nebulaClouds.forEach((sprite, ci) => {
     const spd = sprite.userData.driftSpeed;
     sprite.userData.driftAngle += dt * spd;
