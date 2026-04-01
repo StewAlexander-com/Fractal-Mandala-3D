@@ -225,6 +225,7 @@ let cosmicDust;         // faint toroidal dust ring
 let starTwinklePhases;  // per-star twinkle phase offsets
 let starTwinkleSpeeds;  // per-star twinkle rates
 let starBaseOpacities;  // per-star base brightness
+let nebulaBackplateTexture = null; // static deepest background image
 let knotFractalTexture; // evolving fractal texture for bright gas clumps
 const knotFractalState = {
   canvas: null,
@@ -390,6 +391,28 @@ function _applyNebulaRingGradient(geometry, phase = 0) {
   geometry.setAttribute('color', new THREE.Float32BufferAttribute(colors, 3));
 }
 
+function updateBackplateUv() {
+  if (!nebulaBackplateTexture || !renderer) return;
+  const img = nebulaBackplateTexture.image;
+  if (!img || !img.width || !img.height) return;
+  const viewAspect = renderer.domElement.width / Math.max(1, renderer.domElement.height);
+  const imgAspect = img.width / img.height;
+  if (!Number.isFinite(viewAspect) || !Number.isFinite(imgAspect) || imgAspect <= 0) return;
+
+  // Cover behavior with center-crop: preserve image aspect without stretching.
+  nebulaBackplateTexture.center.set(0.5, 0.5);
+  if (viewAspect > imgAspect) {
+    nebulaBackplateTexture.repeat.set(1, imgAspect / viewAspect);
+  } else {
+    nebulaBackplateTexture.repeat.set(viewAspect / imgAspect, 1);
+  }
+  nebulaBackplateTexture.offset.set(
+    0.5 - nebulaBackplateTexture.repeat.x * 0.5,
+    0.5 - nebulaBackplateTexture.repeat.y * 0.5
+  );
+  nebulaBackplateTexture.needsUpdate = true;
+}
+
 // One-time perturbation of state vectors only — no new semantics, no rewiring.
 
 // ─── INIT THREE.JS ───
@@ -400,7 +423,7 @@ function init() {
 
   clock = new THREE.Clock();
   scene = new THREE.Scene();
-  scene.background = new THREE.Color(0x06050a);         // indigo-black
+  scene.background = new THREE.Color(0x06050a);         // fallback indigo-black
   scene.fog = new THREE.FogExp2(0x06050a, 0.006);       // softer fog
 
   camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 600);
@@ -416,6 +439,49 @@ function init() {
   handleResize();   // initial size — uses actual element dimensions
   renderer.toneMapping = THREE.ACESFilmicToneMapping;
   renderer.toneMappingExposure = 2.0;
+
+  // Deep backplate image: first visual layer beneath all 3D content.
+  // We grade it darker/softer so translucent geometry remains readable.
+  try {
+    const loader = new THREE.TextureLoader();
+    loader.load('assets/nebula-backplate.png', (rawTex) => {
+      try {
+        const img = rawTex.image;
+        if (!img || !img.width || !img.height) {
+          scene.background = rawTex;
+          nebulaBackplateTexture = rawTex;
+          updateBackplateUv();
+          return;
+        }
+
+        const c = document.createElement('canvas');
+        c.width = img.width;
+        c.height = img.height;
+        const cx = c.getContext('2d');
+        if (!cx) {
+          scene.background = rawTex;
+          nebulaBackplateTexture = rawTex;
+          updateBackplateUv();
+          return;
+        }
+        // Slight darken/desaturate/contrast reduction + subtle blur to keep
+        // ring and particle silhouettes visually apparent over the photo.
+        cx.filter = 'brightness(0.54) saturate(0.86) contrast(0.90) blur(0.6px)';
+        cx.drawImage(img, 0, 0, c.width, c.height);
+        const graded = new THREE.CanvasTexture(c);
+        graded.colorSpace = THREE.SRGBColorSpace;
+        graded.wrapS = THREE.ClampToEdgeWrapping;
+        graded.wrapT = THREE.ClampToEdgeWrapping;
+        graded.minFilter = THREE.LinearFilter;
+        graded.magFilter = THREE.LinearFilter;
+        nebulaBackplateTexture = graded;
+        scene.background = graded;
+        updateBackplateUv();
+      } finally {
+        rawTex.dispose();
+      }
+    });
+  } catch (_) { /* fallback color background remains */ }
 
   // ─── WebGL CONTEXT LOSS RECOVERY ───
   // Mobile GPUs can reclaim context when backgrounded. Recover silently.
@@ -2686,6 +2752,7 @@ function handleResize() {
     renderer.setSize(w, h, false);
     camera.aspect = w / h;
     camera.updateProjectionMatrix();
+    updateBackplateUv();
   } catch (e) { console.warn('Resize handler error:', e); }
 }
 
