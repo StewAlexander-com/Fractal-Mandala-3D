@@ -658,8 +658,9 @@ function buildNebulaBackground() {
     { color: 0x2a4555, opacity: 0.02 },   // dark teal wisp
   ];
 
-  // Place clouds in 3 radial zones
-  const placeCloud = (pick, minR, maxR, minSize, maxSize) => {
+  // Place clouds in radial zones with per-cloud evolution metadata.
+  const placeCloud = (pick, minR, maxR, minSize, maxSize, options = {}) => {
+    const isKnot = !!options.isKnot;
     const spriteMat = new THREE.SpriteMaterial({
       map: cloudTexture,
       color: pick.color,
@@ -683,6 +684,20 @@ function buildNebulaBackground() {
     sprite.userData.baseY = sprite.position.y;
     sprite.userData.baseZ = sprite.position.z;
     sprite.userData.baseSize = sz;
+    sprite.userData.baseScale = sz;
+    sprite.userData.baseRotation = (Math.random() - 0.5) * (isKnot ? 0.65 : 0.35);
+    sprite.userData.clumpPhase = Math.random() * TAU;
+    sprite.userData.clumpSpeed = 0.016 + Math.random() * 0.045;
+    sprite.userData.clumpAmp = (isKnot ? 0.5 : 0.14) + Math.random() * (isKnot ? 0.6 : 0.28);
+    sprite.userData.distortPhase = Math.random() * TAU;
+    sprite.userData.distortSpeed = 0.011 + Math.random() * 0.02;
+    sprite.userData.distortAmp = (isKnot ? 0.24 : 0.08) + Math.random() * 0.12;
+    sprite.userData.isKnot = isKnot ? 1 : 0;
+    sprite.userData.baseColor = spriteMat.color.clone();
+    const tintCol = options.tintColor !== undefined ? options.tintColor : pick.color;
+    sprite.userData.tintColor = new THREE.Color(tintCol);
+    sprite.userData.opacityLag = pick.opacity;
+    sprite.material.rotation = sprite.userData.baseRotation;
     scene.add(sprite);
     nebulaClouds.push(sprite);
   };
@@ -701,6 +716,26 @@ function buildNebulaBackground() {
   for (let i = 0; i < 10; i++) {
     const pick = outerClouds[Math.floor(Math.random() * outerClouds.length)];
     placeCloud(pick, 70, 150, 40, 100);
+  }
+
+  // Localized brighter knots for atmospheric clumping / contrast pockets.
+  const knotClouds = [
+    { color: 0xfff0d6, opacity: 0.11, tint: 0xfde3ff },
+    { color: 0xffd2be, opacity: 0.10, tint: 0xfff4cf },
+    { color: 0xe4ccff, opacity: 0.09, tint: 0xcff2ff },
+    { color: 0xc8f0ff, opacity: 0.085, tint: 0xe8d0ff },
+    { color: 0xffc6e4, opacity: 0.09, tint: 0xffefda },
+  ];
+  for (let i = 0; i < 8; i++) {
+    const pick = knotClouds[Math.floor(Math.random() * knotClouds.length)];
+    placeCloud(
+      { color: pick.color, opacity: pick.opacity },
+      12,
+      82,
+      18,
+      48,
+      { isKnot: true, tintColor: pick.tint }
+    );
   }
 
   // 3. Shooting stars — small pool of reusable meteor streaks
@@ -2944,8 +2979,48 @@ function animate() {
     sprite.position.y += Math.cos(sprite.userData.driftAngle * 1.3) * dt * 0.1;
     try {
       const base = sprite.userData.baseOpacity || 0.03;
+      const isKnot = !!sprite.userData.isKnot;
+      const clumpPhase = sprite.userData.clumpPhase || 0;
+      const clumpSpeed = sprite.userData.clumpSpeed || 0.02;
+      const clumpAmp = sprite.userData.clumpAmp || 0.2;
+      const distortPhase = sprite.userData.distortPhase || 0;
+      const distortSpeed = sprite.userData.distortSpeed || 0.012;
+      const distortAmp = sprite.userData.distortAmp || 0.08;
+      const clump = 0.5 + 0.5 * Math.sin(elapsed * clumpSpeed + clumpPhase);
       const breath = 1.0 + Math.sin(elapsed * 0.12 + ci * 1.1) * 0.15;
-      sprite.material.opacity = Math.max(0.005, Math.min(base * 2.0, base * breath));
+      const swell = Math.sin(elapsed * distortSpeed + distortPhase) * 0.6
+        + Math.sin(elapsed * distortSpeed * 0.57 + distortPhase * 1.7) * 0.4;
+
+      // Contrast pockets: additive clumps breathe in and out very slowly.
+      const opacityPulse = (0.76 + clump * clumpAmp) * breath + Math.max(0, swell) * distortAmp;
+      const opacityTarget = Math.max(
+        0.004,
+        Math.min(base * (isKnot ? 3.2 : 2.15), base * opacityPulse * (isKnot ? 1.3 : 1.0))
+      );
+      const oEase = 1 - Math.exp(-dt / 0.55);
+      const oPrev = Number.isFinite(sprite.userData.opacityLag) ? sprite.userData.opacityLag : base;
+      const oNext = oPrev + (opacityTarget - oPrev) * oEase;
+      sprite.userData.opacityLag = oNext;
+      sprite.material.opacity = oNext;
+
+      const bsz = sprite.userData.baseScale || sprite.scale.x || 30;
+      const scalePulse = 1
+        + (clump - 0.5) * (isKnot ? 0.28 : 0.14)
+        + swell * distortAmp * (isKnot ? 0.09 : 0.05)
+        + b * 0.02;
+      const sTarget = bsz * Math.max(0.78, Math.min(1.45, scalePulse));
+      const sEase = 1 - Math.exp(-dt / 0.8);
+      const sNow = Number.isFinite(sprite.scale.x) ? sprite.scale.x : bsz;
+      const sNext = sNow + (sTarget - sNow) * sEase;
+      sprite.scale.set(sNext, sNext, 1);
+
+      // Slow tint drift toward a brighter hue to break flat color maps.
+      if (sprite.material.color && sprite.userData.baseColor && sprite.userData.tintColor) {
+        sprite.material.color.copy(sprite.userData.baseColor);
+        const tintMix = Math.max(0, Math.min(1, clump * (isKnot ? 0.58 : 0.26)));
+        sprite.material.color.lerp(sprite.userData.tintColor, tintMix);
+      }
+      sprite.material.rotation = (sprite.userData.baseRotation || 0) + swell * (isKnot ? 0.14 : 0.07);
     } catch (e) { /* cloud breathing fallback */ }
   });
 
