@@ -464,9 +464,8 @@ function init() {
           updateBackplateUv();
           return;
         }
-        // Slight darken/desaturate/contrast reduction + subtle blur to keep
-        // ring and particle silhouettes visually apparent over the photo.
-        cx.filter = 'brightness(0.54) saturate(0.86) contrast(0.90) blur(0.6px)';
+        // Heavier backplate attenuation so foreground geometry stands out.
+        cx.filter = 'brightness(0.42) saturate(0.76) contrast(0.84) blur(0.8px)';
         cx.drawImage(img, 0, 0, c.width, c.height);
         const graded = new THREE.CanvasTexture(c);
         graded.colorSpace = THREE.SRGBColorSpace;
@@ -602,7 +601,7 @@ function buildLayers() {
     const torusMat = new THREE.MeshStandardMaterial({
       color: 0xffffff,
       emissive: layer.emissive,
-      emissiveIntensity: 0.55,
+      emissiveIntensity: 0.68,
       metalness: 0.7,
       roughness: 0.3,
       transparent: true,
@@ -2973,14 +2972,14 @@ function animate() {
         // Depth-dependent emissive (cue 2) + audio-reactive warmth
         if (child.material.emissiveIntensity !== undefined && child.isMesh) {
           // Base emissive + breath lift: breath raises the floor and adds warmth
-          child.material.emissiveIntensity = 0.55 * emissiveScale + 0.05 + b * 0.12;
+          child.material.emissiveIntensity = 0.72 * emissiveScale + 0.07 + b * 0.16;
         }
 
         // Atmospheric color shift (cue 6) — only on mesh materials
         if (child.material.color && child.isMesh) {
           const baseCol = child.userData.baseColor || group.userData.baseColor;
           if (baseCol) {
-            const fogMix = child.userData.useNebulaGradient ? 0.22 : 0.4;
+            const fogMix = child.userData.useNebulaGradient ? 0.16 : 0.34;
             child.material.color.copy(baseCol).lerp(fogColor, atmosFactor * fogMix);
           }
         }
