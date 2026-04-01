@@ -54,8 +54,9 @@ const T = {
   CAL_BASE_K: 0.06,
   DEAD_IN: 0.011,
   DEAD_OUT: 0.018,
-  MAX_YAW_RATE: 0.55,
-  MAX_PITCH_RATE: 0.45,
+  MAX_YAW_RATE: 0.32,
+  MAX_PITCH_RATE: 0.28,
+  CMD_TAU: 0.16,
   STILL_DELTA_DEG: 0.5,
   SETTLE_STILL_MS: 260,
   SETTLE_IDLE_MS: 450,
@@ -63,22 +64,22 @@ const T = {
   STILL_MS_DECAY_TAU: 0.75,
   STILL_REWARD_START_MS: 1200,
   STILL_REWARD_EASE_TAU: 0.35,
-  DISPLAY_TAU: 0.32,
+  DISPLAY_TAU: 0.48,
   GRAV_YAW_REF: 0.1,
   GRAV_PITCH_REF: 0.1,
   GRAV_ACCEL_X: 10,
   GRAV_ACCEL_Y: 12,
   GRAV_DAMP_TAU: 0.65,
   GRAV_MAX_V: 8,
-  FOLLOW_TAU_X: 0.42,
-  FOLLOW_TAU_Y: 0.52,
+  FOLLOW_TAU_X: 0.55,
+  FOLLOW_TAU_Y: 0.68,
   FAR_FOLLOW_TAU_X: 0.62,
   FAR_FOLLOW_TAU_Y: 0.76,
   FAR_CAP_X: 24,
   FAR_CAP_Y: 28,
   CLOUD_TAU: 0.72,
-  PX_SCALE: 460,
-  PY_SCALE: 720,
+  PX_SCALE: 360,
+  PY_SCALE: 540,
   CAL_MS_COMPLETE: 900,
   CAL_MS_CAP: 1200,
 };
@@ -100,6 +101,8 @@ export function createGyroParallaxSubsystem(config) {
     started: false,
     targetYaw: 0,
     targetPitch: 0,
+    cmdYaw: 0,
+    cmdPitch: 0,
     yaw: 0,
     pitch: 0,
     lastEvtMs: 0,
@@ -182,13 +185,19 @@ export function createGyroParallaxSubsystem(config) {
       const last = Number.isFinite(s.lastOriMs) && s.lastOriMs > 0 ? s.lastOriMs : nowMs;
       s.lastOriMs = nowMs;
       const dts = Math.max(1 / 120, Math.min(0.06, (nowMs - last) / 1000));
+      // Additional command smoothing: absorbs iPhone sensor bursts before slew-limiter.
+      const isSpike = dG > 7 || dB > 7;
+      const cmdTau = isSpike ? 0.36 : T.CMD_TAU;
+      const cmdEase = 1 - Math.exp(-dts / cmdTau);
+      s.cmdYaw += (desiredYaw - s.cmdYaw) * cmdEase;
+      s.cmdPitch += (desiredPitch - s.cmdPitch) * cmdEase;
       const dy = clamp(
-        desiredYaw - s.targetYaw,
+        s.cmdYaw - s.targetYaw,
         -T.MAX_YAW_RATE * dts,
         T.MAX_YAW_RATE * dts
       );
       const dp = clamp(
-        desiredPitch - s.targetPitch,
+        s.cmdPitch - s.targetPitch,
         -T.MAX_PITCH_RATE * dts,
         T.MAX_PITCH_RATE * dts
       );
@@ -240,6 +249,8 @@ export function createGyroParallaxSubsystem(config) {
   function resetParallaxOffsets() {
     s.targetYaw = 0;
     s.targetPitch = 0;
+    s.cmdYaw = 0;
+    s.cmdPitch = 0;
     s.yaw = 0;
     s.pitch = 0;
     s.gravVX = 0;
@@ -374,6 +385,8 @@ export function createGyroParallaxSubsystem(config) {
       s.pitch = 0;
       s.targetYaw = 0;
       s.targetPitch = 0;
+      s.cmdYaw = 0;
+      s.cmdPitch = 0;
       s.gravVX = 0;
       s.gravVY = 0;
       s.parX = 0;
@@ -399,7 +412,7 @@ export function createGyroParallaxSubsystem(config) {
 
     const li = Number.isFinite(layerIndex) ? layerIndex : 0;
     const depthNorm = Math.max(0, Math.min(1, li / Math.max(1, LAYER_COUNT - 1)));
-    const layerDepth = 1.1 - depthNorm * 0.18;
+    const layerDepth = 1.02 - depthNorm * 0.40; // inner layers move much less
 
     const depthMul = breathDepth * layerDepth * stillReward;
 

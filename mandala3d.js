@@ -3349,12 +3349,15 @@ function animate() {
       const breath = 1.0 + Math.sin(elapsed * 0.12 + ci * 1.1) * 0.15;
       const swell = Math.sin(elapsed * distortSpeed + distortPhase) * 0.6
         + Math.sin(elapsed * distortSpeed * 0.57 + distortPhase * 1.7) * 0.4;
+      const inward = Math.max(0, Math.min(1, currentLayer / Math.max(1, LAYER_COUNT - 1)));
+      const inwardEase = inward * inward * (3 - 2 * inward);
 
       // Contrast pockets: additive clumps breathe in and out very slowly.
       const opacityPulse = (0.76 + clump * clumpAmp) * breath + Math.max(0, swell) * distortAmp;
+      const wispLift = 1 + inwardEase * (isKnot ? 0.20 : 0.52);
       const opacityTarget = Math.max(
         0.004,
-        Math.min(base * (isKnot ? 3.2 : 2.15), base * opacityPulse * (isKnot ? 1.3 : 1.0))
+        Math.min(base * (isKnot ? 3.35 : 2.55), base * opacityPulse * (isKnot ? 1.3 : 1.0) * wispLift)
       );
       const oEase = 1 - Math.exp(-dt / 0.55);
       const oPrev = Number.isFinite(sprite.userData.opacityLag) ? sprite.userData.opacityLag : base;
