@@ -344,6 +344,52 @@ function updateKnotFractalTexture(elapsed) {
   knotFractalTexture.needsUpdate = true;
 }
 
+// Nebula-inspired ring gradients (from pink/violet/blue/copper gas palette).
+const RING_NEBULA_GRADIENT = [
+  new THREE.Color(0xf8e7ff), // bright ionized lilac-white
+  new THREE.Color(0xffb2dc), // magenta-pink
+  new THREE.Color(0xb98cff), // violet
+  new THREE.Color(0x7ea0ff), // blue-violet
+  new THREE.Color(0x9ed8ff), // cool cyan-blue
+  new THREE.Color(0xffbf9e), // warm peach
+  new THREE.Color(0xd47a5e), // copper-red
+  new THREE.Color(0x7b3e56), // deep wine
+];
+
+function _sampleGradientCyclic(t, palette) {
+  const n = palette.length;
+  if (n === 0) return new THREE.Color(0xffffff);
+  const tt = ((t % 1) + 1) % 1;
+  const s = tt * n;
+  const i0 = Math.floor(s) % n;
+  const i1 = (i0 + 1) % n;
+  const f = s - Math.floor(s);
+  return palette[i0].clone().lerp(palette[i1], f);
+}
+
+function _applyNebulaRingGradient(geometry, phase = 0) {
+  if (!geometry || !geometry.attributes || !geometry.attributes.position) return;
+  const pos = geometry.attributes.position;
+  const count = pos.count;
+  const colors = new Float32Array(count * 3);
+
+  for (let i = 0; i < count; i++) {
+    const x = pos.getX(i);
+    const y = pos.getY(i);
+    const z = pos.getZ(i);
+    const ang = (Math.atan2(y, x) / TAU + 1 + phase) % 1;
+    const filament = 0.5 + 0.5 * Math.sin((x + y) * 0.16 + z * 1.25 + phase * TAU * 1.9);
+    const t = (ang * 0.82 + filament * 0.18) % 1;
+    const c = _sampleGradientCyclic(t, RING_NEBULA_GRADIENT);
+    const glow = 0.88 + 0.22 * Math.max(0, Math.sin((ang + phase) * TAU * 2.3 + z * 0.45));
+    colors[i * 3] = Math.min(1, c.r * glow);
+    colors[i * 3 + 1] = Math.min(1, c.g * glow);
+    colors[i * 3 + 2] = Math.min(1, c.b * glow);
+  }
+
+  geometry.setAttribute('color', new THREE.Float32BufferAttribute(colors, 3));
+}
+
 // One-time perturbation of state vectors only — no new semantics, no rewiring.
 
 // ─── INIT THREE.JS ───
@@ -486,22 +532,29 @@ function buildLayers() {
     const torusR = layer.radius;
     const tubeR = 0.08 + i * 0.02;
     const torusGeo = new THREE.TorusGeometry(torusR, tubeR, 32, 128);
+    _applyNebulaRingGradient(torusGeo, 0.07 * i + 0.03);
     const torusMat = new THREE.MeshStandardMaterial({
-      color: layer.color,
+      color: 0xffffff,
       emissive: layer.emissive,
       emissiveIntensity: 0.55,
       metalness: 0.7,
       roughness: 0.3,
       transparent: true,
       opacity: 0.8,
+      vertexColors: true,
     });
     const torus = new THREE.Mesh(torusGeo, torusMat);
+    torus.userData.useNebulaGradient = true;
+    torus.userData.baseColor = new THREE.Color(0xffffff);
     torus.rotation.x = Math.PI / 2;
     group.add(torus);
 
     // Second tilted orbital ring
     const torus2Geo = new THREE.TorusGeometry(torusR * 0.95, tubeR * 0.7, 24, 96);
+    _applyNebulaRingGradient(torus2Geo, 0.11 * i + 0.29);
     const torus2 = new THREE.Mesh(torus2Geo, torusMat.clone());
+    torus2.userData.useNebulaGradient = true;
+    torus2.userData.baseColor = new THREE.Color(0xffffff);
     torus2.material.opacity = 0.4;
     torus2.rotation.x = Math.PI / 2 + 0.6;
     torus2.rotation.y = 0.4;
@@ -509,7 +562,10 @@ function buildLayers() {
 
     // Third orbital (perpendicular)
     const torus3Geo = new THREE.TorusGeometry(torusR * 0.88, tubeR * 0.5, 20, 80);
+    _applyNebulaRingGradient(torus3Geo, 0.13 * i + 0.57);
     const torus3 = new THREE.Mesh(torus3Geo, torusMat.clone());
+    torus3.userData.useNebulaGradient = true;
+    torus3.userData.baseColor = new THREE.Color(0xffffff);
     torus3.material.opacity = 0.25;
     torus3.rotation.x = 0.3;
     torus3.rotation.z = Math.PI / 2 + 0.2;
@@ -2854,8 +2910,12 @@ function animate() {
         }
 
         // Atmospheric color shift (cue 6) — only on mesh materials
-        if (child.material.color && child.isMesh && group.userData.baseColor) {
-          child.material.color.copy(group.userData.baseColor).lerp(fogColor, atmosFactor * 0.4);
+        if (child.material.color && child.isMesh) {
+          const baseCol = child.userData.baseColor || group.userData.baseColor;
+          if (baseCol) {
+            const fogMix = child.userData.useNebulaGradient ? 0.22 : 0.4;
+            child.material.color.copy(baseCol).lerp(fogColor, atmosFactor * fogMix);
+          }
         }
         if (child.material.emissive && child.isMesh && group.userData.baseEmissive) {
           child.material.emissive.copy(group.userData.baseEmissive).lerp(fogColor, atmosFactor * 0.3);
