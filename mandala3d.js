@@ -40,6 +40,16 @@ import { createGyroParallaxSubsystem } from './gyroParallaxSubsystem.js';
 // dt clamp: accept finitude; preserve continuity (no runaway state on resume)
 const MAX_DT = 0.1;          // 100ms — anything larger is a tab resume spike
 const SAFE_NUM = (v, fallback = 0) => Number.isFinite(v) ? v : fallback;
+const safeGet2DContext = (canvas, opts) => {
+  try {
+    if (opts) {
+      const c = canvas.getContext('2d', opts);
+      if (c) return c;
+    }
+  } catch (_) {}
+  try { return canvas.getContext('2d'); } catch (_) {}
+  return null;
+};
 const safeMatchMedia = (q) => {
   try {
     if (typeof window !== 'undefined' && typeof window.matchMedia === 'function') {
@@ -442,6 +452,30 @@ function updateInnerHaloFractalTexture(elapsed) {
   innerHaloFractalTexture.needsUpdate = true;
 }
 
+function ensureInnerHaloFractalTexture() {
+  if (innerHaloFractalTexture && innerHaloFractalState.ctx && innerHaloFractalState.imageData) return true;
+  try {
+    const hs = innerHaloFractalState;
+    if (!hs.canvas) {
+      hs.canvas = document.createElement('canvas');
+      hs.canvas.width = hs.width;
+      hs.canvas.height = hs.height;
+    }
+    if (!hs.ctx) hs.ctx = safeGet2DContext(hs.canvas, { willReadFrequently: true });
+    if (!hs.ctx) return false;
+    if (!hs.imageData) hs.imageData = hs.ctx.createImageData(hs.width, hs.height);
+    if (!innerHaloFractalTexture) {
+      innerHaloFractalTexture = new THREE.CanvasTexture(hs.canvas);
+      innerHaloFractalTexture.wrapS = THREE.ClampToEdgeWrapping;
+      innerHaloFractalTexture.wrapT = THREE.ClampToEdgeWrapping;
+      innerHaloFractalTexture.magFilter = THREE.LinearFilter;
+      innerHaloFractalTexture.minFilter = THREE.LinearFilter;
+    }
+    updateInnerHaloFractalTexture(0);
+    return true;
+  } catch (_) { return false; }
+}
+
 // Nebula-inspired ring gradients (from pink/violet/blue/copper gas palette).
 const RING_NEBULA_GRADIENT = [
   new THREE.Color(0xf8e7ff), // bright ionized lilac-white
@@ -590,7 +624,7 @@ function init() {
         const c = document.createElement('canvas');
         c.width = img.width;
         c.height = img.height;
-        const cx = c.getContext('2d');
+        const cx = safeGet2DContext(c);
         if (!cx) {
           scene.background = rawTex;
           nebulaBackplateTexture = rawTex;
@@ -645,25 +679,27 @@ function init() {
   const glowCanvas = document.createElement('canvas');
   glowCanvas.width = 128;
   glowCanvas.height = 128;
-  const glowCtx = glowCanvas.getContext('2d');
-  // Layer 1: wide soft halo
-  const halo = glowCtx.createRadialGradient(64, 64, 0, 64, 64, 64);
-  halo.addColorStop(0,    'rgba(255,255,255,0.6)');
-  halo.addColorStop(0.25, 'rgba(255,255,255,0.15)');
-  halo.addColorStop(0.55, 'rgba(255,255,255,0.04)');
-  halo.addColorStop(1,    'rgba(255,255,255,0)');
-  glowCtx.fillStyle = halo;
-  glowCtx.fillRect(0, 0, 128, 128);
-  // Layer 2: intense core burn (additive)
-  glowCtx.globalCompositeOperation = 'lighter';
-  const core = glowCtx.createRadialGradient(64, 64, 0, 64, 64, 24);
-  core.addColorStop(0,   'rgba(255,255,255,1)');
-  core.addColorStop(0.3, 'rgba(255,255,255,0.85)');
-  core.addColorStop(0.6, 'rgba(255,255,255,0.3)');
-  core.addColorStop(1,   'rgba(255,255,255,0)');
-  glowCtx.fillStyle = core;
-  glowCtx.fillRect(0, 0, 128, 128);
-  glowCtx.globalCompositeOperation = 'source-over';
+  const glowCtx = safeGet2DContext(glowCanvas);
+  if (glowCtx) {
+    // Layer 1: wide soft halo
+    const halo = glowCtx.createRadialGradient(64, 64, 0, 64, 64, 64);
+    halo.addColorStop(0,    'rgba(255,255,255,0.6)');
+    halo.addColorStop(0.25, 'rgba(255,255,255,0.15)');
+    halo.addColorStop(0.55, 'rgba(255,255,255,0.04)');
+    halo.addColorStop(1,    'rgba(255,255,255,0)');
+    glowCtx.fillStyle = halo;
+    glowCtx.fillRect(0, 0, 128, 128);
+    // Layer 2: intense core burn (additive)
+    glowCtx.globalCompositeOperation = 'lighter';
+    const core = glowCtx.createRadialGradient(64, 64, 0, 64, 64, 24);
+    core.addColorStop(0,   'rgba(255,255,255,1)');
+    core.addColorStop(0.3, 'rgba(255,255,255,0.85)');
+    core.addColorStop(0.6, 'rgba(255,255,255,0.3)');
+    core.addColorStop(1,   'rgba(255,255,255,0)');
+    glowCtx.fillStyle = core;
+    glowCtx.fillRect(0, 0, 128, 128);
+    glowCtx.globalCompositeOperation = 'source-over';
+  }
   starGlowTexture = new THREE.CanvasTexture(glowCanvas);
 
   // Evolving fractal texture for the innermost translucent circles/halos.
@@ -672,7 +708,7 @@ function init() {
     hs.canvas = document.createElement('canvas');
     hs.canvas.width = hs.width;
     hs.canvas.height = hs.height;
-    hs.ctx = hs.canvas.getContext('2d', { willReadFrequently: true });
+    hs.ctx = safeGet2DContext(hs.canvas, { willReadFrequently: true });
     if (hs.ctx) {
       hs.imageData = hs.ctx.createImageData(hs.width, hs.height);
       innerHaloFractalTexture = new THREE.CanvasTexture(hs.canvas);
@@ -1014,7 +1050,7 @@ function buildNebulaBackground() {
     kState.canvas = document.createElement('canvas');
     kState.canvas.width = kState.width;
     kState.canvas.height = kState.height;
-    kState.ctx = kState.canvas.getContext('2d', { willReadFrequently: true });
+    kState.ctx = safeGet2DContext(kState.canvas, { willReadFrequently: true });
     if (kState.ctx) {
       kState.imageData = kState.ctx.createImageData(kState.width, kState.height);
       knotFractalTexture = new THREE.CanvasTexture(kState.canvas);
@@ -3379,7 +3415,25 @@ function animate() {
 
   // ── Nebula cloud drift + luminosity breathing ──
   try { updateKnotFractalTexture(elapsed); } catch (_) {}
-  try { updateInnerHaloFractalTexture(elapsed); } catch (_) {}
+  try {
+    // iPhone/PWA safety: if initial texture init failed, retry and rebind maps.
+    if (!innerHaloFractalTexture) {
+      const ok = ensureInnerHaloFractalTexture();
+      if (ok) {
+        if (layerHalos && layerHalos.length) {
+          for (let i = 0; i < layerHalos.length; i++) {
+            const h = layerHalos[i];
+            if (h && h.material) h.material.map = innerHaloFractalTexture;
+          }
+        }
+        if (coreGlow && coreGlow.material) coreGlow.material.map = innerHaloFractalTexture;
+        if (coreGlow && coreGlow.userData && coreGlow.userData.halo && coreGlow.userData.halo.material) {
+          coreGlow.userData.halo.material.map = innerHaloFractalTexture;
+        }
+      }
+    }
+    updateInnerHaloFractalTexture(elapsed);
+  } catch (_) {}
   nebulaClouds.forEach((sprite, ci) => {
     const spd = sprite.userData.driftSpeed;
     sprite.userData.driftAngle += dt * spd;
