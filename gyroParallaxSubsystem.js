@@ -309,6 +309,17 @@ export function createGyroParallaxSubsystem(config) {
     return s.enabled && s.motionOn && Number.isFinite(s.stillMs) ? s.stillMs : 0;
   }
 
+  /**
+   * Read-only normalized tilt sample for other subtle effects
+   * (e.g. ultra-slow background UV drift). Returns [-1..1] range.
+   */
+  function getTiltNormalized() {
+    if (!s.enabled || !s.motionOn) return { x: 0, y: 0 };
+    const x = clamp(s.yaw / 0.12, -1, 1);
+    const y = clamp(s.pitch / 0.12, -1, 1);
+    return { x, y };
+  }
+
   // ─── FRAME: temporal + parallax + scene ────────────────────────────────
 
   function apply(dt, breath = 0, layerIndex = 0) {
@@ -486,5 +497,6 @@ export function createGyroParallaxSubsystem(config) {
     bindBreathGestures,
     apply,
     getStillMs,
+    getTiltNormalized,
   };
 }

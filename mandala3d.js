@@ -226,6 +226,12 @@ let starTwinklePhases;  // per-star twinkle phase offsets
 let starTwinkleSpeeds;  // per-star twinkle rates
 let starBaseOpacities;  // per-star base brightness
 let nebulaBackplateTexture = null; // static deepest background image
+const backplateUv = {
+  baseOffsetX: 0,
+  baseOffsetY: 0,
+  driftX: 0,
+  driftY: 0,
+};
 let knotFractalTexture; // evolving fractal texture for bright gas clumps
 const knotFractalState = {
   canvas: null,
@@ -246,6 +252,18 @@ const TRAIL_LENGTH = 12; // trail segments per star (head→tail)
 let dustParticlePhases; // per-dust-particle animation phase offsets
 let dustParticleSpeeds; // per-dust-particle animation rates
 let dustBaseOpacities;  // per-dust-particle base brightness (varied)
+const isMobileScreen = typeof window !== 'undefined'
+  ? (/iPhone|iPad|iPod|Android/i.test(navigator.userAgent || '')
+    || window.matchMedia('(pointer: coarse)').matches)
+  : false;
+const isMobileOledDark = typeof window !== 'undefined'
+  ? (isMobileScreen && window.matchMedia('(prefers-color-scheme: dark)').matches)
+  : false;
+const DPR_CAP = isMobileScreen ? 1.75 : 2.0;
+const BASE_EXPOSURE = isMobileOledDark ? 1.92 : 2.0;
+const RING_EMISSIVE_BASE = isMobileOledDark ? 0.76 : 0.72;
+const RING_EMISSIVE_FLOOR = isMobileOledDark ? 0.09 : 0.07;
+const RING_EMISSIVE_BREATH = isMobileOledDark ? 0.18 : 0.16;
 
 // ─── Gyro parallax subsystem (see gyroParallaxSubsystem.js) ───
 const gyroParallax = createGyroParallaxSubsystem({
@@ -406,11 +424,30 @@ function updateBackplateUv() {
   } else {
     nebulaBackplateTexture.repeat.set(viewAspect / imgAspect, 1);
   }
-  nebulaBackplateTexture.offset.set(
-    0.5 - nebulaBackplateTexture.repeat.x * 0.5,
-    0.5 - nebulaBackplateTexture.repeat.y * 0.5
-  );
+  backplateUv.baseOffsetX = 0.5 - nebulaBackplateTexture.repeat.x * 0.5;
+  backplateUv.baseOffsetY = 0.5 - nebulaBackplateTexture.repeat.y * 0.5;
+  const maxX = (1 - nebulaBackplateTexture.repeat.x) * 0.5;
+  const maxY = (1 - nebulaBackplateTexture.repeat.y) * 0.5;
+  const dX = Math.max(-maxX, Math.min(maxX, backplateUv.driftX));
+  const dY = Math.max(-maxY, Math.min(maxY, backplateUv.driftY));
+  nebulaBackplateTexture.offset.set(backplateUv.baseOffsetX + dX, backplateUv.baseOffsetY + dY);
   nebulaBackplateTexture.needsUpdate = true;
+}
+
+function updateBackplateDrift(dt, elapsed, motionScale = 1, calmMul = 1) {
+  if (!nebulaBackplateTexture || !Number.isFinite(dt) || dt <= 0) return;
+  // Very slow autonomous drift + tiny gyro-coupled offset (heavily smoothed).
+  const tilt = gyroParallax.getTiltNormalized ? gyroParallax.getTiltNormalized() : { x: 0, y: 0 };
+  const autoX = Math.sin(elapsed * 0.016) * 0.0022;
+  const autoY = Math.cos(elapsed * 0.013 + 1.7) * 0.0019;
+  const gyroX = (Number.isFinite(tilt.x) ? tilt.x : 0) * 0.0042;
+  const gyroY = (Number.isFinite(tilt.y) ? tilt.y : 0) * -0.0052;
+  const targetX = (autoX + gyroX) * motionScale * calmMul;
+  const targetY = (autoY + gyroY) * motionScale * calmMul;
+  const ease = 1 - Math.exp(-dt / 2.6);
+  backplateUv.driftX += (targetX - backplateUv.driftX) * ease;
+  backplateUv.driftY += (targetY - backplateUv.driftY) * ease;
+  updateBackplateUv();
 }
 
 // One-time perturbation of state vectors only — no new semantics, no rewiring.
@@ -435,10 +472,10 @@ function init() {
     alpha: false,
     powerPreference: 'high-performance',  // prefer discrete GPU when available
   });
-  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio, DPR_CAP));
   handleResize();   // initial size — uses actual element dimensions
   renderer.toneMapping = THREE.ACESFilmicToneMapping;
-  renderer.toneMappingExposure = 2.0;
+  renderer.toneMappingExposure = BASE_EXPOSURE;
 
   // Deep backplate image: first visual layer beneath all 3D content.
   // We grade it darker/softer so translucent geometry remains readable.
@@ -464,8 +501,10 @@ function init() {
           updateBackplateUv();
           return;
         }
-        // Heavier backplate attenuation so foreground geometry stands out.
-        cx.filter = 'brightness(0.42) saturate(0.76) contrast(0.84) blur(0.8px)';
+        // OLED-aware grading: keep deep blacks calm while preserving foreground legibility.
+        cx.filter = isMobileOledDark
+          ? 'brightness(0.38) saturate(0.70) contrast(0.88) blur(0.9px)'
+          : 'brightness(0.42) saturate(0.76) contrast(0.84) blur(0.8px)';
         cx.drawImage(img, 0, 0, c.width, c.height);
         const graded = new THREE.CanvasTexture(c);
         graded.colorSpace = THREE.SRGBColorSpace;
@@ -493,10 +532,10 @@ function init() {
     contextLost = false;
     console.info('WebGL context restored — rebuilding');
     // Three.js r170 auto-restores most state, but we nudge it:
-    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, DPR_CAP));
     handleResize();
     renderer.toneMapping = THREE.ACESFilmicToneMapping;
-    renderer.toneMappingExposure = 2.0;
+    renderer.toneMappingExposure = BASE_EXPOSURE;
   }, false);
 
   // Shared radial glow texture — astronomical point-spread function
@@ -2819,6 +2858,7 @@ function animate() {
   // Final NaN guard: if anything upstream corrupted the value, clamp to 0
   const bRaw = Number.isFinite(audioBreath) ? Math.max(0, Math.min(1, audioBreath)) : 0;
   const b = Math.max(0, Math.min(1, bRaw + INITIAL_CONDITIONS.breathCoupling.baselineOffset));
+  try { updateBackplateDrift(dt, elapsed, motionScale, calmMul); } catch (_) {}
 
   // ── Lerp user controls ──
   const ctrlLerp = 1 - Math.exp(-8 * dt);          // smooth ~8 Hz exponential ease
@@ -2972,7 +3012,7 @@ function animate() {
         // Depth-dependent emissive (cue 2) + audio-reactive warmth
         if (child.material.emissiveIntensity !== undefined && child.isMesh) {
           // Base emissive + breath lift: breath raises the floor and adds warmth
-          child.material.emissiveIntensity = 0.72 * emissiveScale + 0.07 + b * 0.16;
+          child.material.emissiveIntensity = RING_EMISSIVE_BASE * emissiveScale + RING_EMISSIVE_FLOOR + b * RING_EMISSIVE_BREATH;
         }
 
         // Atmospheric color shift (cue 6) — only on mesh materials
