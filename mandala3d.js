@@ -304,10 +304,29 @@ let dustParticleSpeeds; // per-dust-particle animation rates
 let dustBaseOpacities;  // per-dust-particle base brightness (varied)
 const prefersCoarsePointer = !!safeMatchMedia('(pointer: coarse)').matches;
 const prefersDarkScheme = !!safeMatchMedia('(prefers-color-scheme: dark)').matches;
+const mobileUA = typeof navigator !== 'undefined' ? (navigator.userAgent || '') : '';
+const isIOSMobile = /iPhone|iPad|iPod/i.test(mobileUA);
+const isAndroidMobile = /Android/i.test(mobileUA);
+const isWebKitMobile = /AppleWebKit/i.test(mobileUA);
+const isDuckDuckGoMobile = /DuckDuckGo/i.test(mobileUA);
+const isFirefoxMobile = /FxiOS|Firefox/i.test(mobileUA);
 const isMobileScreen = typeof window !== 'undefined'
   ? (/iPhone|iPad|iPod|Android/i.test(navigator.userAgent || '')
     || prefersCoarsePointer)
   : false;
+const supportsBackdropFilter = (
+  typeof CSS !== 'undefined'
+  && typeof CSS.supports === 'function'
+  && (CSS.supports('backdrop-filter', 'blur(1px)')
+    || CSS.supports('-webkit-backdrop-filter', 'blur(1px)'))
+);
+// Fallback-only policy: preserve default visuals unless browser is known-risky.
+const mobileCompositorSafe = !!(isMobileScreen && (
+  !supportsBackdropFilter
+  || isDuckDuckGoMobile
+  || isFirefoxMobile
+  || (isIOSMobile && isWebKitMobile)
+));
 const isMobileOledDark = typeof window !== 'undefined'
   ? (isMobileScreen && prefersDarkScheme)
   : false;
@@ -316,6 +335,15 @@ const BASE_EXPOSURE = isMobileOledDark ? 1.92 : 2.0;
 const RING_EMISSIVE_BASE = isMobileOledDark ? 0.76 : 0.72;
 const RING_EMISSIVE_FLOOR = isMobileOledDark ? 0.09 : 0.07;
 const RING_EMISSIVE_BREATH = isMobileOledDark ? 0.18 : 0.16;
+
+// Runtime guardrail: mobile browsers can regress compositor behavior over WebGL + HUD blur.
+try {
+  if (typeof document !== 'undefined' && document.documentElement) {
+    if (mobileCompositorSafe) document.documentElement.classList.add('mobile-compositor-safe');
+    if (isIOSMobile) document.documentElement.classList.add('mobile-ios');
+    if (isAndroidMobile) document.documentElement.classList.add('mobile-android');
+  }
+} catch (_) {}
 
 // ─── Gyro parallax subsystem (see gyroParallaxSubsystem.js) ───
 const gyroParallax = createGyroParallaxSubsystem({
