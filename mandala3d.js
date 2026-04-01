@@ -441,24 +441,40 @@ function _sampleGradientCyclic(t, palette) {
   return palette[i0].clone().lerp(palette[i1], f);
 }
 
-function _applyNebulaRingGradient(geometry, phase = 0) {
+function _applyNebulaRingGradient(geometry, phase = 0, depthNorm = 0, ringVariant = 0) {
   if (!geometry || !geometry.attributes || !geometry.attributes.position) return;
   const pos = geometry.attributes.position;
+  const nrm = geometry.attributes.normal;
   const count = pos.count;
   const colors = new Float32Array(count * 3);
+  const lightDir = new THREE.Vector3(0.42, 0.55, 0.72).normalize();
 
   for (let i = 0; i < count; i++) {
     const x = pos.getX(i);
     const y = pos.getY(i);
     const z = pos.getZ(i);
     const ang = (Math.atan2(y, x) / TAU + 1 + phase) % 1;
-    const filament = 0.5 + 0.5 * Math.sin((x + y) * 0.16 + z * 1.25 + phase * TAU * 1.9);
-    const t = (ang * 0.82 + filament * 0.18) % 1;
+    const filament = 0.5 + 0.5 * Math.sin((x + y) * 0.16 + z * 1.25 + phase * TAU * (1.8 + ringVariant * 0.23));
+    const hueDrift = 0.5 + 0.5 * Math.sin(ang * TAU * (1.3 + depthNorm * 0.55) + ringVariant * 1.1);
+    const t = (ang * 0.74 + filament * 0.18 + hueDrift * 0.08) % 1;
     const c = _sampleGradientCyclic(t, RING_NEBULA_GRADIENT);
-    const glow = 0.88 + 0.22 * Math.max(0, Math.sin((ang + phase) * TAU * 2.3 + z * 0.45));
-    colors[i * 3] = Math.min(1, c.r * glow);
-    colors[i * 3 + 1] = Math.min(1, c.g * glow);
-    colors[i * 3 + 2] = Math.min(1, c.b * glow);
+
+    // Directional light-dark gradient from geometry normals for depth perspective.
+    let ndotl = 0.5;
+    if (nrm) {
+      const nx = nrm.getX(i);
+      const ny = nrm.getY(i);
+      const nz = nrm.getZ(i);
+      ndotl = Math.max(0, nx * lightDir.x + ny * lightDir.y + nz * lightDir.z);
+    }
+    const directional = 0.56 + ndotl * 0.72; // dark side to lit side
+    const banding = 0.92 + 0.12 * Math.sin((ang + phase) * TAU * (2.1 + ringVariant * 0.2) + z * 0.55);
+    const depthFade = 1 - depthNorm * 0.17; // deeper inward layers slightly dimmer
+    const luminance = directional * banding * depthFade;
+
+    colors[i * 3] = Math.min(1, c.r * luminance);
+    colors[i * 3 + 1] = Math.min(1, c.g * luminance);
+    colors[i * 3 + 2] = Math.min(1, c.b * luminance);
   }
 
   geometry.setAttribute('color', new THREE.Float32BufferAttribute(colors, 3));
@@ -709,8 +725,9 @@ function buildLayers() {
     // Orbital ring — torus
     const torusR = layer.radius;
     const tubeR = 0.08 + i * 0.02;
+    const depthNorm = i / Math.max(1, LAYER_COUNT - 1);
     const torusGeo = new THREE.TorusGeometry(torusR, tubeR, 32, 128);
-    _applyNebulaRingGradient(torusGeo, 0.07 * i + 0.03);
+    _applyNebulaRingGradient(torusGeo, 0.07 * i + 0.03, depthNorm, 0);
     const torusMat = new THREE.MeshStandardMaterial({
       color: 0xffffff,
       emissive: layer.emissive,
@@ -729,7 +746,7 @@ function buildLayers() {
 
     // Second tilted orbital ring
     const torus2Geo = new THREE.TorusGeometry(torusR * 0.95, tubeR * 0.7, 24, 96);
-    _applyNebulaRingGradient(torus2Geo, 0.11 * i + 0.29);
+    _applyNebulaRingGradient(torus2Geo, 0.11 * i + 0.29, depthNorm, 1);
     const torus2 = new THREE.Mesh(torus2Geo, torusMat.clone());
     torus2.userData.useNebulaGradient = true;
     torus2.userData.baseColor = new THREE.Color(0xffffff);
@@ -740,7 +757,7 @@ function buildLayers() {
 
     // Third orbital (perpendicular)
     const torus3Geo = new THREE.TorusGeometry(torusR * 0.88, tubeR * 0.5, 20, 80);
-    _applyNebulaRingGradient(torus3Geo, 0.13 * i + 0.57);
+    _applyNebulaRingGradient(torus3Geo, 0.13 * i + 0.57, depthNorm, 2);
     const torus3 = new THREE.Mesh(torus3Geo, torusMat.clone());
     torus3.userData.useNebulaGradient = true;
     torus3.userData.baseColor = new THREE.Color(0xffffff);
