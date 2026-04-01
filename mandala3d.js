@@ -438,13 +438,14 @@ function updateBackplateDrift(dt, elapsed, motionScale = 1, calmMul = 1) {
   if (!nebulaBackplateTexture || !Number.isFinite(dt) || dt <= 0) return;
   // Very slow autonomous drift + tiny gyro-coupled offset (heavily smoothed).
   const tilt = gyroParallax.getTiltNormalized ? gyroParallax.getTiltNormalized() : { x: 0, y: 0 };
-  const autoX = Math.sin(elapsed * 0.016) * 0.0022;
-  const autoY = Math.cos(elapsed * 0.013 + 1.7) * 0.0019;
-  const gyroX = (Number.isFinite(tilt.x) ? tilt.x : 0) * 0.0042;
-  const gyroY = (Number.isFinite(tilt.y) ? tilt.y : 0) * -0.0052;
+  // Motion-sickness guardrail: keep backplate movement extremely subtle.
+  const autoX = Math.sin(elapsed * 0.009) * 0.00085;
+  const autoY = Math.cos(elapsed * 0.007 + 1.7) * 0.00075;
+  const gyroX = (Number.isFinite(tilt.x) ? tilt.x : 0) * 0.0012;
+  const gyroY = (Number.isFinite(tilt.y) ? tilt.y : 0) * -0.0015;
   const targetX = (autoX + gyroX) * motionScale * calmMul;
   const targetY = (autoY + gyroY) * motionScale * calmMul;
-  const ease = 1 - Math.exp(-dt / 2.6);
+  const ease = 1 - Math.exp(-dt / 4.8); // slower follow = less perceived movement
   backplateUv.driftX += (targetX - backplateUv.driftX) * ease;
   backplateUv.driftY += (targetY - backplateUv.driftY) * ease;
   updateBackplateUv();
