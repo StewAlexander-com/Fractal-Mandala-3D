@@ -94,11 +94,38 @@ The app now uses a **fallback-only** compositor guard:
 
 ## Run Locally
 
+1) Download the project:
+- Option A: `git clone https://github.com/StewAlexander-com/Fractal-Mandala-3D.git`
+- Option B: GitHub -> **Code** -> **Download ZIP**, then extract
+
+2) Open a terminal in the project folder:
+
 ```bash
-# Any static server works
+# Example
+cd Fractal-Mandala-3D
+
+# Any static HTTP server works (do not use file://)
 npx serve . -l 3000
-# Then open http://localhost:3000
+# then open:
+# http://localhost:3000
 ```
+
+Alternative servers:
+
+```bash
+# Python 3
+python3 -m http.server 3000
+
+# Node (if you prefer)
+npx http-server . -p 3000
+```
+
+### Local Network Requirements
+
+- Run over `http://localhost` (or `127.0.0.1`), not `file://`, because the app uses ES modules/import maps.
+- Internet is required for the default setup because `Three.js`, `es-module-shims`, and Google Fonts are loaded from CDNs.
+- Audio files and project assets are local, so they work once served from your local server.
+- Mic input requires a secure context; `localhost` qualifies on modern browsers.
 
 ## Audio Credits
 
