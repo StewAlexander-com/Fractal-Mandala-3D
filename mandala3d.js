@@ -629,9 +629,10 @@ function updateBackplateUv() {
     backplateUv.randomStartSet = false;
   }
 
-  const composedX = backplateUv.startX + backplateUv.walkX + backplateUv.driftX;
+  // iPhone portrait artifact guard: lock X to center to avoid right-edge sampling lines.
+  const composedX = isMobilePortrait ? 0 : (backplateUv.startX + backplateUv.walkX + backplateUv.driftX);
   const composedY = backplateUv.startY + backplateUv.walkY + backplateUv.driftY;
-  const clampX = isMobilePortrait ? safeMaxX * 0.78 : safeMaxX;
+  const clampX = isMobilePortrait ? 0 : safeMaxX;
   const clampY = isMobilePortrait ? safeMaxY * 0.82 : safeMaxY;
   const dX = Math.max(-clampX, Math.min(clampX, composedX));
   const dY = Math.max(-clampY, Math.min(clampY, composedY));
@@ -660,10 +661,15 @@ function updateBackplateDrift(dt, elapsed, motionScale = 1, calmMul = 1) {
   const vh = vv ? vv.height : window.innerHeight;
   const isMobilePortrait = isMobileScreen && vh >= vw;
   if (isMobilePortrait && nebulaBackplateTexture) {
+    // Keep horizontal UV perfectly centered in portrait to prevent edge shimmer/lines.
+    backplateUv.startX = 0;
+    backplateUv.walkX = 0;
+    backplateUv.walkTargetX = 0;
+    backplateUv.driftX = 0;
     const maxX = (1 - nebulaBackplateTexture.repeat.x) * 0.5;
     const maxY = (1 - nebulaBackplateTexture.repeat.y) * 0.5;
     // Keep random migration calm and centered in portrait sessions.
-    const spanX = maxX * 0.18;
+    const spanX = 0;
     const spanY = maxY * 0.22;
     backplateUv.walkClock += dt;
     if (backplateUv.walkClock >= backplateUv.walkNextAt) {
