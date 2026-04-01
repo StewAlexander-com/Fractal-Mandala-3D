@@ -40,14 +40,36 @@ import { createGyroParallaxSubsystem } from './gyroParallaxSubsystem.js';
 // dt clamp: accept finitude; preserve continuity (no runaway state on resume)
 const MAX_DT = 0.1;          // 100ms — anything larger is a tab resume spike
 const SAFE_NUM = (v, fallback = 0) => Number.isFinite(v) ? v : fallback;
+const safeMatchMedia = (q) => {
+  try {
+    if (typeof window !== 'undefined' && typeof window.matchMedia === 'function') {
+      return window.matchMedia(q);
+    }
+  } catch (_) {}
+  return {
+    matches: false,
+    media: q,
+    addEventListener: undefined,
+    removeEventListener: undefined,
+    addListener: undefined,
+    removeListener: undefined,
+  };
+};
 
 // ─── Reduced-motion preference ───
 // Queries OS-level accessibility setting. When active, we scale down
 // continuous JS animations (orbit, drift, particle motion) to near-zero
 // while keeping the scene renderable and navigable.
-const reducedMotionQuery = window.matchMedia('(prefers-reduced-motion: reduce)');
+const reducedMotionQuery = safeMatchMedia('(prefers-reduced-motion: reduce)');
 let prefersReducedMotion = reducedMotionQuery.matches;
-reducedMotionQuery.addEventListener('change', (e) => { prefersReducedMotion = e.matches; });
+const onReducedMotionChange = (e) => { prefersReducedMotion = !!(e && e.matches); };
+try {
+  if (typeof reducedMotionQuery.addEventListener === 'function') {
+    reducedMotionQuery.addEventListener('change', onReducedMotionChange);
+  } else if (typeof reducedMotionQuery.addListener === 'function') {
+    reducedMotionQuery.addListener(onReducedMotionChange);
+  }
+} catch (_) {}
 
 
 
@@ -261,12 +283,14 @@ const TRAIL_LENGTH = 12; // trail segments per star (head→tail)
 let dustParticlePhases; // per-dust-particle animation phase offsets
 let dustParticleSpeeds; // per-dust-particle animation rates
 let dustBaseOpacities;  // per-dust-particle base brightness (varied)
+const prefersCoarsePointer = !!safeMatchMedia('(pointer: coarse)').matches;
+const prefersDarkScheme = !!safeMatchMedia('(prefers-color-scheme: dark)').matches;
 const isMobileScreen = typeof window !== 'undefined'
   ? (/iPhone|iPad|iPod|Android/i.test(navigator.userAgent || '')
-    || window.matchMedia('(pointer: coarse)').matches)
+    || prefersCoarsePointer)
   : false;
 const isMobileOledDark = typeof window !== 'undefined'
-  ? (isMobileScreen && window.matchMedia('(prefers-color-scheme: dark)').matches)
+  ? (isMobileScreen && prefersDarkScheme)
   : false;
 const DPR_CAP = isMobileScreen ? 1.75 : 2.0;
 const BASE_EXPOSURE = isMobileOledDark ? 1.92 : 2.0;
@@ -574,9 +598,11 @@ function init() {
           return;
         }
         // OLED-aware grading: keep deep blacks calm while preserving foreground legibility.
-        cx.filter = isMobileOledDark
-          ? 'brightness(0.38) saturate(0.70) contrast(0.88) blur(0.9px)'
-          : 'brightness(0.42) saturate(0.76) contrast(0.84) blur(0.8px)';
+        try {
+          cx.filter = isMobileOledDark
+            ? 'brightness(0.38) saturate(0.70) contrast(0.88) blur(0.9px)'
+            : 'brightness(0.42) saturate(0.76) contrast(0.84) blur(0.8px)';
+        } catch (_) {}
         cx.drawImage(img, 0, 0, c.width, c.height);
         const graded = new THREE.CanvasTexture(c);
         graded.colorSpace = THREE.SRGBColorSpace;
@@ -590,6 +616,10 @@ function init() {
       } finally {
         rawTex.dispose();
       }
+    }, undefined, () => {
+      // Graceful fallback: keep dark color background if image fails to load.
+      nebulaBackplateTexture = null;
+      scene.background = new THREE.Color(0x06050a);
     });
   } catch (_) { /* fallback color background remains */ }
 
@@ -2900,8 +2930,10 @@ function scheduleViewportResize() {
   });
 }
 if (window.visualViewport) {
-  window.visualViewport.addEventListener('resize', scheduleViewportResize);
-  window.visualViewport.addEventListener('scroll', scheduleViewportResize);
+  try {
+    window.visualViewport.addEventListener('resize', scheduleViewportResize);
+    window.visualViewport.addEventListener('scroll', scheduleViewportResize);
+  } catch (_) {}
 }
 // Also re-check on orientation change (Android + iOS fallback)
 window.addEventListener('orientationchange', () => {
