@@ -485,6 +485,32 @@ function ensureInnerHaloFractalTexture() {
   } catch (_) { return false; }
 }
 
+function ensureKnotFractalTexture() {
+  if (knotFractalTexture && knotFractalState.ctx && knotFractalState.imageData) return true;
+  try {
+    const ks = knotFractalState;
+    if (!ks.canvas) {
+      ks.canvas = document.createElement('canvas');
+      ks.canvas.width = ks.width;
+      ks.canvas.height = ks.height;
+    }
+    if (!ks.ctx) ks.ctx = safeGet2DContext(ks.canvas, { willReadFrequently: true });
+    if (!ks.ctx) return false;
+    if (!ks.imageData) ks.imageData = ks.ctx.createImageData(ks.width, ks.height);
+    if (!knotFractalTexture) {
+      knotFractalTexture = new THREE.CanvasTexture(ks.canvas);
+      knotFractalTexture.wrapS = THREE.ClampToEdgeWrapping;
+      knotFractalTexture.wrapT = THREE.ClampToEdgeWrapping;
+      knotFractalTexture.magFilter = THREE.LinearFilter;
+      // NPOT-safe on iPhone/WebGL1: avoid mipmap minification filters.
+      knotFractalTexture.minFilter = THREE.LinearFilter;
+      knotFractalTexture.generateMipmaps = false;
+    }
+    updateKnotFractalTexture(0);
+    return true;
+  } catch (_) { return false; }
+}
+
 // Nebula-inspired ring gradients (from pink/violet/blue/copper gas palette).
 const RING_NEBULA_GRADIENT = [
   new THREE.Color(0xf8e7ff), // bright ionized lilac-white
@@ -1125,8 +1151,9 @@ function buildNebulaBackground() {
       knotFractalTexture.wrapS = THREE.ClampToEdgeWrapping;
       knotFractalTexture.wrapT = THREE.ClampToEdgeWrapping;
       knotFractalTexture.magFilter = THREE.LinearFilter;
-      knotFractalTexture.minFilter = THREE.LinearMipmapLinearFilter;
-      knotFractalTexture.generateMipmaps = true;
+      // NPOT-safe on iPhone/WebGL1: avoid mipmap minification filters.
+      knotFractalTexture.minFilter = THREE.LinearFilter;
+      knotFractalTexture.generateMipmaps = false;
       updateKnotFractalTexture(0);
     }
   } catch (_) { /* fallback to radial cloudTexture */ }
@@ -3482,7 +3509,19 @@ function animate() {
   }
 
   // ── Nebula cloud drift + luminosity breathing ──
-  try { updateKnotFractalTexture(elapsed); } catch (_) {}
+  try {
+    // iPhone/PWA safety: if knot texture init failed, retry and rebind knot sprites.
+    if (!knotFractalTexture) {
+      const okKnot = ensureKnotFractalTexture();
+      if (okKnot && nebulaClouds && nebulaClouds.length) {
+        for (let i = 0; i < nebulaClouds.length; i++) {
+          const s = nebulaClouds[i];
+          if (s && s.userData && s.userData.isKnot && s.material) s.material.map = knotFractalTexture;
+        }
+      }
+    }
+    updateKnotFractalTexture(elapsed);
+  } catch (_) {}
   try {
     // iPhone/PWA safety: if initial texture init failed, retry and rebind maps.
     if (!innerHaloFractalTexture) {
