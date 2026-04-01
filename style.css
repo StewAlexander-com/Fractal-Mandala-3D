@@ -1687,6 +1687,11 @@ canvas {
    full CSS nesting support for @rules (older Firefox, etc.) still apply portrait layout.
    Arc uses Chromium and is unaffected; this is for Gecko / odd embeds. */
 @media (max-width: 768px) and (orientation: portrait) {
+  .teaching-wrap--collapsed .teaching-panel-toggle {
+    left: 50%;
+    right: auto;
+    transform: translateX(-50%);
+  }
   .teaching-wrap:not(.teaching-wrap--collapsed) .teaching-panel-toggle {
     left: 50%;
     right: auto;

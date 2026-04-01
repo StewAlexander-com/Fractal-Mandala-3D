@@ -631,9 +631,9 @@ function updateBackplateUv() {
   const vh = vv ? vv.height : window.innerHeight;
   const isMobilePortrait = isMobileScreen && vh >= vw;
   if (isMobilePortrait && !backplateUv.randomStartSet) {
-    // Portrait mobile should stay near center to avoid bright edge crops.
+    // Portrait mobile: pin initial crop to center for reliable nebula focal placement.
     const spanX = safeMaxX * 0.18;
-    const spanY = safeMaxY * 0.22;
+    const spanY = 0;
     backplateUv.startX = (Math.random() * 2 - 1) * spanX;
     backplateUv.startY = (Math.random() * 2 - 1) * spanY;
     // Walk values are deltas around the random start, not absolute offsets.
@@ -661,7 +661,7 @@ function updateBackplateUv() {
   const composedX = isMobilePortrait ? 0 : (backplateUv.startX + backplateUv.walkX + backplateUv.driftX);
   const composedY = backplateUv.startY + backplateUv.walkY + backplateUv.driftY;
   const clampX = isMobilePortrait ? 0 : safeMaxX;
-  const clampY = isMobilePortrait ? safeMaxY * 0.82 : safeMaxY;
+  const clampY = isMobilePortrait ? safeMaxY * 0.22 : safeMaxY;
   const dX = Math.max(-clampX, Math.min(clampX, composedX));
   const dY = Math.max(-clampY, Math.min(clampY, composedY));
   nebulaBackplateTexture.offset.set(backplateUv.baseOffsetX + dX, backplateUv.baseOffsetY + dY);
@@ -691,14 +691,17 @@ function updateBackplateDrift(dt, elapsed, motionScale = 1, calmMul = 1) {
   if (isMobilePortrait && nebulaBackplateTexture) {
     // Keep horizontal UV perfectly centered in portrait to prevent edge shimmer/lines.
     backplateUv.startX = 0;
+    backplateUv.startY = 0;
     backplateUv.walkX = 0;
+    backplateUv.walkY = 0;
     backplateUv.walkTargetX = 0;
+    backplateUv.walkTargetY = 0;
     backplateUv.driftX = 0;
     const maxX = (1 - nebulaBackplateTexture.repeat.x) * 0.5;
     const maxY = (1 - nebulaBackplateTexture.repeat.y) * 0.5;
     // Keep random migration calm and centered in portrait sessions.
     const spanX = 0;
-    const spanY = maxY * 0.22;
+    const spanY = 0;
     backplateUv.walkClock += dt;
     if (backplateUv.walkClock >= backplateUv.walkNextAt) {
       backplateUv.walkClock = 0;
