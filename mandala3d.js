@@ -263,6 +263,15 @@ const backplateUv = {
   baseOffsetY: 0,
   driftX: 0,
   driftY: 0,
+  startX: 0,
+  startY: 0,
+  walkX: 0,
+  walkY: 0,
+  walkTargetX: 0,
+  walkTargetY: 0,
+  walkNextAt: 0,
+  walkClock: 0,
+  randomStartSet: false,
 };
 let knotFractalTexture; // evolving fractal texture for bright gas clumps
 const knotFractalState = {
@@ -557,8 +566,41 @@ function updateBackplateUv() {
   backplateUv.baseOffsetY = 0.5 - nebulaBackplateTexture.repeat.y * 0.5;
   const maxX = (1 - nebulaBackplateTexture.repeat.x) * 0.5;
   const maxY = (1 - nebulaBackplateTexture.repeat.y) * 0.5;
-  const dX = Math.max(-maxX, Math.min(maxX, backplateUv.driftX));
-  const dY = Math.max(-maxY, Math.min(maxY, backplateUv.driftY));
+
+  // Mobile portrait: start at a different crop each run.
+  const vv = (typeof window !== 'undefined' && window.visualViewport) ? window.visualViewport : null;
+  const vw = vv ? vv.width : window.innerWidth;
+  const vh = vv ? vv.height : window.innerHeight;
+  const isMobilePortrait = isMobileScreen && vh >= vw;
+  if (isMobilePortrait && !backplateUv.randomStartSet) {
+    const spanX = maxX * 0.9;
+    const spanY = maxY * 0.9;
+    backplateUv.startX = (Math.random() * 2 - 1) * spanX;
+    backplateUv.startY = (Math.random() * 2 - 1) * spanY;
+    backplateUv.walkX = backplateUv.startX;
+    backplateUv.walkY = backplateUv.startY;
+    backplateUv.walkTargetX = backplateUv.startX;
+    backplateUv.walkTargetY = backplateUv.startY;
+    backplateUv.walkClock = 0;
+    backplateUv.walkNextAt = 5 + Math.random() * 7;
+    backplateUv.randomStartSet = true;
+  } else if (!isMobilePortrait && backplateUv.randomStartSet) {
+    // Non-portrait views pin the random components off for stability.
+    backplateUv.startX = 0;
+    backplateUv.startY = 0;
+    backplateUv.walkX = 0;
+    backplateUv.walkY = 0;
+    backplateUv.walkTargetX = 0;
+    backplateUv.walkTargetY = 0;
+    backplateUv.walkClock = 0;
+    backplateUv.walkNextAt = 0;
+    backplateUv.randomStartSet = false;
+  }
+
+  const composedX = backplateUv.startX + backplateUv.walkX + backplateUv.driftX;
+  const composedY = backplateUv.startY + backplateUv.walkY + backplateUv.driftY;
+  const dX = Math.max(-maxX, Math.min(maxX, composedX));
+  const dY = Math.max(-maxY, Math.min(maxY, composedY));
   nebulaBackplateTexture.offset.set(backplateUv.baseOffsetX + dX, backplateUv.baseOffsetY + dY);
   nebulaBackplateTexture.needsUpdate = true;
 }
@@ -577,6 +619,32 @@ function updateBackplateDrift(dt, elapsed, motionScale = 1, calmMul = 1) {
   const ease = 1 - Math.exp(-dt / 4.8); // slower follow = less perceived movement
   backplateUv.driftX += (targetX - backplateUv.driftX) * ease;
   backplateUv.driftY += (targetY - backplateUv.driftY) * ease;
+
+  // Portrait mobile random walk: ultra-slow bounded migration over time.
+  const vv = (typeof window !== 'undefined' && window.visualViewport) ? window.visualViewport : null;
+  const vw = vv ? vv.width : window.innerWidth;
+  const vh = vv ? vv.height : window.innerHeight;
+  const isMobilePortrait = isMobileScreen && vh >= vw;
+  if (isMobilePortrait && nebulaBackplateTexture) {
+    const maxX = (1 - nebulaBackplateTexture.repeat.x) * 0.5;
+    const maxY = (1 - nebulaBackplateTexture.repeat.y) * 0.5;
+    const spanX = maxX * 0.58;
+    const spanY = maxY * 0.58;
+    backplateUv.walkClock += dt;
+    if (backplateUv.walkClock >= backplateUv.walkNextAt) {
+      backplateUv.walkClock = 0;
+      backplateUv.walkNextAt = 5 + Math.random() * 9;
+      backplateUv.walkTargetX = (Math.random() * 2 - 1) * spanX;
+      backplateUv.walkTargetY = (Math.random() * 2 - 1) * spanY;
+    }
+    const walkEase = 1 - Math.exp(-dt / 18.0);
+    backplateUv.walkX += (backplateUv.walkTargetX - backplateUv.walkX) * walkEase;
+    backplateUv.walkY += (backplateUv.walkTargetY - backplateUv.walkY) * walkEase;
+  } else {
+    backplateUv.walkX *= Math.exp(-dt / 4.0);
+    backplateUv.walkY *= Math.exp(-dt / 4.0);
+  }
+
   updateBackplateUv();
 }
 
