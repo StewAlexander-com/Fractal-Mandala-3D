@@ -225,6 +225,15 @@ let cosmicDust;         // faint toroidal dust ring
 let starTwinklePhases;  // per-star twinkle phase offsets
 let starTwinkleSpeeds;  // per-star twinkle rates
 let starBaseOpacities;  // per-star base brightness
+let knotFractalTexture; // evolving fractal texture for bright gas clumps
+const knotFractalState = {
+  canvas: null,
+  ctx: null,
+  imageData: null,
+  width: 128,
+  height: 128,
+  lastUpdate: -1,
+};
 let radiantStars;       // sparse colored radiant stars (red/blue/yellow-shift)
 let radiantPulsePhases; // per-radiant-star pulse phase offsets
 let radiantPulseSpeeds; // per-radiant-star pulse rates
@@ -249,6 +258,91 @@ const gyroParallax = createGyroParallaxSubsystem({
   getVignetteEl: () => gyroVignette,
 });
 gyroParallax.bindBreathGestures(breathEl);
+
+// Fractal noise helpers (deterministic, allocation-free) for dynamic gas clumps.
+function _noiseHash2(x, y) {
+  const s = Math.sin(x * 127.1 + y * 311.7) * 43758.5453123;
+  return s - Math.floor(s);
+}
+
+function _noiseValue2(x, y) {
+  const xi = Math.floor(x);
+  const yi = Math.floor(y);
+  const xf = x - xi;
+  const yf = y - yi;
+  const u = xf * xf * (3 - 2 * xf);
+  const v = yf * yf * (3 - 2 * yf);
+  const n00 = _noiseHash2(xi, yi);
+  const n10 = _noiseHash2(xi + 1, yi);
+  const n01 = _noiseHash2(xi, yi + 1);
+  const n11 = _noiseHash2(xi + 1, yi + 1);
+  const nx0 = n00 + (n10 - n00) * u;
+  const nx1 = n01 + (n11 - n01) * u;
+  return nx0 + (nx1 - nx0) * v;
+}
+
+function _noiseFbm2(x, y, octaves = 5) {
+  let amp = 0.5;
+  let freq = 1;
+  let sum = 0;
+  let norm = 0;
+  for (let i = 0; i < octaves; i++) {
+    sum += _noiseValue2(x * freq, y * freq) * amp;
+    norm += amp;
+    freq *= 2;
+    amp *= 0.5;
+  }
+  return norm > 0 ? (sum / norm) : 0;
+}
+
+function updateKnotFractalTexture(elapsed) {
+  const st = knotFractalState;
+  if (!knotFractalTexture || !st.ctx || !st.imageData) return;
+  if (st.lastUpdate >= 0 && elapsed - st.lastUpdate < 0.16) return; // ~6 Hz updates
+  st.lastUpdate = elapsed;
+
+  const w = st.width;
+  const h = st.height;
+  const data = st.imageData.data;
+  const t = elapsed * 0.09; // very slow atmospheric evolution
+  const lod = 0.55 + 0.45 * (0.5 + 0.5 * Math.sin(elapsed * 0.045)); // evolving resolution feel
+
+  let p = 0;
+  for (let y = 0; y < h; y++) {
+    const ny = (y / (h - 1)) * 2 - 1;
+    for (let x = 0; x < w; x++) {
+      const nx = (x / (w - 1)) * 2 - 1;
+      const r = Math.hypot(nx * 0.95, ny * 1.05);
+
+      const wx = nx * 2.35 + (_noiseFbm2(nx * 2.1 + t * 0.8, ny * 2.0 - t * 0.6, 3) - 0.5) * 0.85;
+      const wy = ny * 2.35 + (_noiseFbm2(nx * 2.0 - t * 0.5, ny * 2.2 + t * 0.7, 3) - 0.5) * 0.85;
+
+      const coarse = _noiseFbm2(wx * 1.2 + t * 0.22, wy * 1.2 - t * 0.2, 4);
+      const fine = _noiseFbm2(wx * 3.8 - t * 0.35, wy * 3.8 + t * 0.33, 5);
+      const ridge = 1 - Math.abs(_noiseFbm2(wx * 2.2 + 5.3, wy * 2.2 - 7.1, 4) * 2 - 1);
+      const detail = coarse * (1 - lod) + fine * lod;
+
+      const envelope = Math.max(0, 1 - Math.max(0, r - 0.06) / 0.98);
+      const wisps = Math.pow(Math.max(0, envelope), 1.35);
+      const density = Math.max(0, detail * 0.74 + ridge * 0.56 - (0.52 + r * 0.22)) * wisps;
+      const alpha = Math.max(0, Math.min(1, Math.pow(density * 1.9, 1.28)));
+
+      const hot = _noiseFbm2(wx * 1.7 + 9.3, wy * 1.7 - 3.7, 3);
+      const cool = _noiseFbm2(wx * 1.9 - 2.1, wy * 1.9 + 4.9, 3);
+      const rc = Math.min(255, 210 + hot * 48 + detail * 24);
+      const gc = Math.min(255, 170 + cool * 34 + detail * 20);
+      const bc = Math.min(255, 186 + (1 - hot) * 56 + ridge * 18);
+
+      data[p++] = rc;
+      data[p++] = gc;
+      data[p++] = bc;
+      data[p++] = Math.floor(alpha * 255);
+    }
+  }
+
+  st.ctx.putImageData(st.imageData, 0, 0);
+  knotFractalTexture.needsUpdate = true;
+}
 
 // One-time perturbation of state vectors only — no new semantics, no rewiring.
 
@@ -629,6 +723,26 @@ function buildNebulaBackground() {
   ctx.fillStyle = cGrad;
   ctx.fillRect(0, 0, 256, 256);
   const cloudTexture = new THREE.CanvasTexture(cloudCanvas);
+  cloudTexture.needsUpdate = true;
+
+  // Fractal knot texture: irregular stellar gas with evolving filaments (non-spherical).
+  try {
+    const kState = knotFractalState;
+    kState.canvas = document.createElement('canvas');
+    kState.canvas.width = kState.width;
+    kState.canvas.height = kState.height;
+    kState.ctx = kState.canvas.getContext('2d', { willReadFrequently: true });
+    if (kState.ctx) {
+      kState.imageData = kState.ctx.createImageData(kState.width, kState.height);
+      knotFractalTexture = new THREE.CanvasTexture(kState.canvas);
+      knotFractalTexture.wrapS = THREE.ClampToEdgeWrapping;
+      knotFractalTexture.wrapT = THREE.ClampToEdgeWrapping;
+      knotFractalTexture.magFilter = THREE.LinearFilter;
+      knotFractalTexture.minFilter = THREE.LinearMipmapLinearFilter;
+      knotFractalTexture.generateMipmaps = true;
+      updateKnotFractalTexture(0);
+    }
+  } catch (_) { /* fallback to radial cloudTexture */ }
 
   // Inner nebula: bright, dense, warm-toned (H-II emission) + cool hints
   const innerClouds = [
@@ -661,8 +775,9 @@ function buildNebulaBackground() {
   // Place clouds in radial zones with per-cloud evolution metadata.
   const placeCloud = (pick, minR, maxR, minSize, maxSize, options = {}) => {
     const isKnot = !!options.isKnot;
+    const spriteMap = isKnot && knotFractalTexture ? knotFractalTexture : cloudTexture;
     const spriteMat = new THREE.SpriteMaterial({
-      map: cloudTexture,
+      map: spriteMap,
       color: pick.color,
       transparent: true,
       opacity: pick.opacity,
@@ -2972,6 +3087,7 @@ function animate() {
   }
 
   // ── Nebula cloud drift + luminosity breathing ──
+  try { updateKnotFractalTexture(elapsed); } catch (_) {}
   nebulaClouds.forEach((sprite, ci) => {
     const spd = sprite.userData.driftSpeed;
     sprite.userData.driftAngle += dt * spd;
