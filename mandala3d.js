@@ -2158,6 +2158,24 @@ if (canvas) canvas.addEventListener('touchend', () => {
   if (touch.orbitRaf) { cancelAnimationFrame(touch.orbitRaf); touch.orbitRaf = 0; }
 });
 
+// Prevent browser/page pinch-zoom while inside the scene so only 3D zoom runs.
+// This keeps the Key Ideas panel and other HUD controls fixed on-screen.
+const preventScenePagePinch = (e) => {
+  if (!entered || !e) return;
+  const touches = e.touches ? e.touches.length : 0;
+  if (touches >= 2) e.preventDefault();
+};
+document.addEventListener('touchstart', preventScenePagePinch, { passive: false, capture: true });
+document.addEventListener('touchmove', preventScenePagePinch, { passive: false, capture: true });
+
+// iOS Safari/PWA can emit gesture events that bypass touch-action on overlays.
+const preventSceneGestureZoom = (e) => {
+  if (!entered || !e) return;
+  e.preventDefault();
+};
+document.addEventListener('gesturestart', preventSceneGestureZoom, { passive: false });
+document.addEventListener('gesturechange', preventSceneGestureZoom, { passive: false });
+
 // ── Keyboard ──
 document.addEventListener('keydown', (e) => {
   // Escape key: close mic modal or teaching panel (works before/after enter)
