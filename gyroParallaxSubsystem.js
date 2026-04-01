@@ -72,6 +72,10 @@ const T = {
   GRAV_MAX_V: 8,
   FOLLOW_TAU_X: 0.42,
   FOLLOW_TAU_Y: 0.52,
+  FAR_FOLLOW_TAU_X: 0.62,
+  FAR_FOLLOW_TAU_Y: 0.76,
+  FAR_CAP_X: 24,
+  FAR_CAP_Y: 28,
   CLOUD_TAU: 0.72,
   PX_SCALE: 460,
   PY_SCALE: 720,
@@ -116,6 +120,8 @@ export function createGyroParallaxSubsystem(config) {
     stillReward: 1,
     parX: 0,
     parY: 0,
+    parFarX: 0,
+    parFarY: 0,
   };
 
   let orientationHandler = null;
@@ -240,6 +246,8 @@ export function createGyroParallaxSubsystem(config) {
     s.gravVY = 0;
     s.parX = 0;
     s.parY = 0;
+    s.parFarX = 0;
+    s.parFarY = 0;
   }
 
   function recenter() {
@@ -359,6 +367,8 @@ export function createGyroParallaxSubsystem(config) {
       s.gravVY = 0;
       s.parX = 0;
       s.parY = 0;
+      s.parFarX = 0;
+      s.parFarY = 0;
     }
 
     const yaw = s.yaw;
@@ -382,8 +392,8 @@ export function createGyroParallaxSubsystem(config) {
 
     const depthMul = breathDepth * layerDepth * stillReward;
 
-    let px = yaw * T.PX_SCALE * depthMul;
-    let py = -pitch * T.PY_SCALE * depthMul;
+    const pxBase = yaw * T.PX_SCALE * depthMul;
+    const pyBase = -pitch * T.PY_SCALE * depthMul;
 
     const gNormX = Math.max(-1, Math.min(1, s.targetYaw / T.GRAV_YAW_REF));
     const gNormY = Math.max(-1, Math.min(1, s.targetPitch / T.GRAV_PITCH_REF));
@@ -395,33 +405,47 @@ export function createGyroParallaxSubsystem(config) {
     s.gravVX = Math.max(-T.GRAV_MAX_V, Math.min(T.GRAV_MAX_V, s.gravVX));
     s.gravVY = Math.max(-T.GRAV_MAX_V, Math.min(T.GRAV_MAX_V, s.gravVY));
 
-    px += s.gravVX;
-    py += s.gravVY;
+    // Near-field target includes subtle gravity drift.
+    const pxNearTarget = pxBase + s.gravVX;
+    const pyNearTarget = pyBase + s.gravVY;
 
     const tx = 1 - Math.exp(-dt / T.FOLLOW_TAU_X);
     const ty = 1 - Math.exp(-dt / T.FOLLOW_TAU_Y);
     const ex = bezierEase01(tx, 0.22, 0.0, 0.36, 1.0);
     const ey = bezierEase01(ty, 0.22, 0.0, 0.36, 1.0);
-    s.parX += (px - s.parX) * ex;
-    s.parY += (py - s.parY) * ey;
-    px = s.parX;
-    py = s.parY;
+    s.parX += (pxNearTarget - s.parX) * ex;
+    s.parY += (pyNearTarget - s.parY) * ey;
+    const pxNear = s.parX;
+    const pyNear = s.parY;
+
+    // Far field is intentionally decoupled from gravity drift and hard-capped.
+    // This prevents occasional “wild” shifts on abrupt tilt reversals.
+    const tfx = 1 - Math.exp(-dt / T.FAR_FOLLOW_TAU_X);
+    const tfy = 1 - Math.exp(-dt / T.FAR_FOLLOW_TAU_Y);
+    const efx = bezierEase01(tfx, 0.22, 0.0, 0.36, 1.0);
+    const efy = bezierEase01(tfy, 0.22, 0.0, 0.36, 1.0);
+    const farTx = clamp(pxBase, -T.FAR_CAP_X, T.FAR_CAP_X);
+    const farTy = clamp(pyBase, -T.FAR_CAP_Y, T.FAR_CAP_Y);
+    s.parFarX += (farTx - s.parFarX) * efx;
+    s.parFarY += (farTy - s.parFarY) * efy;
+    const pxFar = s.parFarX;
+    const pyFar = s.parFarY;
 
     if (nebulaStars) {
-      nebulaStars.position.x = px * 0.06;
-      nebulaStars.position.y = py * 0.09;
-      nebulaStars.rotation.y += yaw * 0.002;
-      nebulaStars.rotation.x += pitch * 0.001;
+      nebulaStars.position.x = pxFar * 0.024;
+      nebulaStars.position.y = pyFar * 0.038;
+      nebulaStars.rotation.y += yaw * 0.0012;
+      nebulaStars.rotation.x += pitch * 0.0007;
     }
     if (radiantStars) {
-      radiantStars.position.x = px * 0.075;
-      radiantStars.position.y = py * 0.115;
-      radiantStars.rotation.y += yaw * 0.002;
-      radiantStars.rotation.x += pitch * 0.001;
+      radiantStars.position.x = pxNear * 0.045;
+      radiantStars.position.y = pyNear * 0.072;
+      radiantStars.rotation.y += yaw * 0.0016;
+      radiantStars.rotation.x += pitch * 0.0009;
     }
     if (cosmicDust) {
-      cosmicDust.position.x = px * 0.14;
-      cosmicDust.position.y = py * 0.22;
+      cosmicDust.position.x = pxNear * 0.14;
+      cosmicDust.position.y = pyNear * 0.22;
       cosmicDust.rotation.y += yaw * 0.003;
       cosmicDust.rotation.x += pitch * 0.002;
     }
@@ -435,8 +459,8 @@ export function createGyroParallaxSubsystem(config) {
         const size = Number.isFinite(sp.userData.baseSize) ? sp.userData.baseSize : sp.scale.x;
         const w = Math.max(0.7, Math.min(1.8, size / 55));
 
-        const tgx = bx + px * 0.33 * w;
-        const tgy = by + py * 0.52 * w;
+        const tgx = bx + pxNear * 0.33 * w;
+        const tgy = by + pyNear * 0.52 * w;
         const tgz = bz + (yaw * 28 - pitch * 18) * 0.035 * w;
 
         if (!Number.isFinite(sp.userData.gyroX)) sp.userData.gyroX = sp.position.x;
