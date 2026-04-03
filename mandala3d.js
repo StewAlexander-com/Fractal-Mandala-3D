@@ -3416,9 +3416,16 @@ function animate() {
         }
 
         // Depth-dependent emissive (cue 2) + audio-reactive warmth
+        // + evolving light sweep: a slow rotating warm spot around each ring,
+        //   as if catching light from the nebula core. Different per layer.
         if (child.material.emissiveIntensity !== undefined && child.isMesh) {
-          // Base emissive + breath lift: breath raises the floor and adds warmth
-          child.material.emissiveIntensity = RING_EMISSIVE_BASE * emissiveScale + RING_EMISSIVE_FLOOR + b * RING_EMISSIVE_BREATH;
+          const baseEmissive = RING_EMISSIVE_BASE * emissiveScale + RING_EMISSIVE_FLOOR + b * RING_EMISSIVE_BREATH;
+          // Slow sweep: the "lit arc" rotates at ~8°/sec, offset per layer
+          const sweepAngle = elapsed * 0.14 + li * 0.9;
+          const sweepPhase = 0.5 + 0.5 * Math.sin(sweepAngle);
+          // The sweep adds up to 18% emissive variation around the ring
+          const sweepLift = sweepPhase * 0.18 * opacity;
+          child.material.emissiveIntensity = baseEmissive + sweepLift;
         }
 
         // Atmospheric color shift (cue 6) — only on mesh materials
@@ -3431,6 +3438,12 @@ function animate() {
         }
         if (child.material.emissive && child.isMesh && group.userData.baseEmissive) {
           child.material.emissive.copy(group.userData.baseEmissive).lerp(fogColor, atmosFactor * 0.3);
+          // Evolving emissive hue: sweep phase warms the lit arc, cools the shadow arc
+          const sweepAngle2 = elapsed * 0.14 + li * 0.9;
+          const sweepWarm = 0.5 + 0.5 * Math.sin(sweepAngle2);
+          // Lit arc shifts toward gold; shadow arc toward cool violet
+          child.material.emissive.lerp(_warmGold, sweepWarm * 0.06 * opacity);
+          child.material.emissive.lerp(fogColor, (1 - sweepWarm) * 0.04 * opacity);
           // Audio-reactive: breath shifts emissive toward warm gold
           if (b > 0.01) {
             child.material.emissive.lerp(_warmGold, b * 0.08);
@@ -3741,6 +3754,17 @@ function animate() {
         sprite.material.color.copy(sprite.userData.baseColor);
         const tintMix = Math.max(0, Math.min(1, clump * (isKnot ? 0.58 : 0.26)));
         sprite.material.color.lerp(sprite.userData.tintColor, tintMix);
+
+        // Depth-of-field atmospheric tint: clouds closer to camera appear warmer
+        // and more saturated; far clouds cool toward blue-violet (aerial perspective).
+        const cz = sprite.position.z;
+        const depthT = Math.max(0, Math.min(1, (cz - (-120)) / 160)); // 0=far, 1=near
+        // Warm near, cool far — subtle hue shift layered on top of base color
+        const warmShift = depthT * 0.12;       // near clouds gain warmth
+        const coolShift = (1 - depthT) * 0.08; // far clouds gain blue
+        sprite.material.color.r = Math.min(1, sprite.material.color.r + warmShift);
+        sprite.material.color.g = Math.min(1, sprite.material.color.g + warmShift * 0.5);
+        sprite.material.color.b = Math.min(1, sprite.material.color.b + coolShift);
       }
       sprite.material.rotation = (sprite.userData.baseRotation || 0) + swell * (isKnot ? 0.14 : 0.07);
     } catch (e) { /* cloud breathing fallback */ }
