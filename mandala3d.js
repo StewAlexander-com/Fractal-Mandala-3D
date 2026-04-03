@@ -335,12 +335,9 @@ const BASE_EXPOSURE = isMobileOledDark ? 1.92 : 2.0;
 const RING_EMISSIVE_BASE = isMobileOledDark ? 0.76 : 0.72;
 const RING_EMISSIVE_FLOOR = isMobileOledDark ? 0.09 : 0.07;
 const RING_EMISSIVE_BREATH = isMobileOledDark ? 0.18 : 0.16;
-// Backplate focal bias for portrait: nebula bright center peeks in from upper-left.
-// Instead of shifting UV offset (which risks exposing texture edges), we shift the
-// texture center point. center=(0.5,0.5) is default; moving it repositions what
-// part of the image appears at the viewport center without changing repeat/cover.
-const BACKPLATE_PORTRAIT_CENTER_X = 0.38;  // < 0.5 = nebula center moves left on screen
-const BACKPLATE_PORTRAIT_CENTER_Y = 0.62;  // > 0.5 = nebula center moves up on screen
+// Backplate focal bias for portrait: nebula highlight sits slightly left/up of geometric center.
+const BACKPLATE_PORTRAIT_BIAS_X = -0.016;
+const BACKPLATE_PORTRAIT_BIAS_Y = -0.036;
 
 // Runtime guardrail: mobile browsers can regress compositor behavior over WebGL + HUD blur.
 try {
@@ -617,16 +614,8 @@ function updateBackplateUv() {
 
   // Cover behavior with center-crop: preserve image aspect without stretching.
   nebulaBackplateTexture.center.set(0.5, 0.5);
-  const vv2 = (typeof window !== 'undefined' && window.visualViewport) ? window.visualViewport : null;
-  const vwC = vv2 ? vv2.width : (typeof window !== 'undefined' ? window.innerWidth : 1);
-  const vhC = vv2 ? vv2.height : (typeof window !== 'undefined' ? window.innerHeight : 1);
-  const isPortraitCrop = isMobileScreen && vhC >= vwC;
   if (viewAspect > imgAspect) {
     nebulaBackplateTexture.repeat.set(1, imgAspect / viewAspect);
-  } else if (isPortraitCrop) {
-    // Portrait mobile: standard cover crop (no reduced repeat = no edge seams).
-    // Nebula repositioning is handled via texture.center, not offset.
-    nebulaBackplateTexture.repeat.set(viewAspect / imgAspect, 1);
   } else {
     nebulaBackplateTexture.repeat.set(viewAspect / imgAspect, 1);
   }
@@ -671,16 +660,12 @@ function updateBackplateUv() {
     backplateUv.randomStartSet = false;
   }
 
-  // Portrait: reposition nebula via texture center (no UV offset = no edge seams).
-  if (isMobilePortrait) {
-    nebulaBackplateTexture.center.set(BACKPLATE_PORTRAIT_CENTER_X, BACKPLATE_PORTRAIT_CENTER_Y);
-  } else {
-    nebulaBackplateTexture.center.set(0.5, 0.5);
-  }
-
-  const composedX = isMobilePortrait ? 0 : (backplateUv.startX + backplateUv.walkX + backplateUv.driftX);
+  // iPhone portrait artifact guard: lock X close to center and bias toward nebula focal region.
+  const portraitBiasX = Math.max(-safeMaxX, Math.min(safeMaxX, BACKPLATE_PORTRAIT_BIAS_X));
+  const portraitBiasY = Math.max(-safeMaxY, Math.min(safeMaxY, BACKPLATE_PORTRAIT_BIAS_Y));
+  const composedX = isMobilePortrait ? portraitBiasX : (backplateUv.startX + backplateUv.walkX + backplateUv.driftX);
   const composedY = isMobilePortrait
-    ? (backplateUv.startY + backplateUv.walkY + backplateUv.driftY)
+    ? (portraitBiasY + backplateUv.startY + backplateUv.walkY + backplateUv.driftY)
     : (backplateUv.startY + backplateUv.walkY + backplateUv.driftY);
   const clampX = isMobilePortrait ? 0 : safeMaxX;
   const clampY = isMobilePortrait ? safeMaxY * 0.22 : safeMaxY;
@@ -800,6 +785,21 @@ function init() {
             : 'brightness(0.42) saturate(0.76) contrast(0.84) blur(0.8px)';
         } catch (_) {}
         cx.drawImage(img, 0, 0, c.width, c.height);
+
+        // Kill blur-bleed edge artifacts: the canvas filter blur samples
+        // beyond the image boundary, creating bright fringes that show as
+        // visible white/light seam lines on mobile. Paint a dark border
+        // over the outermost pixels to eliminate the bleed.
+        try {
+          cx.filter = 'none';
+          cx.fillStyle = '#06050a';
+          const b = 3; // border width in pixels
+          cx.fillRect(0, 0, c.width, b);            // top
+          cx.fillRect(0, c.height - b, c.width, b); // bottom
+          cx.fillRect(0, 0, b, c.height);            // left
+          cx.fillRect(c.width - b, 0, b, c.height);  // right
+        } catch (_) {}
+
         const graded = new THREE.CanvasTexture(c);
         graded.colorSpace = THREE.SRGBColorSpace;
         graded.wrapS = THREE.ClampToEdgeWrapping;
