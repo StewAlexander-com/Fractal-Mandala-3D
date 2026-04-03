@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Audio Debug — Fractal Mandala</title>
+<style>
+  * { margin: 0; box-sizing: border-box; }
+  body { background: #0a0a12; color: #ccc; font: 14px/1.5 monospace; padding: 12px; }
+  h2 { color: #c8b88a; font-size: 16px; margin: 12px 0 6px; }
+  canvas { width: 100%; height: 120px; background: #111; border: 1px solid #333; display: block; margin: 4px 0; }
+  .controls { display: flex; gap: 8px; flex-wrap: wrap; margin: 8px 0; }
+  button { background: #222; color: #c8b88a; border: 1px solid #444; padding: 8px 16px; border-radius: 4px; font: inherit; }
+  button.active { background: #3a3520; border-color: #c8b88a; }
+  .log { background: #111; padding: 8px; max-height: 200px; overflow-y: auto; font-size: 12px; margin-top: 8px; }
+  .log div { border-bottom: 1px solid #1a1a1a; padding: 2px 0; }
+  .warn { color: #e8a040; }
+  .spike { color: #ff6060; }
+</style>
+</head>
+<body>
+<h1 style="color:#c8b88a">Audio Diagnostic</h1>
+<p>This page loads the mandala's audio system and monitors the output for artifacts.</p>
+
+<div class="controls">
+  <button id="btnStart">Start Audio</button>
+  <button id="btnMute">Mute All</button>
+  <button id="btnNoSub">Disable Sub-bass Tone</button>
+  <button id="btnNoPan">Disable Stereo Pan</button>
+  <button id="btnNoGainAuto">Disable Gain Automation</button>
+</div>
+
+<h2>Output Waveform (real-time)</h2>
+<canvas id="waveform"></canvas>
+
+<h2>Output Spectrum</h2>
+<canvas id="spectrum"></canvas>
+
+<h2>Gain Envelope (wave channel)</h2>
+<canvas id="gainEnv"></canvas>
+
+<h2>Event Log</h2>
+<div class="log" id="log"></div>
+
+<script>
+let audioCtx, analyser, waveData, freqData;
+let medEl, waveEl, medSource, waveSource, medGain, waveGain, wavePan, medPan;
+let gainHistory = [];
+let disableSubBass = false;
+let disablePan = false;
+let disableGainAuto = false;
+const logEl = document.getElementById('log');
+
+function log(msg, cls = '') {
+  const d = document.createElement('div');
+  d.className = cls;
+  d.textContent = `[${(performance.now()/1000).toFixed(2)}] ${msg}`;
+  logEl.prepend(d);
+  if (logEl.children.length > 200) logEl.lastChild.remove();
+}
+
+document.getElementById('btnStart').onclick = async function() {
+  this.classList.add('active');
+  const AC = window.AudioContext || window.webkitAudioContext;
+  audioCtx = new AC();
+  
+  // Main output analyser
+  analyser = audioCtx.createAnalyser();
+  analyser.fftSize = 2048;
+  analyser.connect(audioCtx.destination);
+  waveData = new Uint8Array(analyser.fftSize);
+  freqData = new Uint8Array(analyser.frequencyBinCount);
+  
+  // Meditation
+  medGain = audioCtx.createGain();
+  medGain.gain.value = 0.4;
+  medPan = audioCtx.createStereoPanner();
+  medGain.connect(medPan).connect(analyser);
+  
+  medEl = new Audio('ambient-meditation.mp3');
+  medEl.loop = true;
+  medEl.crossOrigin = 'anonymous';
+  try {
+    medSource = audioCtx.createMediaElementSource(medEl);
+    medSource.connect(medGain);
+    log('Meditation source connected');
+  } catch(e) { log('Meditation source failed: ' + e.message, 'warn'); }
+  
+  // Ocean
+  waveGain = audioCtx.createGain();
+  waveGain.gain.value = 0.3;
+  wavePan = audioCtx.createStereoPanner();
+  waveGain.connect(wavePan).connect(analyser);
+  
+  waveEl = new Audio('ambient-ocean-wave.mp3');
+  waveEl.loop = true;
+  waveEl.crossOrigin = 'anonymous';
+  try {
+    waveSource = audioCtx.createMediaElementSource(waveEl);
+    waveSource.connect(waveGain);
+    log('Ocean source connected');
+  } catch(e) { log('Ocean source failed: ' + e.message, 'warn'); }
+  
+  if (audioCtx.state === 'suspended') await audioCtx.resume();
+  await medEl.play().catch(e => log('Med play fail: ' + e.message, 'warn'));
+  await waveEl.play().catch(e => log('Wave play fail: ' + e.message, 'warn'));
+  log('Playback started');
+  
+  // Start animation
+  requestAnimationFrame(tick);
+};
+
+document.getElementById('btnMute').onclick = function() {
+  if (!audioCtx) return;
+  const muted = this.classList.toggle('active');
+  if (medGain) medGain.gain.value = muted ? 0 : 0.4;
+  if (waveGain) waveGain.gain.value = muted ? 0 : 0.3;
+  log(muted ? 'Muted' : 'Unmuted');
+};
+
+document.getElementById('btnNoSub').onclick = function() {
+  disableSubBass = this.classList.toggle('active');
+  log('Sub-bass tone: ' + (disableSubBass ? 'DISABLED' : 'enabled'));
+};
+
+document.getElementById('btnNoPan').onclick = function() {
+  disablePan = this.classList.toggle('active');
+  if (disablePan && wavePan) wavePan.pan.value = 0;
+  if (disablePan && medPan) medPan.pan.value = 0;
+  log('Stereo pan: ' + (disablePan ? 'DISABLED' : 'enabled'));
+};
+
+document.getElementById('btnNoGainAuto').onclick = function() {
+  disableGainAuto = this.classList.toggle('active');
+  log('Gain automation: ' + (disableGainAuto ? 'DISABLED (fixed 0.3)' : 'enabled'));
+  if (disableGainAuto && waveGain) {
+    waveGain.gain.cancelScheduledValues(audioCtx.currentTime);
+    waveGain.gain.value = 0.3;
+  }
+};
+
+let lastSpike = 0;
+function tick() {
+  if (!analyser) return;
+  requestAnimationFrame(tick);
+  
+  const now = performance.now() / 1000;
+  
+  // Stereo pan (if enabled)
+  if (!disablePan && wavePan) {
+    const surge = Math.sin(now * (Math.PI * 2 / 38));
+    wavePan.pan.value = Math.max(-0.25, Math.min(0.25, Math.sin(now * 0.04) * 0.15 + surge * 0.1));
+    if (medPan) medPan.pan.value = Math.max(-0.15, Math.min(0.15, Math.sin(now * 0.03) * 0.1));
+  }
+  
+  // Gain automation (if enabled)
+  if (!disableGainAuto && waveGain && audioCtx) {
+    const surge = Math.sin(now * (Math.PI * 2 / 38));
+    const prox = (surge + 1) * 0.5;
+    const vol = 0.12 + prox * 0.43;
+    const t = audioCtx.currentTime;
+    waveGain.gain.cancelScheduledValues(t);
+    waveGain.gain.setValueAtTime(waveGain.gain.value, t);
+    waveGain.gain.linearRampToValueAtTime(vol, t + 0.15);
+  }
+  
+  // Sub-bass tone (if enabled) — every 19s
+  if (!disableSubBass && audioCtx) {
+    const phase = (now % 19) / 19;
+    if (phase >= 0.58 && phase < 0.61 && now - lastSpike > 15) {
+      lastSpike = now;
+      const osc = audioCtx.createOscillator();
+      const g = audioCtx.createGain();
+      osc.type = 'sine';
+      osc.frequency.value = 45;
+      g.gain.setValueAtTime(0, audioCtx.currentTime);
+      g.gain.linearRampToValueAtTime(0.08, audioCtx.currentTime + 0.05);
+      g.gain.linearRampToValueAtTime(0, audioCtx.currentTime + 0.20);
+      osc.connect(g).connect(analyser);
+      osc.start(audioCtx.currentTime);
+      osc.stop(audioCtx.currentTime + 0.25);
+      log('Sub-bass tone fired', 'warn');
+    }
+  }
+  
+  // Track gain history
+  if (waveGain) gainHistory.push(waveGain.gain.value);
+  if (gainHistory.length > 300) gainHistory.shift();
+  
+  // Detect spikes in waveform
+  analyser.getByteTimeDomainData(waveData);
+  let maxDev = 0;
+  for (let i = 1; i < waveData.length; i++) {
+    const d = Math.abs(waveData[i] - waveData[i-1]);
+    if (d > maxDev) maxDev = d;
+  }
+  if (maxDev > 80 && now - lastSpike > 0.5) {
+    log(`SPIKE detected: max sample delta = ${maxDev}`, 'spike');
+  }
+  
+  // Draw waveform
+  const wc = document.getElementById('waveform');
+  const wCtx = wc.getContext('2d');
+  wc.width = wc.clientWidth; wc.height = wc.clientHeight;
+  wCtx.fillStyle = '#111';
+  wCtx.fillRect(0, 0, wc.width, wc.height);
+  wCtx.strokeStyle = '#5a9';
+  wCtx.lineWidth = 1;
+  wCtx.beginPath();
+  const sliceW = wc.width / waveData.length;
+  for (let i = 0; i < waveData.length; i++) {
+    const y = (waveData[i] / 255) * wc.height;
+    i === 0 ? wCtx.moveTo(0, y) : wCtx.lineTo(i * sliceW, y);
+  }
+  wCtx.stroke();
+  
+  // Draw spectrum
+  analyser.getByteFrequencyData(freqData);
+  const sc = document.getElementById('spectrum');
+  const sCtx = sc.getContext('2d');
+  sc.width = sc.clientWidth; sc.height = sc.clientHeight;
+  sCtx.fillStyle = '#111';
+  sCtx.fillRect(0, 0, sc.width, sc.height);
+  const barW = sc.width / freqData.length;
+  for (let i = 0; i < freqData.length; i++) {
+    const h = (freqData[i] / 255) * sc.height;
+    sCtx.fillStyle = i < 10 ? '#e85050' : i < 50 ? '#c8b88a' : '#3a6a5a';
+    sCtx.fillRect(i * barW, sc.height - h, barW, h);
+  }
+  
+  // Draw gain envelope
+  const gc = document.getElementById('gainEnv');
+  const gCtx = gc.getContext('2d');
+  gc.width = gc.clientWidth; gc.height = gc.clientHeight;
+  gCtx.fillStyle = '#111';
+  gCtx.fillRect(0, 0, gc.width, gc.height);
+  gCtx.strokeStyle = '#c8b88a';
+  gCtx.lineWidth = 1.5;
+  gCtx.beginPath();
+  const gSlice = gc.width / 300;
+  for (let i = 0; i < gainHistory.length; i++) {
+    const y = gc.height - (gainHistory[i] / 0.7) * gc.height;
+    i === 0 ? gCtx.moveTo(0, y) : gCtx.lineTo(i * gSlice, y);
+  }
+  gCtx.stroke();
+}
+</script>
+</body>
+</html>
