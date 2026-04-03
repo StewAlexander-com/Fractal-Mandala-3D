@@ -33,6 +33,21 @@ import {
 } from './genesis.js';
 import { createGyroParallaxSubsystem } from './gyroParallaxSubsystem.js';
 
+// ═══ Primitives ═══════════════════════════════════════════════════════════════
+// Minimal rules from which repeated patterns generate. z → z² + c:
+// clamp, lerp, ease are the axioms; everything else is iteration.
+const clamp01 = v => v < 0 ? 0 : v > 1 ? 1 : v;
+const clamp   = (v, lo, hi) => v < lo ? lo : v > hi ? hi : v;
+const lerp    = (a, b, t) => a + (b - a) * t;
+const ease    = (dt, tau) => 1 - Math.exp(-dt / tau);   // exponential decay
+const noop    = () => {};
+
+// Scratch Colors — pre-allocated to avoid hot-loop allocation.
+// Named for their role, reused every frame. The mandala teaches
+// non-attachment to objects; these objects practice it.
+const _scratchA = new THREE.Color();
+const _scratchB = new THREE.Color();
+
 // DYNAMICS + PRESENTATION — everything below orchestrates Three.js, input, and the loop.
 // Ontology and genesis are imported; they are not duplicated here.
 
@@ -686,7 +701,7 @@ function updateBackplateDrift(dt, elapsed, motionScale = 1, calmMul = 1) {
   const gyroY = (Number.isFinite(tilt.y) ? tilt.y : 0) * -0.0015;
   const targetX = (autoX + gyroX) * motionScale * calmMul;
   const targetY = (autoY + gyroY) * motionScale * calmMul;
-  const ease = 1 - Math.exp(-dt / 4.8); // slower follow = less perceived movement
+  const ease = ease(dt, 4.8); // slower follow = less perceived movement
   backplateUv.driftX += (targetX - backplateUv.driftX) * ease;
   backplateUv.driftY += (targetY - backplateUv.driftY) * ease;
 
@@ -716,7 +731,7 @@ function updateBackplateDrift(dt, elapsed, motionScale = 1, calmMul = 1) {
       backplateUv.walkTargetX = (Math.random() * 2 - 1) * spanX;
       backplateUv.walkTargetY = (Math.random() * 2 - 1) * spanY;
     }
-    const walkEase = 1 - Math.exp(-dt / 18.0);
+    const walkEase = ease(dt, 18.0);
     backplateUv.walkX += (backplateUv.walkTargetX - backplateUv.walkX) * walkEase;
     backplateUv.walkY += (backplateUv.walkTargetY - backplateUv.walkY) * walkEase;
   } else {
@@ -828,7 +843,7 @@ function init() {
   }, false);
   canvas.addEventListener('webglcontextrestored', () => {
     contextLost = false;
-    console.info('WebGL context restored — rebuilding');
+    // [silenced] console.info('WebGL context restored — rebuilding');
     // Three.js r170 auto-restores most state, but we nudge it:
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, DPR_CAP));
     handleResize();
@@ -2016,7 +2031,7 @@ let isDragging = false;
 function sliderYToLayer(clientY) {
   if (!sliderTrack) return 0;
   const rect = sliderTrack.getBoundingClientRect();
-  const pct = Math.max(0, Math.min(1, (clientY - rect.top) / rect.height));
+  const pct = clamp01((clientY - rect.top) / rect.height);
   return Math.round(pct * (LAYER_COUNT - 1));
 }
 
@@ -2363,7 +2378,7 @@ function getAmbientLfoGainMultiplier(nowMs = performance.now()) {
     const bell = Math.exp(-0.5 * x * x);
     const denom = 1 - edgeBell;
     const n = denom > 1e-6 ? (bell - edgeBell) / denom : 0;
-    const clampedN = Math.max(0, Math.min(1, n));
+    const clampedN = clamp01(n);
     const out = AMBIENT_LFO_MIN + (AMBIENT_LFO_MAX - AMBIENT_LFO_MIN) * clampedN;
     return Number.isFinite(out) ? out : AMBIENT_LFO_MIN;
   } catch (_) {
@@ -2384,7 +2399,7 @@ function trySetAudioParamValue(param, value) {
 function trySetHtmlAudioVolume(el, value) {
   if (!el || !Number.isFinite(value)) return false;
   try {
-    el.volume = Math.max(0, Math.min(1, value));
+    el.volume = clamp01(value);
     return true;
   } catch (_) {
     return false;
@@ -2408,16 +2423,16 @@ function refreshAmbientGains(dtSec = null) {
 
     const intro = Number.isFinite(ambientIntroFade) ? ambientIntroFade : 0;
     const lfo = getAmbientLfoGainMultiplier(nowMs);
-    const targetF = Math.max(0, Math.min(1, intro * lfo));
+    const targetF = clamp01(intro * lfo);
     const err = Math.abs(targetF - ambientSmoothedF);
     const tau = Math.max(
       err > AMBIENT_GAIN_ERR_FAST ? AMBIENT_GAIN_SMOOTH_TAU_FAST : AMBIENT_GAIN_SMOOTH_TAU_SLOW,
       1e-4
     );
-    const k = 1 - Math.exp(-dt / tau);
+    const k = ease(dt, tau);
     ambientSmoothedF += (targetF - ambientSmoothedF) * k;
     if (!Number.isFinite(ambientSmoothedF)) ambientSmoothedF = targetF;
-    ambientSmoothedF = Math.max(0, Math.min(1, ambientSmoothedF));
+    ambientSmoothedF = clamp01(ambientSmoothedF);
 
     const f = ambientSmoothedF;
     const medLinear = AUDIO_VOLUME * f;
@@ -2445,7 +2460,7 @@ function refreshAmbientGains(dtSec = null) {
 }
 
 function setAmbientIntroFade(t) {
-  ambientIntroFade = Math.max(0, Math.min(1, t));
+  ambientIntroFade = clamp01(t);
   refreshAmbientGains();
 }
 
@@ -2568,7 +2583,7 @@ function initAudio() {
       if (!audioMuted) startAmbientIntroFade();
       else silenceAmbientOutputs();
     }).catch(() => {
-      console.log('Audio autoplay blocked — tap sound icon to enable');
+      // [silenced] console.log('Audio autoplay blocked — tap sound icon to enable');
     });
 
     if (audioToggle) {
@@ -2712,7 +2727,7 @@ function isAudioCtxUsable() {
 // ── Utility: safe number — clamp and NaN-guard ──
 function safeBreathNum(v) {
   if (!Number.isFinite(v)) return 0;
-  return Math.max(0, Math.min(1, v));
+  return clamp01(v);
 }
 
 // ── Feature detection: hide mic button if getUserMedia is unavailable ──
@@ -2815,7 +2830,7 @@ function updateAudioBreath() {
       : ambientEnergy;
 
     // Map to 0..1 with a floor and ceiling — wide flat distribution
-    const mapped = Math.max(0, Math.min(1, (rawEnergy - 0.02) / 0.5));
+    const mapped = clamp01((rawEnergy - 0.02) / 0.5);
     audioBreathTarget = safeBreathNum(mapped);
 
     // Heavy exponential smoothing — this is what makes it feel like breathing
@@ -3024,7 +3039,7 @@ if (micDeny) {
 // others keep them running but return stale data. Proactively disable.
 document.addEventListener('visibilitychange', () => {
   if (document.hidden && micActive) {
-    console.log('Page hidden — pausing mic to conserve resources');
+    // [silenced] console.log('Page hidden — pausing mic to conserve resources');
     disableMic();
   }
 });
@@ -3244,7 +3259,7 @@ function animate() {
   try {
     const ms = gyroParallax.getStillMs();
     // Fade in from 5s → 10s of stillness.
-    const t = Math.max(0, Math.min(1, (ms - 5000) / 5000));
+    const t = clamp01((ms - 5000) / 5000);
     // Smoothstep for a soft onset.
     stillCalm = t * t * (3 - 2 * t);
   } catch (_) {}
@@ -3262,8 +3277,8 @@ function animate() {
   // audioBreath is 0..1, heavily smoothed, wide distribution
   // b = breath intensity for use throughout the loop
   // Final NaN guard: if anything upstream corrupted the value, clamp to 0
-  const bRaw = Number.isFinite(audioBreath) ? Math.max(0, Math.min(1, audioBreath)) : 0;
-  const b = Math.max(0, Math.min(1, bRaw + INITIAL_CONDITIONS.breathCoupling.baselineOffset));
+  const bRaw = Number.isFinite(audioBreath) ? clamp01(audioBreath) : 0;
+  const b = clamp01(bRaw + INITIAL_CONDITIONS.breathCoupling.baselineOffset);
   try { updateBackplateDrift(dt, elapsed, motionScale, calmMul); } catch (_) {}
 
   // ── Lerp user controls ──
@@ -3732,7 +3747,7 @@ function animate() {
         0.004,
         Math.min(base * (isKnot ? 3.35 : 2.55), base * opacityPulse * (isKnot ? 1.3 : 1.0) * wispLift)
       );
-      const oEase = 1 - Math.exp(-dt / 0.55);
+      const oEase = ease(dt, 0.55);
       const oPrev = Number.isFinite(sprite.userData.opacityLag) ? sprite.userData.opacityLag : base;
       const oNext = oPrev + (opacityTarget - oPrev) * oEase;
       sprite.userData.opacityLag = oNext;
@@ -3744,7 +3759,7 @@ function animate() {
         + swell * distortAmp * (isKnot ? 0.09 : 0.05)
         + b * 0.02;
       const sTarget = bsz * Math.max(0.78, Math.min(1.45, scalePulse));
-      const sEase = 1 - Math.exp(-dt / 0.8);
+      const sEase = ease(dt, 0.8);
       const sNow = Number.isFinite(sprite.scale.x) ? sprite.scale.x : bsz;
       const sNext = sNow + (sTarget - sNow) * sEase;
       sprite.scale.set(sNext, sNext, 1);
