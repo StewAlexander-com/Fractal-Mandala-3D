@@ -2845,20 +2845,35 @@ function updateAudioBreath() {
     // Smooth the guide to avoid any hard transitions
     guideSignal = guideSignal * guideSignal * (3 - 2 * guideSignal); // smoothstep
 
-    // Haptic breath cue: a gentle vibration at the exhale onset.
-    // One brief pulse (40ms) as the breath turns from hold to release —
-    // your body feels the moment to let go. Somatic instruction without words.
-    // Only fires on devices that support it (Android Chrome; iOS ignores).
-    if (typeof navigator.vibrate === 'function') {
-      const exhaleOnset = breathPhase >= 0.58 && breathPhase < 0.61;
-      if (exhaleOnset && !breathHapticFired) {
-        // Soft pulse: a rising-then-fading pattern of micro-bursts.
-        // Perceived as a gentle swell, not a tap or a buzz.
+    // Somatic breath cue at exhale onset: the body feels the moment to let go.
+    // Two channels, same timing:
+    //   Android: Vibration API soft-pulse pattern
+    //   All devices: sub-bass tone (45Hz, 200ms) via Web Audio — felt in the
+    //   chest/hand through speaker or headphones. Barely audible, mostly physical.
+    const exhaleOnset = breathPhase >= 0.58 && breathPhase < 0.61;
+    if (exhaleOnset && !breathHapticFired) {
+      breathHapticFired = true;
+      // Vibration (Android)
+      if (typeof navigator.vibrate === 'function') {
         navigator.vibrate([10, 30, 15, 25, 20, 20, 15, 30, 10]);
-        breathHapticFired = true;
-      } else if (breathPhase < 0.58) {
-        breathHapticFired = false;
       }
+      // Sub-bass tone (all devices including iPhone)
+      if (audioCtx && audioCtx.state === 'running' && !audioMuted) {
+        try {
+          const osc = audioCtx.createOscillator();
+          const oscGain = audioCtx.createGain();
+          osc.type = 'sine';
+          osc.frequency.value = 45; // sub-bass: felt, not heard
+          oscGain.gain.setValueAtTime(0, audioCtx.currentTime);
+          oscGain.gain.linearRampToValueAtTime(0.08, audioCtx.currentTime + 0.05); // soft rise
+          oscGain.gain.linearRampToValueAtTime(0, audioCtx.currentTime + 0.20);    // fade out
+          osc.connect(oscGain).connect(audioCtx.destination);
+          osc.start(audioCtx.currentTime);
+          osc.stop(audioCtx.currentTime + 0.25);
+        } catch (_) {}
+      }
+    } else if (breathPhase < 0.58) {
+      breathHapticFired = false;
     }
 
     let rawEnergy;
