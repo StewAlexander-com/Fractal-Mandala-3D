@@ -335,10 +335,14 @@ const BASE_EXPOSURE = isMobileOledDark ? 1.92 : 2.0;
 const RING_EMISSIVE_BASE = isMobileOledDark ? 0.76 : 0.72;
 const RING_EMISSIVE_FLOOR = isMobileOledDark ? 0.09 : 0.07;
 const RING_EMISSIVE_BREATH = isMobileOledDark ? 0.18 : 0.16;
-// Backplate focal bias for portrait: nebula bright center peeks in from upper-left
-// so it doesn't compete with the geometry or teaching panel in the lower half.
-const BACKPLATE_PORTRAIT_BIAS_X = 0.08;
-const BACKPLATE_PORTRAIT_BIAS_Y = 0.055;
+// Backplate focal bias for portrait: nebula bright center peeks in from upper-left.
+// Three.js texture UV: +X shifts crop right (content moves left on screen),
+//                      +Y shifts crop UP   (content moves DOWN on screen).
+// So to move the nebula center into the upper-left of the viewport:
+//   negative X → crop left → bright center appears at left
+//   negative Y → crop down → bright center appears at top
+const BACKPLATE_PORTRAIT_BIAS_X = -0.06;
+const BACKPLATE_PORTRAIT_BIAS_Y = -0.05;
 
 // Runtime guardrail: mobile browsers can regress compositor behavior over WebGL + HUD blur.
 try {
@@ -622,10 +626,11 @@ function updateBackplateUv() {
   if (viewAspect > imgAspect) {
     nebulaBackplateTexture.repeat.set(1, imgAspect / viewAspect);
   } else if (isPortraitCrop) {
-    // Portrait mobile: crop to ~78% of image height so we gain enough vertical
-    // headroom to bias the bright nebula center into the upper-left.
+    // Portrait mobile: crop to ~82% of image height to gain vertical headroom
+    // for biasing the nebula bright center into the upper-left viewport area.
+    // X repeat shrunk ~8% to also gain horizontal headroom.
     const baseRepeatX = viewAspect / imgAspect;
-    nebulaBackplateTexture.repeat.set(baseRepeatX * 0.92, 0.78);
+    nebulaBackplateTexture.repeat.set(baseRepeatX * 0.92, 0.82);
   } else {
     nebulaBackplateTexture.repeat.set(viewAspect / imgAspect, 1);
   }
