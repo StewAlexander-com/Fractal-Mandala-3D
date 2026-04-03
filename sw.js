@@ -4,7 +4,7 @@
 // home screen or with stale browser tabs get the new build on
 // next visit without a manual hard-refresh.
 
-const CACHE_VERSION = 'fm3d-ff07e9f';
+const CACHE_VERSION = 'fm3d-daf00c4';
 
 const PRECACHE = [
   './',

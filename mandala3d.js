@@ -26,12 +26,12 @@ import {
   LAYER_TILTS,
   LINEAGE,
   TAU,
-} from './ontology.js?v=ff07e9f';
+} from './ontology.js?v=daf00c4';
 import {
   INITIAL_CONDITIONS,
   applyInitialConditions,
-} from './genesis.js?v=ff07e9f';
-import { createGyroParallaxSubsystem } from './gyroParallaxSubsystem.js?v=ff07e9f';
+} from './genesis.js?v=daf00c4';
+import { createGyroParallaxSubsystem } from './gyroParallaxSubsystem.js?v=daf00c4';
 
 // ═══ Primitives ═══════════════════════════════════════════════════════════════
 // Minimal rules from which repeated patterns generate. z → z² + c:
@@ -2487,7 +2487,7 @@ function silenceAmbientOutputs() {
   } catch (_) {}
 }
 
-const AMBIENT_INTRO_FADE_MS = 3000;
+const AMBIENT_INTRO_FADE_MS = 5000;  // 5s fade-in — gives iOS audio context time to stabilize
 
 function startAmbientIntroFade() {
   const fadeStart = performance.now();
@@ -2967,15 +2967,14 @@ function updateAudioBreath() {
     // than the meditation track. Blended with the breath guide so
     // exhale phases also lift the wave volume — two natural forces
     // that sometimes align, sometimes drift, always feel organic.
-    if (waveGainNode && audioCtx && audioCtx.state === 'running') {
-      const proximity01 = (waveSurge + 1) * 0.5; // 0=far, 1=close
+    if (waveGainNode && audioCtx && audioCtx.state === 'running' && ambientIntroFade >= 1) {
+      // Only drive tidal volume after the intro fade completes.
+      // During fade-in, refreshAmbientGains owns the gain value.
+      // Two writers fighting the same .value = static/glitches.
+      const proximity01 = (waveSurge + 1) * 0.5;
       const proxVol = 0.12 + proximity01 * 0.43;
       const breathLift = (1 - guideSignal) * 0.12;
       const waveVol = Math.min(0.65, proxVol + breathLift);
-      // Direct .value assignment with JS-side smoothing.
-      // Web Audio automation (cancelScheduledValues + linearRamp) caused
-      // audible artifacts on iOS Safari when scheduling was intermittent.
-      // Simple exponential smoothing is artifact-free.
       lastWaveVol += (waveVol - lastWaveVol) * 0.03;
       waveGainNode.gain.value = lastWaveVol;
     }
