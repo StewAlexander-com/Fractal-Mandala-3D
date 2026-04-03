@@ -26,12 +26,12 @@ import {
   LAYER_TILTS,
   LINEAGE,
   TAU,
-} from './ontology.js?v=6b156e7';
+} from './ontology.js?v=c3fcee8';
 import {
   INITIAL_CONDITIONS,
   applyInitialConditions,
-} from './genesis.js?v=6b156e7';
-import { createGyroParallaxSubsystem } from './gyroParallaxSubsystem.js?v=6b156e7';
+} from './genesis.js?v=c3fcee8';
+import { createGyroParallaxSubsystem } from './gyroParallaxSubsystem.js?v=c3fcee8';
 
 // ═══ Primitives ═══════════════════════════════════════════════════════════════
 // Minimal rules from which repeated patterns generate. z → z² + c:
@@ -2744,6 +2744,8 @@ let audioBreathTarget = 0;      // raw target before smoothing
 let ambientSmoothedForGuide = 0; // heavily smoothed ambient — texture, not rhythm
 let breathHapticFired = false;    // one-shot latch for exhale onset vibration
 let micNoiseFloor = 0;            // adaptive noise floor for breath extraction
+let lastWaveVol = -1;             // last wave gain value sent to audio thread
+let spatialUpdateCounter = 0;     // throttle panner updates to ~15Hz
 let ambientAnalyserFailed = false;  // latch: don't retry if ambient analyser permanently failed
 let micZeroFrames = 0;          // consecutive frames of zero mic energy (dead-stream detection)
 const MIC_ZERO_THRESHOLD = 180; // ~3s at 60fps — if mic reads zero for this long, stream is dead
@@ -2961,11 +2963,17 @@ function updateAudioBreath() {
     // it's intimate and present; when it recedes, it's distant and spacious.
     // waveSurge: -1 (far/receded) to +1 (close/crashing)
     const waveSurge = Math.sin(now * (Math.PI * 2 / 38));
-    if (wavePanner) {
-      const waveZ = -3.5 + waveSurge * 2.5;
-      const waveY = 1.2 + (1 - waveSurge) * 0.4;
-      const waveX = Math.sin(now * 0.04) * 0.5;
-      try { wavePanner.setPosition(waveX, waveY, waveZ); } catch (_) {}
+    // Throttle panner position updates to ~15Hz — spatial position changes
+    // are perceptually smooth at this rate and avoids audio thread contention.
+    spatialUpdateCounter++;
+    if (spatialUpdateCounter >= 4) {
+      spatialUpdateCounter = 0;
+      if (wavePanner) {
+        const waveZ = -3.5 + waveSurge * 2.5;
+        const waveY = 1.2 + (1 - waveSurge) * 0.4;
+        const waveX = Math.sin(now * 0.04) * 0.5;
+        try { wavePanner.setPosition(waveX, waveY, waveZ); } catch (_) {}
+      }
     }
 
     // Wave volume follows proximity: louder when close (crashing),
@@ -2975,17 +2983,23 @@ function updateAudioBreath() {
     // that sometimes align, sometimes drift, always feel organic.
     if (waveGainNode && audioCtx && audioCtx.state === 'running') {
       const proximity01 = (waveSurge + 1) * 0.5; // 0=far, 1=close
-      // Proximity volume: 0.12 (far) to 0.55 (crashing)
       const proxVol = 0.12 + proximity01 * 0.43;
-      // Breath contribution: exhale lifts volume slightly
       const breathLift = (1 - guideSignal) * 0.12;
-      // Combined: proximity dominates, breath adds texture
       const waveVol = Math.min(0.65, proxVol + breathLift);
-      try { waveGainNode.gain.setTargetAtTime(waveVol, audioCtx.currentTime, 1.2); } catch (_) {}
+      // Only update audio thread when gain has changed meaningfully.
+      // Avoids scheduling dozens of automation events per second,
+      // which causes tiny skips/artifacts on mobile audio threads.
+      if (Math.abs(waveVol - lastWaveVol) > 0.008) {
+        lastWaveVol = waveVol;
+        try {
+          const t = audioCtx.currentTime;
+          waveGainNode.gain.cancelScheduledValues(t);
+          waveGainNode.gain.setValueAtTime(waveGainNode.gain.value, t);
+          waveGainNode.gain.linearRampToValueAtTime(waveVol, t + 0.15);
+        } catch (_) {}
+      }
     }
-    if (medPanner) {
-      // Meditation: above and slightly ahead of center, gentle sway.
-      // Emanates from the mandala — just above the geometry.
+    if (medPanner && spatialUpdateCounter === 0) {
       const swayX = Math.sin(now * 0.06) * 0.4;
       const swayZ = -1.5 + Math.cos(now * 0.04) * 0.3;
       try { medPanner.setPosition(swayX, 2.5, swayZ); } catch (_) {}
