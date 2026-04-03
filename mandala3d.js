@@ -1161,7 +1161,7 @@ function buildNebulaBackground() {
   }
 
   const starMat = new THREE.PointsMaterial({
-    size: 1.5,
+    size: isMobileScreen ? 1.8 : 1.5,
     map: starGlowTexture,
     vertexColors: true,
     transparent: true,
@@ -1239,15 +1239,22 @@ function buildNebulaBackground() {
     { color: 0x2a4555, opacity: 0.02 },   // dark teal wisp
   ];
 
+  // Mobile atmospheric boost — on smaller screens the nebula gas, dust, and glow
+  // get lost against geometry that fills more of the viewport. Nudge opacity and
+  // scale so the atmospheric depth reads on OLED phone screens.
+  const MOBILE_CLOUD_OPACITY_MUL = isMobileScreen ? 1.45 : 1.0;
+  const MOBILE_CLOUD_SIZE_MUL    = isMobileScreen ? 1.18 : 1.0;
+
   // Place clouds in radial zones with per-cloud evolution metadata.
   const placeCloud = (pick, minR, maxR, minSize, maxSize, options = {}) => {
     const isKnot = !!options.isKnot;
     const spriteMap = isKnot && knotFractalTexture ? knotFractalTexture : cloudTexture;
+    const boostedOpacity = Math.min(pick.opacity * MOBILE_CLOUD_OPACITY_MUL, 0.22);
     const spriteMat = new THREE.SpriteMaterial({
       map: spriteMap,
       color: pick.color,
       transparent: true,
-      opacity: pick.opacity,
+      opacity: boostedOpacity,
       blending: THREE.AdditiveBlending,
       depthWrite: false,
     });
@@ -1256,11 +1263,11 @@ function buildNebulaBackground() {
     const r = minR + Math.random() * (maxR - minR);
     const z = (Math.random() - 0.25) * maxField * 0.8;
     sprite.position.set(Math.cos(a) * r, Math.sin(a) * r, z);
-    const sz = minSize + Math.random() * (maxSize - minSize);
+    const sz = (minSize + Math.random() * (maxSize - minSize)) * MOBILE_CLOUD_SIZE_MUL;
     sprite.scale.set(sz, sz, 1);
     sprite.userData.driftSpeed = 0.003 + Math.random() * 0.008;
     sprite.userData.driftAngle = Math.random() * TAU;
-    sprite.userData.baseOpacity = pick.opacity;
+    sprite.userData.baseOpacity = boostedOpacity;
     // Cache baseline position for gyro parallax (so offsets are reversible).
     sprite.userData.baseX = sprite.position.x;
     sprite.userData.baseY = sprite.position.y;
@@ -1414,11 +1421,11 @@ function buildNebulaBackground() {
     dustGeo.setAttribute('color',    new THREE.Float32BufferAttribute(dustColors, 3));
     dustGeo.setAttribute('size',     new THREE.Float32BufferAttribute(dustSizes, 1));
     const dustMat = new THREE.PointsMaterial({
-      size: 0.3,
+      size: isMobileScreen ? 0.38 : 0.3,
       map: starGlowTexture,
       vertexColors: true,
       transparent: true,
-      opacity: 0.14,
+      opacity: isMobileScreen ? 0.20 : 0.14,
       blending: THREE.AdditiveBlending,
       depthWrite: false,
       sizeAttenuation: true,
@@ -1494,11 +1501,11 @@ function buildNebulaBackground() {
     radiantGeo.setAttribute('size',     new THREE.Float32BufferAttribute(radiantSizes, 1));
 
     const radiantMat = new THREE.PointsMaterial({
-      size: 3.5,
+      size: isMobileScreen ? 4.2 : 3.5,
       map: starGlowTexture,
       vertexColors: true,
       transparent: true,
-      opacity: 0.9,
+      opacity: isMobileScreen ? 1.0 : 0.9,
       blending: THREE.AdditiveBlending,
       depthWrite: false,
       sizeAttenuation: true,
@@ -3329,7 +3336,7 @@ function animate() {
       if (child.material) {
         if (child.isSprite) {
           // Depth glow halo (cue 5): bright when near, invisible when far
-          child.material.opacity = opacity * 0.15;  // subtle bloom
+          child.material.opacity = opacity * (isMobileScreen ? 0.22 : 0.15);
         } else {
           child.material.opacity = child.userData.baseOpacity !== undefined
             ? child.userData.baseOpacity * opacity
