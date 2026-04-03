@@ -2852,7 +2852,9 @@ function updateAudioBreath() {
     if (typeof navigator.vibrate === 'function') {
       const exhaleOnset = breathPhase >= 0.58 && breathPhase < 0.61;
       if (exhaleOnset && !breathHapticFired) {
-        navigator.vibrate(40);
+        // Soft pulse: a rising-then-fading pattern of micro-bursts.
+        // Perceived as a gentle swell, not a tap or a buzz.
+        navigator.vibrate([10, 30, 15, 25, 20, 20, 15, 30, 10]);
         breathHapticFired = true;
       } else if (breathPhase < 0.58) {
         breathHapticFired = false;
