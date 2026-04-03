@@ -2860,7 +2860,11 @@ function updateAudioBreath() {
         try { waveGainNode.gain.setTargetAtTime(waveTarget, audioCtx.currentTime, 0.8); } catch (_) {}
       }
     } else {
-      rawEnergy = ambientEnergy;
+      // Mic off: ambient audio drives the visuals, but the breath guide
+      // contributes a subtle undertow — 25% guide, 75% ambient.
+      // The geometry always breathes the 4-7-8 rhythm; the meditation
+      // track adds texture on top. The calm is always present.
+      rawEnergy = ambientEnergy * 0.75 + guideSignal * 0.25;
     }
 
     // Map to 0..1 with a floor and ceiling
