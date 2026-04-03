@@ -26,12 +26,12 @@ import {
   LAYER_TILTS,
   LINEAGE,
   TAU,
-} from './ontology.js?v=c3fcee8';
+} from './ontology.js?v=9fbcc6b';
 import {
   INITIAL_CONDITIONS,
   applyInitialConditions,
-} from './genesis.js?v=c3fcee8';
-import { createGyroParallaxSubsystem } from './gyroParallaxSubsystem.js?v=c3fcee8';
+} from './genesis.js?v=9fbcc6b';
+import { createGyroParallaxSubsystem } from './gyroParallaxSubsystem.js?v=9fbcc6b';
 
 // ═══ Primitives ═══════════════════════════════════════════════════════════════
 // Minimal rules from which repeated patterns generate. z → z² + c:
@@ -2534,21 +2534,17 @@ function initAudio() {
     if (!AC) return;   // browser has no Web Audio support
     audioCtx = new AC();
 
-    // 2. Meditation: gain → spatial panner → destination
-    //    Positioned above and slightly behind — like the teaching descends from the sky.
+    // 2. Meditation: gain → stereo panner → destination
+    //    Gentle stereo drift for atmospheric width. No HRTF — ambient sounds
+    //    should feel enveloping, not localized. HRTF causes audible artifacts
+    //    (filter coefficient changes) on mobile when positions update.
     gainNode = audioCtx.createGain();
     gainNode.gain.value = 0;
     try {
-      medPanner = audioCtx.createPanner();
-      medPanner.panningModel = 'HRTF';
-      medPanner.distanceModel = 'inverse';
-      medPanner.refDistance = 1;
-      medPanner.maxDistance = 50;
-      medPanner.rolloffFactor = 0.8;
-      medPanner.setPosition(0, 2.5, -1.5); // above and slightly ahead — from the mandala
+      medPanner = audioCtx.createStereoPanner();
+      medPanner.pan.value = 0;
       gainNode.connect(medPanner).connect(audioCtx.destination);
     } catch (_) {
-      // HRTF not supported — fall back to direct connection
       medPanner = null;
       gainNode.connect(audioCtx.destination);
     }
@@ -2567,19 +2563,14 @@ function initAudio() {
       gainNode = null;
     }
 
-    // 3. Ocean loop: gain → spatial panner → destination
-    //    Positioned at ground level, slowly orbits the listener.
-    //    The waves wash around you, not from a single point.
+    // 3. Ocean loop: gain → stereo panner → destination
+    //    Slow stereo drift for atmospheric width + gain-based depth.
+    //    The "approaching and receding" feel comes from volume, not HRTF.
     waveGainNode = audioCtx.createGain();
     waveGainNode.gain.value = 0;
     try {
-      wavePanner = audioCtx.createPanner();
-      wavePanner.panningModel = 'HRTF';
-      wavePanner.distanceModel = 'inverse';
-      wavePanner.refDistance = 1;
-      wavePanner.maxDistance = 40;
-      wavePanner.rolloffFactor = 0.6;
-      wavePanner.setPosition(0, 1.2, -3.5); // ahead and slightly above — from the mandala's center
+      wavePanner = audioCtx.createStereoPanner();
+      wavePanner.pan.value = 0;
       waveGainNode.connect(wavePanner).connect(audioCtx.destination);
     } catch (_) {
       wavePanner = null;
@@ -2745,7 +2736,6 @@ let ambientSmoothedForGuide = 0; // heavily smoothed ambient — texture, not rh
 let breathHapticFired = false;    // one-shot latch for exhale onset vibration
 let micNoiseFloor = 0;            // adaptive noise floor for breath extraction
 let lastWaveVol = -1;             // last wave gain value sent to audio thread
-let spatialUpdateCounter = 0;     // throttle panner updates to ~15Hz
 let ambientAnalyserFailed = false;  // latch: don't retry if ambient analyser permanently failed
 let micZeroFrames = 0;          // consecutive frames of zero mic energy (dead-stream detection)
 const MIC_ZERO_THRESHOLD = 180; // ~3s at 60fps — if mic reads zero for this long, stream is dead
@@ -2963,17 +2953,13 @@ function updateAudioBreath() {
     // it's intimate and present; when it recedes, it's distant and spacious.
     // waveSurge: -1 (far/receded) to +1 (close/crashing)
     const waveSurge = Math.sin(now * (Math.PI * 2 / 38));
-    // Throttle panner position updates to ~15Hz — spatial position changes
-    // are perceptually smooth at this rate and avoids audio thread contention.
-    spatialUpdateCounter++;
-    if (spatialUpdateCounter >= 4) {
-      spatialUpdateCounter = 0;
-      if (wavePanner) {
-        const waveZ = -3.5 + waveSurge * 2.5;
-        const waveY = 1.2 + (1 - waveSurge) * 0.4;
-        const waveX = Math.sin(now * 0.04) * 0.5;
-        try { wavePanner.setPosition(waveX, waveY, waveZ); } catch (_) {}
-      }
+    // Atmospheric stereo drift: very slow pan creates width without
+    // localizing the sound to a point. No HRTF = no filter artifacts.
+    // Wave pan follows the surge — slightly right when approaching,
+    // slightly left when receding. Never more than ±0.25.
+    if (wavePanner && wavePanner.pan) {
+      const wavePan = Math.sin(now * 0.04) * 0.15 + waveSurge * 0.1;
+      wavePanner.pan.value = clamp(wavePan, -0.25, 0.25);
     }
 
     // Wave volume follows proximity: louder when close (crashing),
@@ -2999,10 +2985,11 @@ function updateAudioBreath() {
         } catch (_) {}
       }
     }
-    if (medPanner && spatialUpdateCounter === 0) {
-      const swayX = Math.sin(now * 0.06) * 0.4;
-      const swayZ = -1.5 + Math.cos(now * 0.04) * 0.3;
-      try { medPanner.setPosition(swayX, 2.5, swayZ); } catch (_) {}
+    // Meditation: very gentle stereo sway, opposite phase to waves.
+    // Creates a sense of width — the two sources breathe apart.
+    if (medPanner && medPanner.pan) {
+      const medPan = Math.sin(now * 0.03) * 0.1;
+      medPanner.pan.value = clamp(medPan, -0.15, 0.15);
     }
 
     let rawEnergy;
