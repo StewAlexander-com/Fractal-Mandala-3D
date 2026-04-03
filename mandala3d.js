@@ -2002,7 +2002,7 @@ function showLayerTitle(index) {
         // Inject content + lineage footer
         const lineage = getLineage(index);
         teachingInner.innerHTML = layer.content
-          + `<p class="communal-presence">also sat here: ${lineage} \u00b7 you</p>`;
+          + `<p class="communal-presence">also sat here: ${lineage} \u00b7 <em>you</em></p>`;
 
         // Phase 3: Organic reveal — decelerating rhythm, like discoveries surfacing
         const children = teachingInner.children;
@@ -3413,7 +3413,28 @@ function animate() {
     // ── Depth cue 2: emissive intensity scales with proximity ──
     // Near layers glow brighter; far layers dim to near-zero emissive
     // Audio-reactive: breath boosts emissive warmth (quadratic + breath lift)
-    const emissiveScale = opacity * opacity + b * 0.18;  // breath adds up to 18% emissive lift
+    let emissiveScale = opacity * opacity + b * 0.18;
+
+    // Core awareness layer (innermost): its geometry breathes with the
+    // contemplative 4-7-8 rhythm. The core IS awareness; it should pulse.
+    // 19s cycle synced with the CSS breath indicator.
+    if (i === LAYER_COUNT - 1) {
+      const breathCycle = 19;   // seconds, matches CSS breatheText
+      const breathT = (elapsed % breathCycle) / breathCycle;
+      // Inhale 0—0.21: rise; Hold 0.21—0.58: plateau; Exhale 0.58—1: dissolve
+      let breathPulse;
+      if (breathT < 0.21) {
+        breathPulse = breathT / 0.21;              // 0 → 1 (inhale)
+      } else if (breathT < 0.58) {
+        breathPulse = 1.0;                          // hold at peak
+      } else {
+        breathPulse = 1.0 - (breathT - 0.58) / 0.42; // 1 → 0 (exhale)
+      }
+      // Subtle: +12% emissive at peak, +3% scale pulse
+      emissiveScale += breathPulse * 0.12 * opacity;
+      const scalePulse = 1.0 + breathPulse * 0.03;
+      group.scale.setScalar(scalePulse);
+    }
 
     // ── Depth cue 6: atmospheric desaturation for distant layers ──
     // Lerp material color toward fog color as distance increases

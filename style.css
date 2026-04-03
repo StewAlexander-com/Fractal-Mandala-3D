@@ -903,6 +903,12 @@ canvas {
   line-height: 1.8;
   border-top: 1px solid rgba(160, 145, 175, 0.12);
 }
+.communal-presence em {
+  font-style: italic;
+  color: rgba(215, 200, 155, 0.55);
+  /* The historical names are grey-violet (past). 'you' is warm gold (present).
+     The only living presence in the lineage. */
+}
 
 .teaching-inner p {
   margin-bottom: 0.7rem;
@@ -1318,8 +1324,11 @@ canvas {
   letter-spacing: 0.3em;
   text-transform: uppercase;
   color: var(--lavender);
-  opacity: 0.3;
-  animation: breatheText 6s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+  opacity: 0.15;
+  /* 19s cycle: 4s inhale (21%) + 7s hold (37%) + 8s exhale (42%)
+     A real contemplative rhythm, not a decorative sine wave.
+     The form instructs the practice. */
+  animation: breatheText 19s ease-in-out infinite;
 }
 
 /* Gyro vignette — background-only calm focus */
@@ -1338,8 +1347,13 @@ canvas {
 }
 
 @keyframes breatheText {
-  0%, 100% { opacity: 0.15; letter-spacing: 0.3em; }
-  50%      { opacity: 0.45; letter-spacing: 0.5em; }
+  /* Inhale: 0% → 21% (4s of 19s) — rise */
+  0%   { opacity: 0.12; letter-spacing: 0.28em; }
+  21%  { opacity: 0.48; letter-spacing: 0.52em; }
+  /* Hold: 21% → 58% (7s of 19s) — stillness at peak */
+  58%  { opacity: 0.44; letter-spacing: 0.50em; }
+  /* Exhale: 58% → 100% (8s of 19s) — slow dissolve */
+  100% { opacity: 0.12; letter-spacing: 0.28em; }
 }
 
 /* ═══ BOTTOM HUD ROW (flex: one shared baseline — fixes iOS PWA / standalone mis-alignment) ═══ */
