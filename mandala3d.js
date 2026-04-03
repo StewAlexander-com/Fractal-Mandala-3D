@@ -1342,6 +1342,52 @@ function buildNebulaBackground() {
     );
   }
 
+  // 2b. Mobile portrait nebula core glow — the backplate's bright center is cropped
+  //     out in portrait (only 31% of width visible). Add a few luminous sprites in the
+  //     upper-left 3D space so portrait users see the nebula warmth that landscape gets
+  //     from the backplate. These are scene objects, not texture UV — no seam risk.
+  if (isMobileScreen) {
+    const coreGlowSprites = [
+      { color: 0xffccbb, opacity: 0.045, x: -18, y: 22, z: -60, size: 70 },
+      { color: 0xeeb8a8, opacity: 0.035, x: -12, y: 30, z: -80, size: 55 },
+      { color: 0xddaacc, opacity: 0.025, x: -25, y: 18, z: -50, size: 45 },
+    ];
+    for (const g of coreGlowSprites) {
+      const mat = new THREE.SpriteMaterial({
+        map: cloudTexture,
+        color: g.color,
+        transparent: true,
+        opacity: g.opacity,
+        blending: THREE.AdditiveBlending,
+        depthWrite: false,
+      });
+      const spr = new THREE.Sprite(mat);
+      spr.position.set(g.x, g.y, g.z);
+      spr.scale.set(g.size, g.size, 1);
+      spr.userData.driftSpeed = 0.002 + Math.random() * 0.004;
+      spr.userData.driftAngle = Math.random() * TAU;
+      spr.userData.baseOpacity = g.opacity;
+      spr.userData.baseX = g.x;
+      spr.userData.baseY = g.y;
+      spr.userData.baseZ = g.z;
+      spr.userData.baseSize = g.size;
+      spr.userData.baseScale = g.size;
+      spr.userData.baseRotation = 0;
+      spr.userData.clumpPhase = Math.random() * TAU;
+      spr.userData.clumpSpeed = 0.01 + Math.random() * 0.02;
+      spr.userData.clumpAmp = 0.1;
+      spr.userData.distortPhase = Math.random() * TAU;
+      spr.userData.distortSpeed = 0.008;
+      spr.userData.distortAmp = 0.05;
+      spr.userData.isKnot = 0;
+      spr.userData.baseColor = mat.color.clone();
+      spr.userData.tintColor = new THREE.Color(g.color);
+      spr.userData.opacityLag = g.opacity;
+      scene.add(spr);
+      nebulaClouds.push(spr);
+    }
+  }
+
   // 3. Shooting stars — small pool of reusable meteor streaks
   try {
     const SHOOTING_STAR_POOL = 4;
