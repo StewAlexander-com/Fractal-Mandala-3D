@@ -26,12 +26,12 @@ import {
   LAYER_TILTS,
   LINEAGE,
   TAU,
-} from './ontology.js?v=112aade';
+} from './ontology.js?v=ae12972';
 import {
   INITIAL_CONDITIONS,
   applyInitialConditions,
-} from './genesis.js?v=112aade';
-import { createGyroParallaxSubsystem } from './gyroParallaxSubsystem.js?v=112aade';
+} from './genesis.js?v=ae12972';
+import { createGyroParallaxSubsystem } from './gyroParallaxSubsystem.js?v=ae12972';
 
 // ═══ Primitives ═══════════════════════════════════════════════════════════════
 // Minimal rules from which repeated patterns generate. z → z² + c:
@@ -2358,6 +2358,8 @@ let audioElement = null;      // underlying <audio> for meditation
 let waveGainNode = null;      // GainNode for ocean loop (Web Audio path)
 let waveAudioSource = null;   // MediaElementAudioSourceNode (ocean)
 let waveAudioElement = null;  // underlying <audio> for ocean loop
+let medPanner = null;         // PannerNode (HRTF) for meditation spatial position
+let wavePanner = null;        // PannerNode (HRTF) for ocean — orbits the listener
 let audioMuted = false;
 let audioReady = false;       // true once pipeline is connected & playing
 let fadeRAF = null;           // requestAnimationFrame id for fade-in
@@ -2532,10 +2534,24 @@ function initAudio() {
     if (!AC) return;   // browser has no Web Audio support
     audioCtx = new AC();
 
-    // 2. Meditation: gain → destination
+    // 2. Meditation: gain → spatial panner → destination
+    //    Positioned above and slightly behind — like the teaching descends from the sky.
     gainNode = audioCtx.createGain();
-    gainNode.gain.value = 0;   // start silent for fade-in
-    gainNode.connect(audioCtx.destination);
+    gainNode.gain.value = 0;
+    try {
+      medPanner = audioCtx.createPanner();
+      medPanner.panningModel = 'HRTF';
+      medPanner.distanceModel = 'inverse';
+      medPanner.refDistance = 1;
+      medPanner.maxDistance = 50;
+      medPanner.rolloffFactor = 0.8;
+      medPanner.setPosition(0, 3, -2); // above and behind
+      gainNode.connect(medPanner).connect(audioCtx.destination);
+    } catch (_) {
+      // HRTF not supported — fall back to direct connection
+      medPanner = null;
+      gainNode.connect(audioCtx.destination);
+    }
 
     audioElement = new Audio('ambient-meditation.mp3');
     audioElement.loop = true;
@@ -2551,10 +2567,24 @@ function initAudio() {
       gainNode = null;
     }
 
-    // 3. Ocean loop (separate element + gain, same context)
+    // 3. Ocean loop: gain → spatial panner → destination
+    //    Positioned at ground level, slowly orbits the listener.
+    //    The waves wash around you, not from a single point.
     waveGainNode = audioCtx.createGain();
     waveGainNode.gain.value = 0;
-    waveGainNode.connect(audioCtx.destination);
+    try {
+      wavePanner = audioCtx.createPanner();
+      wavePanner.panningModel = 'HRTF';
+      wavePanner.distanceModel = 'inverse';
+      wavePanner.refDistance = 1;
+      wavePanner.maxDistance = 40;
+      wavePanner.rolloffFactor = 0.6;
+      wavePanner.setPosition(3, -0.5, 0); // starts at right, ground level
+      waveGainNode.connect(wavePanner).connect(audioCtx.destination);
+    } catch (_) {
+      wavePanner = null;
+      waveGainNode.connect(audioCtx.destination);
+    }
 
     waveAudioElement = new Audio('ambient-ocean-wave.mp3');
     waveAudioElement.loop = true;
@@ -2922,6 +2952,27 @@ function updateAudioBreath() {
       }
     } else if (breathPhase < 0.58) {
       breathHapticFired = false;
+    }
+
+    // Spatial audio orbit: the ocean waves slowly circle the listener.
+    // One full orbit per breath cycle (19s), synced with the guide.
+    // The meditation panner gently sways to give it life.
+    if (wavePanner) {
+      const orbitR = 3.5;
+      const orbitAngle = breathPhase * Math.PI * 2; // full circle per breath
+      try {
+        wavePanner.setPosition(
+          Math.cos(orbitAngle) * orbitR,
+          -0.5,
+          Math.sin(orbitAngle) * orbitR
+        );
+      } catch (_) {}
+    }
+    if (medPanner) {
+      // Meditation: gentle sway, stays above
+      const swayX = Math.sin(now * 0.08) * 0.6;
+      const swayZ = Math.cos(now * 0.05) * 0.4;
+      try { medPanner.setPosition(swayX, 3, -2 + swayZ); } catch (_) {}
     }
 
     let rawEnergy;
