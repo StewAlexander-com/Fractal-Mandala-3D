@@ -101,8 +101,8 @@ let starGlowTexture; // shared radial glow for all point materials
 let userOrbitAngle = 0;       // radians — horizontal orbit offset from swipe/drag
 let targetOrbitAngle = 0;
 let lastOrbitInputTime = 0;   // timestamp of last user orbit interaction
-const ORBIT_IDLE_DELAY = 4;   // seconds before auto-orbit resumes
-const ORBIT_DECAY_RATE = 0.3; // how fast user orbit decays back to 0
+const ORBIT_IDLE_DELAY = 2.5; // seconds before auto-orbit resumes (shorter = quicker recovery)
+const ORBIT_DECAY_RATE = 0.5; // how fast user orbit decays back to 0 (faster = less lingering jerk)
 let userZoom = 1;             // 1 = default, <1 = zoomed in, >1 = zoomed out
 let targetZoom = 1;
 const ZOOM_MIN = 0.55;
@@ -2160,7 +2160,7 @@ let touch = {
   locked: false,       // once intent is set, lock it for this gesture
 };
 
-const INTENT_THRESHOLD = 8; // px before we decide swipe direction
+const INTENT_THRESHOLD = 14; // px before we decide swipe direction (raised to avoid accidental tilts)
 
 function pinchDist(e) {
   const dx = e.touches[0].clientX - e.touches[1].clientX;
@@ -2226,8 +2226,8 @@ if (canvas) canvas.addEventListener('touchmove', (e) => {
         const accum = touch.orbitDXAccum;
         touch.orbitDXAccum = 0;
         touch.orbitRaf = 0;
-        // Slightly lower gain + per-frame application feels smoother on iPhone.
-        targetOrbitAngle += accum * 0.0048;
+        // Lower gain for calmer orbit feel; per-frame application smooths iOS bursts.
+        targetOrbitAngle += accum * 0.003;
         lastOrbitInputTime = clock.getElapsedTime();
       });
     }
@@ -3267,7 +3267,7 @@ function animate() {
   try { updateBackplateDrift(dt, elapsed, motionScale, calmMul); } catch (_) {}
 
   // ── Lerp user controls ──
-  const ctrlLerp = 1 - Math.exp(-8 * dt);          // smooth ~8 Hz exponential ease
+  const ctrlLerp = 1 - Math.exp(-3.5 * dt);        // smooth ~3.5 Hz — gentler orbit response
   userOrbitAngle += (targetOrbitAngle - userOrbitAngle) * ctrlLerp;
   userZoom       += (targetZoom       - userZoom)       * ctrlLerp;
 
