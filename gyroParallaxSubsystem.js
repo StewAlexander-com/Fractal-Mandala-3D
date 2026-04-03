@@ -48,40 +48,42 @@ function bezierEase01(x, p1x, p1y, p2x, p2y) {
 // ─── Tuning (calm-v8 lineage) ────────────────────────────────────────────────
 
 const T = {
-  MAX_YAW: 0.14,
-  MAX_PITCH: 0.10,
-  LOW_PASS_A: 0.045,
-  CAL_BASE_K: 0.06,
-  DEAD_IN: 0.011,
-  DEAD_OUT: 0.018,
-  MAX_YAW_RATE: 0.32,
-  MAX_PITCH_RATE: 0.28,
-  CMD_TAU: 0.16,
-  STILL_DELTA_DEG: 0.5,
-  SETTLE_STILL_MS: 260,
-  SETTLE_IDLE_MS: 450,
-  SETTLE_FACTOR: 0.06,
-  STILL_MS_DECAY_TAU: 0.75,
-  STILL_REWARD_START_MS: 1200,
-  STILL_REWARD_EASE_TAU: 0.35,
-  DISPLAY_TAU: 0.48,
-  GRAV_YAW_REF: 0.1,
-  GRAV_PITCH_REF: 0.1,
-  GRAV_ACCEL_X: 10,
-  GRAV_ACCEL_Y: 12,
-  GRAV_DAMP_TAU: 0.65,
-  GRAV_MAX_V: 8,
-  FOLLOW_TAU_X: 0.55,
-  FOLLOW_TAU_Y: 0.68,
-  FAR_FOLLOW_TAU_X: 0.62,
-  FAR_FOLLOW_TAU_Y: 0.76,
-  FAR_CAP_X: 24,
-  FAR_CAP_Y: 28,
-  CLOUD_TAU: 0.72,
-  PX_SCALE: 360,
-  PY_SCALE: 540,
-  CAL_MS_COMPLETE: 900,
-  CAL_MS_CAP: 1200,
+  // calm-v9 (oceanic): scene moves like water, not a spring.
+  // Every stage favors long time constants and soft curves.
+  MAX_YAW: 0.12,           // reduced range for calmer feel
+  MAX_PITCH: 0.09,
+  LOW_PASS_A: 0.028,       // heavier sensor filter — removes micro-jitter
+  CAL_BASE_K: 0.04,        // slower calibration convergence
+  DEAD_IN: 0.014,          // wider soft dead-zone entrance
+  DEAD_OUT: 0.025,         // wider exit — more stillness at rest
+  MAX_YAW_RATE: 0.18,      // relaxed slew — less staircase stepping
+  MAX_PITCH_RATE: 0.16,
+  CMD_TAU: 0.32,           // doubled command smoothing — absorbs sensor bursts
+  STILL_DELTA_DEG: 0.4,    // easier to register "still"
+  SETTLE_STILL_MS: 200,    // settle kicks in sooner
+  SETTLE_IDLE_MS: 350,
+  SETTLE_FACTOR: 0.04,     // gentler settle decay
+  STILL_MS_DECAY_TAU: 1.0, // stillness decays more slowly
+  STILL_REWARD_START_MS: 800,
+  STILL_REWARD_EASE_TAU: 0.5,
+  DISPLAY_TAU: 0.85,       // the key oceanic feel — nearly doubled
+  GRAV_YAW_REF: 0.12,
+  GRAV_PITCH_REF: 0.12,
+  GRAV_ACCEL_X: 5,         // halved gravity drift — less overshoot
+  GRAV_ACCEL_Y: 6,
+  GRAV_DAMP_TAU: 0.45,     // faster damping on gravity momentum
+  GRAV_MAX_V: 4,           // halved max gravity velocity
+  FOLLOW_TAU_X: 0.80,      // slower near-field follow
+  FOLLOW_TAU_Y: 0.95,
+  FAR_FOLLOW_TAU_X: 0.90,  // slower far-field follow
+  FAR_FOLLOW_TAU_Y: 1.05,
+  FAR_CAP_X: 18,           // tighter far-field caps
+  FAR_CAP_Y: 22,
+  CLOUD_TAU: 1.0,          // clouds follow even more slowly
+  PX_SCALE: 280,           // reduced parallax amplitude
+  PY_SCALE: 420,
+  CAL_MS_COMPLETE: 1200,   // longer calibration window
+  CAL_MS_CAP: 1600,
 };
 
 /**
@@ -186,8 +188,9 @@ export function createGyroParallaxSubsystem(config) {
       s.lastOriMs = nowMs;
       const dts = Math.max(1 / 120, Math.min(0.06, (nowMs - last) / 1000));
       // Additional command smoothing: absorbs iPhone sensor bursts before slew-limiter.
-      const isSpike = dG > 7 || dB > 7;
-      const cmdTau = isSpike ? 0.36 : T.CMD_TAU;
+      // Spike threshold lowered and spike tau raised for smoother absorption.
+      const isSpike = dG > 4 || dB > 4;
+      const cmdTau = isSpike ? 0.55 : T.CMD_TAU;
       const cmdEase = 1 - Math.exp(-dts / cmdTau);
       s.cmdYaw += (desiredYaw - s.cmdYaw) * cmdEase;
       s.cmdPitch += (desiredPitch - s.cmdPitch) * cmdEase;
