@@ -2711,6 +2711,7 @@ let micSource = null;           // MediaStreamAudioSourceNode
 let micActive = false;          // is mic currently feeding data?
 let audioBreath = 0;            // the final smoothed 0..1 breath signal
 let audioBreathTarget = 0;      // raw target before smoothing
+let ambientSmoothedForGuide = 0; // heavily smoothed ambient — texture, not rhythm
 let ambientAnalyserFailed = false;  // latch: don't retry if ambient analyser permanently failed
 let micZeroFrames = 0;          // consecutive frames of zero mic energy (dead-stream detection)
 const MIC_ZERO_THRESHOLD = 180; // ~3s at 60fps — if mic reads zero for this long, stream is dead
@@ -2860,11 +2861,11 @@ function updateAudioBreath() {
         try { waveGainNode.gain.setTargetAtTime(waveTarget, audioCtx.currentTime, 0.8); } catch (_) {}
       }
     } else {
-      // Mic off: ambient audio drives the visuals, but the breath guide
-      // contributes a subtle undertow — 25% guide, 75% ambient.
-      // The geometry always breathes the 4-7-8 rhythm; the meditation
-      // track adds texture on top. The calm is always present.
-      rawEnergy = ambientEnergy * 0.75 + guideSignal * 0.25;
+      // Mic off: the breath guide is the primary rhythm. The ambient audio
+      // adds warmth and texture but is heavily smoothed so its own tempo
+      // doesn't compete with the 4-7-8 cycle. One rhythm, not two.
+      ambientSmoothedForGuide += (ambientEnergy - ambientSmoothedForGuide) * 0.004;
+      rawEnergy = ambientSmoothedForGuide * 0.35 + guideSignal * 0.65;
     }
 
     // Map to 0..1 with a floor and ceiling
