@@ -26,12 +26,12 @@ import {
   LAYER_TILTS,
   LINEAGE,
   TAU,
-} from './ontology.js?v=9fbcc6b';
+} from './ontology.js?v=ff07e9f';
 import {
   INITIAL_CONDITIONS,
   applyInitialConditions,
-} from './genesis.js?v=9fbcc6b';
-import { createGyroParallaxSubsystem } from './gyroParallaxSubsystem.js?v=9fbcc6b';
+} from './genesis.js?v=ff07e9f';
+import { createGyroParallaxSubsystem } from './gyroParallaxSubsystem.js?v=ff07e9f';
 
 // ═══ Primitives ═══════════════════════════════════════════════════════════════
 // Minimal rules from which repeated patterns generate. z → z² + c:
@@ -2735,7 +2735,7 @@ let audioBreathTarget = 0;      // raw target before smoothing
 let ambientSmoothedForGuide = 0; // heavily smoothed ambient — texture, not rhythm
 let breathHapticFired = false;    // one-shot latch for exhale onset vibration
 let micNoiseFloor = 0;            // adaptive noise floor for breath extraction
-let lastWaveVol = -1;             // last wave gain value sent to audio thread
+let lastWaveVol = 0.12;           // smoothed wave gain — starts at the quiet end
 let ambientAnalyserFailed = false;  // latch: don't retry if ambient analyser permanently failed
 let micZeroFrames = 0;          // consecutive frames of zero mic energy (dead-stream detection)
 const MIC_ZERO_THRESHOLD = 180; // ~3s at 60fps — if mic reads zero for this long, stream is dead
@@ -2972,18 +2972,12 @@ function updateAudioBreath() {
       const proxVol = 0.12 + proximity01 * 0.43;
       const breathLift = (1 - guideSignal) * 0.12;
       const waveVol = Math.min(0.65, proxVol + breathLift);
-      // Only update audio thread when gain has changed meaningfully.
-      // Avoids scheduling dozens of automation events per second,
-      // which causes tiny skips/artifacts on mobile audio threads.
-      if (Math.abs(waveVol - lastWaveVol) > 0.008) {
-        lastWaveVol = waveVol;
-        try {
-          const t = audioCtx.currentTime;
-          waveGainNode.gain.cancelScheduledValues(t);
-          waveGainNode.gain.setValueAtTime(waveGainNode.gain.value, t);
-          waveGainNode.gain.linearRampToValueAtTime(waveVol, t + 0.15);
-        } catch (_) {}
-      }
+      // Direct .value assignment with JS-side smoothing.
+      // Web Audio automation (cancelScheduledValues + linearRamp) caused
+      // audible artifacts on iOS Safari when scheduling was intermittent.
+      // Simple exponential smoothing is artifact-free.
+      lastWaveVol += (waveVol - lastWaveVol) * 0.03;
+      waveGainNode.gain.value = lastWaveVol;
     }
     // Meditation: very gentle stereo sway, opposite phase to waves.
     // Creates a sense of width — the two sources breathe apart.
@@ -3169,7 +3163,7 @@ async function enableMic() {
       audioElement.pause();
     }
     if (gainNode) {
-      try { gainNode.gain.setTargetAtTime(0, audioCtx.currentTime, 0.3); } catch (_) {}
+      gainNode.gain.value = 0;
     }
 
   } catch (err) {
@@ -3189,7 +3183,7 @@ function disableMic() {
   if (audioElement && audioReady && !audioMuted) {
     audioElement.play().catch(noop);
     if (gainNode) {
-      try { gainNode.gain.setTargetAtTime(1, audioCtx.currentTime, 0.5); } catch (_) {}
+      gainNode.gain.value = 1;
     }
   }
   if (micStream) {
