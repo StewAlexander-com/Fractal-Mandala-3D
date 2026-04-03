@@ -482,10 +482,19 @@ canvas {
 
 /* Soft radial vignette behind the title — keeps text readable
    against bright torus rings at every layer without a hard box.
-   Sized generously so the fade never ends abruptly. */
-.layer-title::before {
-  content: '';
+   Sized generously so the fade never ends abruptly.
+   Only rendered when .visible to prevent iOS compositor ghosts. */
+.layer-title::before,
+.layer-title::after {
+  content: none;
   position: absolute;
+  z-index: -1;
+  pointer-events: none;
+  border-radius: 50%;
+}
+
+.layer-title.visible::before {
+  content: '';
   inset: -80% -70%;
   background: radial-gradient(
     ellipse 50% 50% at 50% 50%,
@@ -495,24 +504,17 @@ canvas {
     rgba(4, 3, 8, 0.08) 75%,
     transparent 100%
   );
-  z-index: -1;
-  pointer-events: none;
-  border-radius: 50%;
 }
 
 /* Dim the actual canvas pixels behind the title text area.
    backdrop-filter works through the composited WebGL canvas;
    the blur softens hard geometry edges and brightness dims them.
    Masked to a soft oval so it blends without a visible box edge. */
-.layer-title::after {
+.layer-title.visible::after {
   content: '';
-  position: absolute;
   inset: -40% -30%;
   backdrop-filter: brightness(0.56) blur(4px);
   -webkit-backdrop-filter: brightness(0.56) blur(4px);
-  z-index: -1;
-  pointer-events: none;
-  border-radius: 50%;
   mask-image: radial-gradient(
     ellipse 52% 52% at 50% 50%,
     black 0%, black 40%, transparent 100%
@@ -527,7 +529,7 @@ canvas {
    artifacts with backdrop-filter over WebGL canvases. Use a pure gradient fallback
    on coarse-pointer/mobile contexts to avoid white slab overlays. */
 @media (pointer: coarse), (max-width: 768px) {
-  .layer-title::after {
+  .layer-title.visible::after {
     backdrop-filter: none;
     -webkit-backdrop-filter: none;
     background: radial-gradient(
