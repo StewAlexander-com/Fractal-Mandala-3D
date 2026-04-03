@@ -79,12 +79,16 @@ document.getElementById('btnStart').onclick = async function() {
   
   medEl = new Audio('ambient-meditation.mp3');
   medEl.loop = true;
-  medEl.crossOrigin = 'anonymous';
+  medEl.playsInline = true;
   try {
     medSource = audioCtx.createMediaElementSource(medEl);
     medSource.connect(medGain);
-    log('Meditation source connected');
-  } catch(e) { log('Meditation source failed: ' + e.message, 'warn'); }
+    log('Meditation source connected via Web Audio');
+  } catch(e) {
+    log('Web Audio failed, using HTML volume: ' + e.message, 'warn');
+    medGain = null;
+    medPan = null;
+  }
   
   // Ocean
   waveGain = audioCtx.createGain();
@@ -94,12 +98,16 @@ document.getElementById('btnStart').onclick = async function() {
   
   waveEl = new Audio('ambient-ocean-wave.mp3');
   waveEl.loop = true;
-  waveEl.crossOrigin = 'anonymous';
+  waveEl.playsInline = true;
   try {
     waveSource = audioCtx.createMediaElementSource(waveEl);
     waveSource.connect(waveGain);
-    log('Ocean source connected');
-  } catch(e) { log('Ocean source failed: ' + e.message, 'warn'); }
+    log('Ocean source connected via Web Audio');
+  } catch(e) {
+    log('Web Audio failed, using HTML volume: ' + e.message, 'warn');
+    waveGain = null;
+    wavePan = null;
+  }
   
   if (audioCtx.state === 'suspended') await audioCtx.resume();
   await medEl.play().catch(e => log('Med play fail: ' + e.message, 'warn'));
