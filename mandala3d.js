@@ -2980,6 +2980,15 @@ async function enableMic() {
     micActive = true;
     if (micToggle) { micToggle.classList.add('active'); micToggle.setAttribute('aria-pressed', 'true'); }
 
+    // When mic is active the system listens to the user's breath — the meditation
+    // track would compete with that presence. Fade it out, keep only ambient ocean.
+    if (audioElement) {
+      audioElement.pause();
+    }
+    if (gainNode) {
+      try { gainNode.gain.setTargetAtTime(0, audioCtx.currentTime, 0.3); } catch (_) {}
+    }
+
   } catch (err) {
     // Catch-all: user denied, or any unexpected failure
     const reason = err.name || err.message || 'unknown';
@@ -2992,6 +3001,14 @@ function disableMic() {
   micActive = false;
   micZeroFrames = 0;
   if (micToggle) { micToggle.classList.remove('active'); micToggle.setAttribute('aria-pressed', 'false'); }
+
+  // Restore meditation track when mic is off — the audio landscape returns.
+  if (audioElement && audioReady && !audioMuted) {
+    audioElement.play().catch(noop);
+    if (gainNode) {
+      try { gainNode.gain.setTargetAtTime(1, audioCtx.currentTime, 0.5); } catch (_) {}
+    }
+  }
   if (micStream) {
     try { micStream.getTracks().forEach(t => t.stop()); } catch (e) {}
     micStream = null;
