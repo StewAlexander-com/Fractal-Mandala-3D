@@ -336,13 +336,11 @@ const RING_EMISSIVE_BASE = isMobileOledDark ? 0.76 : 0.72;
 const RING_EMISSIVE_FLOOR = isMobileOledDark ? 0.09 : 0.07;
 const RING_EMISSIVE_BREATH = isMobileOledDark ? 0.18 : 0.16;
 // Backplate focal bias for portrait: nebula bright center peeks in from upper-left.
-// Three.js texture UV: +X shifts crop right (content moves left on screen),
-//                      +Y shifts crop UP   (content moves DOWN on screen).
-// So to move the nebula center into the upper-left of the viewport:
-//   negative X → crop left → bright center appears at left
-//   negative Y → crop down → bright center appears at top
-const BACKPLATE_PORTRAIT_BIAS_X = -0.06;
-const BACKPLATE_PORTRAIT_BIAS_Y = -0.05;
+// Instead of shifting UV offset (which risks exposing texture edges), we shift the
+// texture center point. center=(0.5,0.5) is default; moving it repositions what
+// part of the image appears at the viewport center without changing repeat/cover.
+const BACKPLATE_PORTRAIT_CENTER_X = 0.38;  // < 0.5 = nebula center moves left on screen
+const BACKPLATE_PORTRAIT_CENTER_Y = 0.62;  // > 0.5 = nebula center moves up on screen
 
 // Runtime guardrail: mobile browsers can regress compositor behavior over WebGL + HUD blur.
 try {
@@ -626,11 +624,9 @@ function updateBackplateUv() {
   if (viewAspect > imgAspect) {
     nebulaBackplateTexture.repeat.set(1, imgAspect / viewAspect);
   } else if (isPortraitCrop) {
-    // Portrait mobile: crop to ~82% of image height to gain vertical headroom
-    // for biasing the nebula bright center into the upper-left viewport area.
-    // X repeat shrunk ~8% to also gain horizontal headroom.
-    const baseRepeatX = viewAspect / imgAspect;
-    nebulaBackplateTexture.repeat.set(baseRepeatX * 0.92, 0.82);
+    // Portrait mobile: standard cover crop (no reduced repeat = no edge seams).
+    // Nebula repositioning is handled via texture.center, not offset.
+    nebulaBackplateTexture.repeat.set(viewAspect / imgAspect, 1);
   } else {
     nebulaBackplateTexture.repeat.set(viewAspect / imgAspect, 1);
   }
@@ -639,9 +635,7 @@ function updateBackplateUv() {
   const maxX = (1 - nebulaBackplateTexture.repeat.x) * 0.5;
   const maxY = (1 - nebulaBackplateTexture.repeat.y) * 0.5;
   // Guard against edge sampling artifacts on mobile GPUs by keeping a safe inset.
-  // Portrait mode needs a larger guard because the reduced repeat creates more headroom
-  // and any offset near the edge can expose the texture boundary as a visible seam.
-  const edgeGuard = isPortraitCrop ? 0.015 : 0.003;
+  const edgeGuard = 0.003;
   const safeMaxX = Math.max(0, maxX - edgeGuard);
   const safeMaxY = Math.max(0, maxY - edgeGuard);
 
@@ -677,15 +671,19 @@ function updateBackplateUv() {
     backplateUv.randomStartSet = false;
   }
 
-  // iPhone portrait artifact guard: lock X close to center and bias toward nebula focal region.
-  const portraitBiasX = Math.max(-safeMaxX, Math.min(safeMaxX, BACKPLATE_PORTRAIT_BIAS_X));
-  const portraitBiasY = Math.max(-safeMaxY, Math.min(safeMaxY, BACKPLATE_PORTRAIT_BIAS_Y));
-  const composedX = isMobilePortrait ? portraitBiasX : (backplateUv.startX + backplateUv.walkX + backplateUv.driftX);
+  // Portrait: reposition nebula via texture center (no UV offset = no edge seams).
+  if (isMobilePortrait) {
+    nebulaBackplateTexture.center.set(BACKPLATE_PORTRAIT_CENTER_X, BACKPLATE_PORTRAIT_CENTER_Y);
+  } else {
+    nebulaBackplateTexture.center.set(0.5, 0.5);
+  }
+
+  const composedX = isMobilePortrait ? 0 : (backplateUv.startX + backplateUv.walkX + backplateUv.driftX);
   const composedY = isMobilePortrait
-    ? (portraitBiasY + backplateUv.startY + backplateUv.walkY + backplateUv.driftY)
+    ? (backplateUv.startY + backplateUv.walkY + backplateUv.driftY)
     : (backplateUv.startY + backplateUv.walkY + backplateUv.driftY);
-  const clampX = isMobilePortrait ? safeMaxX * 0.65 : safeMaxX;
-  const clampY = isMobilePortrait ? safeMaxY * 0.80 : safeMaxY;
+  const clampX = isMobilePortrait ? 0 : safeMaxX;
+  const clampY = isMobilePortrait ? safeMaxY * 0.22 : safeMaxY;
   const dX = Math.max(-clampX, Math.min(clampX, composedX));
   const dY = Math.max(-clampY, Math.min(clampY, composedY));
   nebulaBackplateTexture.offset.set(backplateUv.baseOffsetX + dX, backplateUv.baseOffsetY + dY);
