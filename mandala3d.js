@@ -337,8 +337,8 @@ const RING_EMISSIVE_FLOOR = isMobileOledDark ? 0.09 : 0.07;
 const RING_EMISSIVE_BREATH = isMobileOledDark ? 0.18 : 0.16;
 // Backplate focal bias for portrait: nebula bright center peeks in from upper-left
 // so it doesn't compete with the geometry or teaching panel in the lower half.
-const BACKPLATE_PORTRAIT_BIAS_X = 0.045;
-const BACKPLATE_PORTRAIT_BIAS_Y = 0.06;
+const BACKPLATE_PORTRAIT_BIAS_X = 0.08;
+const BACKPLATE_PORTRAIT_BIAS_Y = 0.055;
 
 // Runtime guardrail: mobile browsers can regress compositor behavior over WebGL + HUD blur.
 try {
@@ -622,10 +622,10 @@ function updateBackplateUv() {
   if (viewAspect > imgAspect) {
     nebulaBackplateTexture.repeat.set(1, imgAspect / viewAspect);
   } else if (isPortraitCrop) {
-    // Portrait mobile: crop to ~85% of image height so we gain vertical
-    // headroom to bias the bright nebula center into the upper portion.
+    // Portrait mobile: crop to ~78% of image height so we gain enough vertical
+    // headroom to bias the bright nebula center into the upper-left.
     const baseRepeatX = viewAspect / imgAspect;
-    nebulaBackplateTexture.repeat.set(baseRepeatX, 0.85);
+    nebulaBackplateTexture.repeat.set(baseRepeatX * 0.92, 0.78);
   } else {
     nebulaBackplateTexture.repeat.set(viewAspect / imgAspect, 1);
   }
@@ -634,7 +634,9 @@ function updateBackplateUv() {
   const maxX = (1 - nebulaBackplateTexture.repeat.x) * 0.5;
   const maxY = (1 - nebulaBackplateTexture.repeat.y) * 0.5;
   // Guard against edge sampling artifacts on mobile GPUs by keeping a safe inset.
-  const edgeGuard = 0.003;
+  // Portrait mode needs a larger guard because the reduced repeat creates more headroom
+  // and any offset near the edge can expose the texture boundary as a visible seam.
+  const edgeGuard = isPortraitCrop ? 0.015 : 0.003;
   const safeMaxX = Math.max(0, maxX - edgeGuard);
   const safeMaxY = Math.max(0, maxY - edgeGuard);
 
