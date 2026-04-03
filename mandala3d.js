@@ -2713,6 +2713,7 @@ let audioBreath = 0;            // the final smoothed 0..1 breath signal
 let audioBreathTarget = 0;      // raw target before smoothing
 let ambientSmoothedForGuide = 0; // heavily smoothed ambient — texture, not rhythm
 let breathHapticFired = false;    // one-shot latch for exhale onset vibration
+let micNoiseFloor = 0;            // adaptive noise floor for breath extraction
 let ambientAnalyserFailed = false;  // latch: don't retry if ambient analyser permanently failed
 let micZeroFrames = 0;          // consecutive frames of zero mic energy (dead-stream detection)
 const MIC_ZERO_THRESHOLD = 180; // ~3s at 60fps — if mic reads zero for this long, stream is dead
@@ -2763,6 +2764,53 @@ function attachAmbientAnalyser() {
 
 // Compute RMS energy from an AnalyserNode's frequency data, normalized 0..1
 // Returns 0 on any failure — never throws, never returns NaN.
+// Breath-specific spectral energy extraction.
+// Breath signature: broadband turbulent flow in 200-2000Hz, rhythmic rise/fall.
+// Strategy: isolate the breath band, subtract adaptive noise floor, amplify the
+// rhythmic delta. Pulls soft breathing out of room noise, fan hum, and traffic.
+function getBreathEnergy(analyser, freqData) {
+  if (!analyser || !freqData) return 0;
+  try { analyser.getByteFrequencyData(freqData); } catch (_) { return 0; }
+
+  const len = freqData.length;
+  if (len === 0) return 0;
+
+  // Frequency resolution: sampleRate / fftSize. At 44100Hz, fftSize=1024 → 43Hz/bin
+  // Breath band: 200-2000Hz → bins ~5 to ~46 (at 43Hz/bin)
+  // Ignore <150Hz (room hum, HVAC, traffic) and >2500Hz (phone noise, hiss)
+  const sampleRate = analyser.context ? analyser.context.sampleRate : 44100;
+  const binHz = sampleRate / (len * 2); // fftSize = len * 2
+  const loIdx = Math.max(1, Math.floor(200 / binHz));
+  const hiIdx = Math.min(len - 1, Math.ceil(2000 / binHz));
+
+  let sum = 0;
+  let count = 0;
+  for (let i = loIdx; i <= hiIdx; i++) {
+    const v = freqData[i] / 255;
+    sum += v * v;
+    count++;
+  }
+  const breathBandEnergy = count > 0 ? Math.sqrt(sum / count) : 0;
+
+  // Adaptive noise floor: slowly tracks the minimum energy level.
+  // Rises very slowly (adapts to increasing ambient), falls faster (breath dips).
+  // This removes constant background so only the *change* matters.
+  if (micNoiseFloor < 0.001) {
+    micNoiseFloor = breathBandEnergy; // initialize
+  } else if (breathBandEnergy < micNoiseFloor) {
+    micNoiseFloor += (breathBandEnergy - micNoiseFloor) * 0.05; // fall fast
+  } else {
+    micNoiseFloor += (breathBandEnergy - micNoiseFloor) * 0.002; // rise slow
+  }
+
+  // Subtract noise floor and amplify the remainder
+  const denoised = Math.max(0, breathBandEnergy - micNoiseFloor * 0.9);
+  // Amplify soft signals — breath energy after denoising is very small
+  const amplified = Math.tanh(denoised * 8) * 0.8;
+
+  return Number.isFinite(amplified) ? amplified : 0;
+}
+
 function getAnalyserEnergy(analyser, freqData) {
   if (!analyser || !freqData) return 0;
   try {
@@ -2804,7 +2852,7 @@ function updateAudioBreath() {
     let micEnergy = 0;
 
     if (micActive) {
-      micEnergy = getAnalyserEnergy(micAnalyser, micFreqData);
+      micEnergy = getBreathEnergy(micAnalyser, micFreqData);
 
       // Dead-stream detection: if mic returns zero for too long, the stream
       // is likely dead (hardware disconnect, OS revoked permission, etc.)
@@ -3033,8 +3081,8 @@ async function enableMic() {
 
     try {
       micAnalyser = audioCtx.createAnalyser();
-      micAnalyser.fftSize = 256;
-      micAnalyser.smoothingTimeConstant = 0.88;
+      micAnalyser.fftSize = 1024;  // 512 bins → ~86Hz per bin at 44.1kHz — enough to isolate breath band
+      micAnalyser.smoothingTimeConstant = 0.7;  // less smoothing → preserves breath rhythm
       micSource.connect(micAnalyser);
     } catch (analyserErr) {
       console.warn('Mic analyser setup failed:', analyserErr.message);
@@ -3047,6 +3095,7 @@ async function enableMic() {
 
     // Do NOT connect micSource to destination — we don't want to hear the mic
     micFreqData = new Uint8Array(micAnalyser.frequencyBinCount);
+    micNoiseFloor = 0;  // adaptive noise floor for breath extraction
     micZeroFrames = 0;  // reset dead-stream counter
     micActive = true;
     if (micToggle) { micToggle.classList.add('active'); micToggle.setAttribute('aria-pressed', 'true'); }
