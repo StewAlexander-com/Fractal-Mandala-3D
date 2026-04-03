@@ -2712,6 +2712,7 @@ let micActive = false;          // is mic currently feeding data?
 let audioBreath = 0;            // the final smoothed 0..1 breath signal
 let audioBreathTarget = 0;      // raw target before smoothing
 let ambientSmoothedForGuide = 0; // heavily smoothed ambient — texture, not rhythm
+let breathHapticFired = false;    // one-shot latch for exhale onset vibration
 let ambientAnalyserFailed = false;  // latch: don't retry if ambient analyser permanently failed
 let micZeroFrames = 0;          // consecutive frames of zero mic energy (dead-stream detection)
 const MIC_ZERO_THRESHOLD = 180; // ~3s at 60fps — if mic reads zero for this long, stream is dead
@@ -2843,6 +2844,20 @@ function updateAudioBreath() {
     }
     // Smooth the guide to avoid any hard transitions
     guideSignal = guideSignal * guideSignal * (3 - 2 * guideSignal); // smoothstep
+
+    // Haptic breath cue: a gentle vibration at the exhale onset.
+    // One brief pulse (40ms) as the breath turns from hold to release —
+    // your body feels the moment to let go. Somatic instruction without words.
+    // Only fires on devices that support it (Android Chrome; iOS ignores).
+    if (typeof navigator.vibrate === 'function') {
+      const exhaleOnset = breathPhase >= 0.58 && breathPhase < 0.61;
+      if (exhaleOnset && !breathHapticFired) {
+        navigator.vibrate(40);
+        breathHapticFired = true;
+      } else if (breathPhase < 0.58) {
+        breathHapticFired = false;
+      }
+    }
 
     let rawEnergy;
     if (micActive) {
