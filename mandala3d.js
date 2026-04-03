@@ -26,12 +26,12 @@ import {
   LAYER_TILTS,
   LINEAGE,
   TAU,
-} from './ontology.js?v=0a18dee';
+} from './ontology.js?v=06230dc';
 import {
   INITIAL_CONDITIONS,
   applyInitialConditions,
-} from './genesis.js?v=0a18dee';
-import { createGyroParallaxSubsystem } from './gyroParallaxSubsystem.js?v=0a18dee';
+} from './genesis.js?v=06230dc';
+import { createGyroParallaxSubsystem } from './gyroParallaxSubsystem.js?v=06230dc';
 
 // ═══ Primitives ═══════════════════════════════════════════════════════════════
 // Minimal rules from which repeated patterns generate. z → z² + c:
@@ -2545,7 +2545,7 @@ function initAudio() {
       medPanner.refDistance = 1;
       medPanner.maxDistance = 50;
       medPanner.rolloffFactor = 0.8;
-      medPanner.setPosition(0, 3, -2); // above and behind
+      medPanner.setPosition(0, 2.5, -1.5); // above and slightly ahead — from the mandala
       gainNode.connect(medPanner).connect(audioCtx.destination);
     } catch (_) {
       // HRTF not supported — fall back to direct connection
@@ -2579,7 +2579,7 @@ function initAudio() {
       wavePanner.refDistance = 1;
       wavePanner.maxDistance = 40;
       wavePanner.rolloffFactor = 0.6;
-      wavePanner.setPosition(3, -0.5, 0); // starts at right, ground level
+      wavePanner.setPosition(0, 1.2, -3.5); // ahead and slightly above — from the mandala's center
       waveGainNode.connect(wavePanner).connect(audioCtx.destination);
     } catch (_) {
       wavePanner = null;
@@ -2954,25 +2954,28 @@ function updateAudioBreath() {
       breathHapticFired = false;
     }
 
-    // Spatial audio orbit: the ocean waves slowly circle the listener.
-    // One full orbit per breath cycle (19s), synced with the guide.
-    // The meditation panner gently sways to give it life.
+    // Spatial audio: waves approach and recede like a beach.
+    // The ocean sits ahead and slightly above — as if emanating from
+    // the mandala's center — and slowly oscillates toward/away from
+    // the listener over 30-46s. When the wave "crashes" (closest),
+    // it's intimate and present; when it recedes, it's distant and spacious.
     if (wavePanner) {
-      const orbitR = 3.5;
-      const orbitAngle = breathPhase * Math.PI * 2; // full circle per breath
-      try {
-        wavePanner.setPosition(
-          Math.cos(orbitAngle) * orbitR,
-          -0.5,
-          Math.sin(orbitAngle) * orbitR
-        );
-      } catch (_) {}
+      // Slow oscillation: ~38s period (splits the 30-46s range)
+      const waveSurge = Math.sin(now * (Math.PI * 2 / 38));
+      // z: -1 (close, in front) to -6 (far, receding). Negative z = in front.
+      const waveZ = -3.5 + waveSurge * 2.5;
+      // y: slightly above, rises a bit when close (wave cresting)
+      const waveY = 1.2 + (1 - waveSurge) * 0.4;
+      // x: very gentle lateral drift, not a circle
+      const waveX = Math.sin(now * 0.04) * 0.5;
+      try { wavePanner.setPosition(waveX, waveY, waveZ); } catch (_) {}
     }
     if (medPanner) {
-      // Meditation: gentle sway, stays above
-      const swayX = Math.sin(now * 0.08) * 0.6;
-      const swayZ = Math.cos(now * 0.05) * 0.4;
-      try { medPanner.setPosition(swayX, 3, -2 + swayZ); } catch (_) {}
+      // Meditation: above and slightly ahead of center, gentle sway.
+      // Emanates from the mandala — just above the geometry.
+      const swayX = Math.sin(now * 0.06) * 0.4;
+      const swayZ = -1.5 + Math.cos(now * 0.04) * 0.3;
+      try { medPanner.setPosition(swayX, 2.5, swayZ); } catch (_) {}
     }
 
     let rawEnergy;
