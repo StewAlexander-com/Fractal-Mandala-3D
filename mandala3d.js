@@ -26,12 +26,12 @@ import {
   LAYER_TILTS,
   LINEAGE,
   TAU,
-} from './ontology.js?v=ae12972';
+} from './ontology.js?v=0a18dee';
 import {
   INITIAL_CONDITIONS,
   applyInitialConditions,
-} from './genesis.js?v=ae12972';
-import { createGyroParallaxSubsystem } from './gyroParallaxSubsystem.js?v=ae12972';
+} from './genesis.js?v=0a18dee';
+import { createGyroParallaxSubsystem } from './gyroParallaxSubsystem.js?v=0a18dee';
 
 // ═══ Primitives ═══════════════════════════════════════════════════════════════
 // Minimal rules from which repeated patterns generate. z → z² + c:

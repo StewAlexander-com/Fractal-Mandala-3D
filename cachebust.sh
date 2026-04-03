@@ -17,6 +17,9 @@ sed -i -E "s/(mandala3d\.js)\?v=[^\"]*/\1?v=$HASH/" index.html
 # These are the local module imports that browsers cache aggressively
 sed -i -E "s/(from '\.\/(ontology|genesis|gyroParallaxSubsystem)\.js)(\?v=[^']*)?'/\1?v=$HASH'/g" mandala3d.js
 
+# Stamp apple-touch-icon references
+sed -i -E "s/(apple-touch-icon\.png)\?v=[^\"]*/\1?v=$HASH/g" index.html
+
 # Stamp the service worker cache version
 sed -i -E "s/const CACHE_VERSION = '[^']*'/const CACHE_VERSION = 'fm3d-$HASH'/" sw.js
 
