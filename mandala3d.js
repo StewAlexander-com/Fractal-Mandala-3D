@@ -615,8 +615,17 @@ function updateBackplateUv() {
 
   // Cover behavior with center-crop: preserve image aspect without stretching.
   nebulaBackplateTexture.center.set(0.5, 0.5);
+  const vv2 = (typeof window !== 'undefined' && window.visualViewport) ? window.visualViewport : null;
+  const vwC = vv2 ? vv2.width : (typeof window !== 'undefined' ? window.innerWidth : 1);
+  const vhC = vv2 ? vv2.height : (typeof window !== 'undefined' ? window.innerHeight : 1);
+  const isPortraitCrop = isMobileScreen && vhC >= vwC;
   if (viewAspect > imgAspect) {
     nebulaBackplateTexture.repeat.set(1, imgAspect / viewAspect);
+  } else if (isPortraitCrop) {
+    // Portrait mobile: crop to ~85% of image height so we gain vertical
+    // headroom to bias the bright nebula center into the upper portion.
+    const baseRepeatX = viewAspect / imgAspect;
+    nebulaBackplateTexture.repeat.set(baseRepeatX, 0.85);
   } else {
     nebulaBackplateTexture.repeat.set(viewAspect / imgAspect, 1);
   }
@@ -668,8 +677,8 @@ function updateBackplateUv() {
   const composedY = isMobilePortrait
     ? (portraitBiasY + backplateUv.startY + backplateUv.walkY + backplateUv.driftY)
     : (backplateUv.startY + backplateUv.walkY + backplateUv.driftY);
-  const clampX = isMobilePortrait ? safeMaxX * 0.55 : safeMaxX;
-  const clampY = isMobilePortrait ? safeMaxY * 0.55 : safeMaxY;
+  const clampX = isMobilePortrait ? safeMaxX * 0.65 : safeMaxX;
+  const clampY = isMobilePortrait ? safeMaxY * 0.80 : safeMaxY;
   const dX = Math.max(-clampX, Math.min(clampX, composedX));
   const dY = Math.max(-clampY, Math.min(clampY, composedY));
   nebulaBackplateTexture.offset.set(backplateUv.baseOffsetX + dX, backplateUv.baseOffsetY + dY);
