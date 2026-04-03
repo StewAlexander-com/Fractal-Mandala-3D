@@ -1347,14 +1347,21 @@ function buildNebulaBackground() {
   //     upper-left 3D space so portrait users see the nebula warmth that landscape gets
   //     from the backplate. These are scene objects, not texture UV — no seam risk.
   if (isMobileScreen) {
+    // Use the fractal knot texture for irregular, organic edges (not the smooth
+    // radial cloudTexture which reads as geometric circles). Fall back gracefully.
+    const fractalMap = knotFractalTexture || cloudTexture;
     const coreGlowSprites = [
-      { color: 0xffccbb, opacity: 0.045, x: -18, y: 22, z: -60, size: 70 },
-      { color: 0xeeb8a8, opacity: 0.035, x: -12, y: 30, z: -80, size: 55 },
-      { color: 0xddaacc, opacity: 0.025, x: -25, y: 18, z: -50, size: 45 },
+      // Overlapping irregular patches at different depths, sizes, and rotations
+      // to create a fuzzy, fractal-ish nebula glow — not a single placed circle.
+      { color: 0xffccbb, opacity: 0.04,  x: -16, y: 24, z: -55, sx: 75, sy: 58 },
+      { color: 0xeeb8a8, opacity: 0.032, x: -10, y: 32, z: -75, sx: 52, sy: 68 },
+      { color: 0xddaacc, opacity: 0.022, x: -28, y: 16, z: -45, sx: 48, sy: 40 },
+      { color: 0xddc8a8, opacity: 0.028, x: -6,  y: 20, z: -65, sx: 60, sy: 45 },
+      { color: 0xccb0dd, opacity: 0.018, x: -22, y: 28, z: -85, sx: 42, sy: 55 },
     ];
     for (const g of coreGlowSprites) {
       const mat = new THREE.SpriteMaterial({
-        map: cloudTexture,
+        map: fractalMap,
         color: g.color,
         transparent: true,
         opacity: g.opacity,
@@ -1363,23 +1370,27 @@ function buildNebulaBackground() {
       });
       const spr = new THREE.Sprite(mat);
       spr.position.set(g.x, g.y, g.z);
-      spr.scale.set(g.size, g.size, 1);
-      spr.userData.driftSpeed = 0.002 + Math.random() * 0.004;
+      // Non-uniform scale: wider or taller, never a perfect circle
+      spr.scale.set(g.sx, g.sy, 1);
+      // Random rotation so the fractal pattern isn't axis-aligned
+      const rot = (Math.random() - 0.5) * 1.2;
+      spr.material.rotation = rot;
+      spr.userData.driftSpeed = 0.001 + Math.random() * 0.003;
       spr.userData.driftAngle = Math.random() * TAU;
       spr.userData.baseOpacity = g.opacity;
       spr.userData.baseX = g.x;
       spr.userData.baseY = g.y;
       spr.userData.baseZ = g.z;
-      spr.userData.baseSize = g.size;
-      spr.userData.baseScale = g.size;
-      spr.userData.baseRotation = 0;
+      spr.userData.baseSize = Math.max(g.sx, g.sy);
+      spr.userData.baseScale = Math.max(g.sx, g.sy);
+      spr.userData.baseRotation = rot;
       spr.userData.clumpPhase = Math.random() * TAU;
-      spr.userData.clumpSpeed = 0.01 + Math.random() * 0.02;
-      spr.userData.clumpAmp = 0.1;
+      spr.userData.clumpSpeed = 0.012 + Math.random() * 0.025;
+      spr.userData.clumpAmp = 0.3 + Math.random() * 0.4;
       spr.userData.distortPhase = Math.random() * TAU;
-      spr.userData.distortSpeed = 0.008;
-      spr.userData.distortAmp = 0.05;
-      spr.userData.isKnot = 0;
+      spr.userData.distortSpeed = 0.009 + Math.random() * 0.015;
+      spr.userData.distortAmp = 0.12 + Math.random() * 0.1;
+      spr.userData.isKnot = 1;  // evolves with the fractal texture updates
       spr.userData.baseColor = mat.color.clone();
       spr.userData.tintColor = new THREE.Color(g.color);
       spr.userData.opacityLag = g.opacity;
