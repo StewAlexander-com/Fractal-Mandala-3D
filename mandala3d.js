@@ -26,12 +26,12 @@ import {
   LAYER_TILTS,
   LINEAGE,
   TAU,
-} from './ontology.js?v=06230dc';
+} from './ontology.js?v=6b156e7';
 import {
   INITIAL_CONDITIONS,
   applyInitialConditions,
-} from './genesis.js?v=06230dc';
-import { createGyroParallaxSubsystem } from './gyroParallaxSubsystem.js?v=06230dc';
+} from './genesis.js?v=6b156e7';
+import { createGyroParallaxSubsystem } from './gyroParallaxSubsystem.js?v=6b156e7';
 
 // ═══ Primitives ═══════════════════════════════════════════════════════════════
 // Minimal rules from which repeated patterns generate. z → z² + c:
@@ -2959,16 +2959,29 @@ function updateAudioBreath() {
     // the mandala's center — and slowly oscillates toward/away from
     // the listener over 30-46s. When the wave "crashes" (closest),
     // it's intimate and present; when it recedes, it's distant and spacious.
+    // waveSurge: -1 (far/receded) to +1 (close/crashing)
+    const waveSurge = Math.sin(now * (Math.PI * 2 / 38));
     if (wavePanner) {
-      // Slow oscillation: ~38s period (splits the 30-46s range)
-      const waveSurge = Math.sin(now * (Math.PI * 2 / 38));
-      // z: -1 (close, in front) to -6 (far, receding). Negative z = in front.
       const waveZ = -3.5 + waveSurge * 2.5;
-      // y: slightly above, rises a bit when close (wave cresting)
       const waveY = 1.2 + (1 - waveSurge) * 0.4;
-      // x: very gentle lateral drift, not a circle
       const waveX = Math.sin(now * 0.04) * 0.5;
       try { wavePanner.setPosition(waveX, waveY, waveZ); } catch (_) {}
+    }
+
+    // Wave volume follows proximity: louder when close (crashing),
+    // quieter when far (receding). At peak, waves are slightly louder
+    // than the meditation track. Blended with the breath guide so
+    // exhale phases also lift the wave volume — two natural forces
+    // that sometimes align, sometimes drift, always feel organic.
+    if (waveGainNode && audioCtx && audioCtx.state === 'running') {
+      const proximity01 = (waveSurge + 1) * 0.5; // 0=far, 1=close
+      // Proximity volume: 0.12 (far) to 0.55 (crashing)
+      const proxVol = 0.12 + proximity01 * 0.43;
+      // Breath contribution: exhale lifts volume slightly
+      const breathLift = (1 - guideSignal) * 0.12;
+      // Combined: proximity dominates, breath adds texture
+      const waveVol = Math.min(0.65, proxVol + breathLift);
+      try { waveGainNode.gain.setTargetAtTime(waveVol, audioCtx.currentTime, 1.2); } catch (_) {}
     }
     if (medPanner) {
       // Meditation: above and slightly ahead of center, gentle sway.
@@ -2987,13 +3000,8 @@ function updateAudioBreath() {
       const userBreath = clampedMic;
       rawEnergy = userBreath * 0.55 + guideSignal * 0.45;
 
-      // Ocean wave follows exhale — auditory pull toward the rhythm.
-      // Slightly louder during exhale phase, quieter during inhale.
-      if (waveGainNode && audioCtx) {
-        const exhaleBoost = (1 - guideSignal) * 0.3; // 0 at inhale peak, 0.3 at exhale
-        const waveTarget = 0.15 + exhaleBoost;
-        try { waveGainNode.gain.setTargetAtTime(waveTarget, audioCtx.currentTime, 0.8); } catch (_) {}
-      }
+      // (Wave volume now handled by proximity + breath blend above,
+      //  active in both mic-on and mic-off modes.)
     } else {
       // Mic off: the breath guide is the primary rhythm. The ambient audio
       // adds warmth and texture but is heavily smoothed so its own tempo
