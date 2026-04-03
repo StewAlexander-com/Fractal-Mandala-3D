@@ -335,9 +335,10 @@ const BASE_EXPOSURE = isMobileOledDark ? 1.92 : 2.0;
 const RING_EMISSIVE_BASE = isMobileOledDark ? 0.76 : 0.72;
 const RING_EMISSIVE_FLOOR = isMobileOledDark ? 0.09 : 0.07;
 const RING_EMISSIVE_BREATH = isMobileOledDark ? 0.18 : 0.16;
-// Backplate focal bias for portrait: nebula highlight sits slightly left/up of geometric center.
-const BACKPLATE_PORTRAIT_BIAS_X = -0.016;
-const BACKPLATE_PORTRAIT_BIAS_Y = -0.036;
+// Backplate focal bias for portrait: nebula bright center peeks in from upper-left
+// so it doesn't compete with the geometry or teaching panel in the lower half.
+const BACKPLATE_PORTRAIT_BIAS_X = 0.045;
+const BACKPLATE_PORTRAIT_BIAS_Y = 0.06;
 
 // Runtime guardrail: mobile browsers can regress compositor behavior over WebGL + HUD blur.
 try {
@@ -667,8 +668,8 @@ function updateBackplateUv() {
   const composedY = isMobilePortrait
     ? (portraitBiasY + backplateUv.startY + backplateUv.walkY + backplateUv.driftY)
     : (backplateUv.startY + backplateUv.walkY + backplateUv.driftY);
-  const clampX = isMobilePortrait ? 0 : safeMaxX;
-  const clampY = isMobilePortrait ? safeMaxY * 0.22 : safeMaxY;
+  const clampX = isMobilePortrait ? safeMaxX * 0.55 : safeMaxX;
+  const clampY = isMobilePortrait ? safeMaxY * 0.55 : safeMaxY;
   const dX = Math.max(-clampX, Math.min(clampX, composedX));
   const dY = Math.max(-clampY, Math.min(clampY, composedY));
   nebulaBackplateTexture.offset.set(backplateUv.baseOffsetX + dX, backplateUv.baseOffsetY + dY);
