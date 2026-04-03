@@ -2819,23 +2819,57 @@ function updateAudioBreath() {
     }
 
     // Soft-limit mic energy so speech peaks can't spike the blend.
-    // tanh gives a smooth ceiling that compresses loud input without clipping.
     const clampedMic = micActive ? Math.tanh(micEnergy * 1.5) * 0.6 : 0;
 
-    // Blend: ambient always dominates — mic adds subtle breath modulation on top.
-    // Ambient drives the primary visual rhythm; mic never overshadows it.
-    // This prevents speech or room noise from hijacking the experience.
-    const rawEnergy = micActive
-      ? ambientEnergy * 0.65 + clampedMic * 0.35
-      : ambientEnergy;
+    // ─── Breath guide: 4-7-8 rhythm (19s cycle) ───
+    // When mic is active, the system doesn't just listen — it leads.
+    // A guide signal traces the ideal breath curve. The visual output
+    // blends the user's actual breath toward the guide, creating a
+    // feedback loop that gently pulls toward calm rhythmic breathing.
+    const BREATH_CYCLE = 19; // seconds, synced with CSS + core geometry
+    const now = performance.now() / 1000;
+    const breathPhase = (now % BREATH_CYCLE) / BREATH_CYCLE;
+    let guideSignal;
+    if (breathPhase < 0.21) {
+      // Inhale: guide rises smoothly
+      guideSignal = breathPhase / 0.21;
+    } else if (breathPhase < 0.58) {
+      // Hold: guide at plateau
+      guideSignal = 1.0;
+    } else {
+      // Exhale: guide descends slowly
+      guideSignal = 1.0 - (breathPhase - 0.58) / 0.42;
+    }
+    // Smooth the guide to avoid any hard transitions
+    guideSignal = guideSignal * guideSignal * (3 - 2 * guideSignal); // smoothstep
 
-    // Map to 0..1 with a floor and ceiling — wide flat distribution
+    let rawEnergy;
+    if (micActive) {
+      // Coherence blend: user breath + guide signal.
+      // The guide always contributes 40% — a gentle pull toward the rhythm.
+      // The user's breath contributes 60% — their presence is honored.
+      // As they naturally sync, the two signals reinforce each other.
+      const userBreath = clampedMic;
+      rawEnergy = userBreath * 0.55 + guideSignal * 0.45;
+
+      // Ocean wave follows exhale — auditory pull toward the rhythm.
+      // Slightly louder during exhale phase, quieter during inhale.
+      if (waveGainNode && audioCtx) {
+        const exhaleBoost = (1 - guideSignal) * 0.3; // 0 at inhale peak, 0.3 at exhale
+        const waveTarget = 0.15 + exhaleBoost;
+        try { waveGainNode.gain.setTargetAtTime(waveTarget, audioCtx.currentTime, 0.8); } catch (_) {}
+      }
+    } else {
+      rawEnergy = ambientEnergy;
+    }
+
+    // Map to 0..1 with a floor and ceiling
     const mapped = clamp01((rawEnergy - 0.02) / 0.5);
     audioBreathTarget = safeBreathNum(mapped);
 
-    // Heavy exponential smoothing — this is what makes it feel like breathing
-    const rise = 0.015;
-    const fall = 0.008;
+    // Heavy exponential smoothing — feels like breathing, not data
+    const rise = 0.018;
+    const fall = 0.010;
     const rate = audioBreathTarget > audioBreath ? rise : fall;
     audioBreath = safeBreathNum(audioBreath + (audioBreathTarget - audioBreath) * rate);
 
