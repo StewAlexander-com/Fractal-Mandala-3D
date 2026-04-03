@@ -3421,7 +3421,7 @@ function animate() {
         if (child.material.emissiveIntensity !== undefined && child.isMesh) {
           const baseEmissive = RING_EMISSIVE_BASE * emissiveScale + RING_EMISSIVE_FLOOR + b * RING_EMISSIVE_BREATH;
           // Slow sweep: the "lit arc" rotates at ~8°/sec, offset per layer
-          const sweepAngle = elapsed * 0.14 + li * 0.9;
+          const sweepAngle = elapsed * 0.14 + i * 0.9;
           const sweepPhase = 0.5 + 0.5 * Math.sin(sweepAngle);
           // The sweep adds up to 18% emissive variation around the ring
           const sweepLift = sweepPhase * 0.18 * opacity;
@@ -3439,7 +3439,7 @@ function animate() {
         if (child.material.emissive && child.isMesh && group.userData.baseEmissive) {
           child.material.emissive.copy(group.userData.baseEmissive).lerp(fogColor, atmosFactor * 0.3);
           // Evolving emissive hue: sweep phase warms the lit arc, cools the shadow arc
-          const sweepAngle2 = elapsed * 0.14 + li * 0.9;
+          const sweepAngle2 = elapsed * 0.14 + i * 0.9;
           const sweepWarm = 0.5 + 0.5 * Math.sin(sweepAngle2);
           // Lit arc shifts toward gold; shadow arc toward cool violet
           child.material.emissive.lerp(_warmGold, sweepWarm * 0.06 * opacity);
