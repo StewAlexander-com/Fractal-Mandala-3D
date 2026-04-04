@@ -26,12 +26,12 @@ import {
   LAYER_TILTS,
   LINEAGE,
   TAU,
-} from './ontology.js?v=daf00c4';
+} from './ontology.js?v=6ff8ee8';
 import {
   INITIAL_CONDITIONS,
   applyInitialConditions,
-} from './genesis.js?v=daf00c4';
-import { createGyroParallaxSubsystem } from './gyroParallaxSubsystem.js?v=daf00c4';
+} from './genesis.js?v=6ff8ee8';
+import { createGyroParallaxSubsystem } from './gyroParallaxSubsystem.js?v=6ff8ee8';
 
 // ═══ Primitives ═══════════════════════════════════════════════════════════════
 // Minimal rules from which repeated patterns generate. z → z² + c:
@@ -2736,6 +2736,7 @@ let ambientSmoothedForGuide = 0; // heavily smoothed ambient — texture, not rh
 let breathHapticFired = false;    // one-shot latch for exhale onset vibration
 let micNoiseFloor = 0;            // adaptive noise floor for breath extraction
 let lastWaveVol = 0.12;           // smoothed wave gain — starts at the quiet end
+let spatialFrameCount = 0;        // throttle pan updates to ~2Hz
 let ambientAnalyserFailed = false;  // latch: don't retry if ambient analyser permanently failed
 let micZeroFrames = 0;          // consecutive frames of zero mic energy (dead-stream detection)
 const MIC_ZERO_THRESHOLD = 180; // ~3s at 60fps — if mic reads zero for this long, stream is dead
@@ -2915,32 +2916,16 @@ function updateAudioBreath() {
     // Smooth the guide to avoid any hard transitions
     guideSignal = guideSignal * guideSignal * (3 - 2 * guideSignal); // smoothstep
 
-    // Somatic breath cue at exhale onset: the body feels the moment to let go.
-    // Two channels, same timing:
-    //   Android: Vibration API soft-pulse pattern
-    //   All devices: sub-bass tone (45Hz, 200ms) via Web Audio — felt in the
-    //   chest/hand through speaker or headphones. Barely audible, mostly physical.
+    // Somatic breath cue at exhale onset: haptic vibration only.
+    // The sub-bass oscillator was removed — creating/destroying audio nodes
+    // every 19s caused brief glitches on iOS Safari's audio thread.
+    // The haptic (Android) is the somatic channel; iOS relies on the
+    // wave volume surge as its felt cue.
     const exhaleOnset = breathPhase >= 0.58 && breathPhase < 0.61;
     if (exhaleOnset && !breathHapticFired) {
       breathHapticFired = true;
-      // Vibration (Android)
       if (typeof navigator.vibrate === 'function') {
         navigator.vibrate([10, 30, 15, 25, 20, 20, 15, 30, 10]);
-      }
-      // Sub-bass tone (all devices including iPhone)
-      if (audioCtx && audioCtx.state === 'running' && !audioMuted) {
-        try {
-          const osc = audioCtx.createOscillator();
-          const oscGain = audioCtx.createGain();
-          osc.type = 'sine';
-          osc.frequency.value = 45; // sub-bass: felt, not heard
-          oscGain.gain.setValueAtTime(0, audioCtx.currentTime);
-          oscGain.gain.linearRampToValueAtTime(0.08, audioCtx.currentTime + 0.05); // soft rise
-          oscGain.gain.linearRampToValueAtTime(0, audioCtx.currentTime + 0.20);    // fade out
-          osc.connect(oscGain).connect(audioCtx.destination);
-          osc.start(audioCtx.currentTime);
-          osc.stop(audioCtx.currentTime + 0.25);
-        } catch (_) {}
       }
     } else if (breathPhase < 0.58) {
       breathHapticFired = false;
@@ -2953,14 +2938,13 @@ function updateAudioBreath() {
     // it's intimate and present; when it recedes, it's distant and spacious.
     // waveSurge: -1 (far/receded) to +1 (close/crashing)
     const waveSurge = Math.sin(now * (Math.PI * 2 / 38));
-    // Atmospheric stereo drift: very slow pan creates width without
-    // localizing the sound to a point. No HRTF = no filter artifacts.
-    // Wave pan follows the surge — slightly right when approaching,
-    // slightly left when receding. Never more than ±0.25.
-    if (wavePanner && wavePanner.pan) {
+    // Atmospheric stereo drift: update pan only every ~30 frames (~2Hz).
+    // Pan changes are glacially slow — no need for 60Hz updates.
+    if (wavePanner && wavePanner.pan && (spatialFrameCount & 31) === 0) {
       const wavePan = Math.sin(now * 0.04) * 0.15 + waveSurge * 0.1;
       wavePanner.pan.value = clamp(wavePan, -0.25, 0.25);
     }
+    spatialFrameCount++;
 
     // Wave volume follows proximity: louder when close (crashing),
     // quieter when far (receding). At peak, waves are slightly louder
@@ -2976,11 +2960,10 @@ function updateAudioBreath() {
       const breathLift = (1 - guideSignal) * 0.12;
       const waveVol = Math.min(0.65, proxVol + breathLift);
       lastWaveVol += (waveVol - lastWaveVol) * 0.03;
-      waveGainNode.gain.value = lastWaveVol;
+      // Write gain every other frame — adjacent values differ by <0.001
+      if ((spatialFrameCount & 1) === 0) waveGainNode.gain.value = lastWaveVol;
     }
-    // Meditation: very gentle stereo sway, opposite phase to waves.
-    // Creates a sense of width — the two sources breathe apart.
-    if (medPanner && medPanner.pan) {
+    if (medPanner && medPanner.pan && (spatialFrameCount & 31) === 0) {
       const medPan = Math.sin(now * 0.03) * 0.1;
       medPanner.pan.value = clamp(medPan, -0.15, 0.15);
     }
