@@ -482,19 +482,10 @@ canvas {
 
 /* Soft radial vignette behind the title — keeps text readable
    against bright torus rings at every layer without a hard box.
-   Sized generously so the fade never ends abruptly.
-   Only rendered when .visible to prevent iOS compositor ghosts. */
-.layer-title::before,
-.layer-title::after {
-  content: none;
-  position: absolute;
-  z-index: -1;
-  pointer-events: none;
-  border-radius: 50%;
-}
-
-.layer-title.visible::before {
+   Sized generously so the fade never ends abruptly. */
+.layer-title::before {
   content: '';
+  position: absolute;
   inset: -80% -70%;
   background: radial-gradient(
     ellipse 50% 50% at 50% 50%,
@@ -504,17 +495,24 @@ canvas {
     rgba(4, 3, 8, 0.08) 75%,
     transparent 100%
   );
+  z-index: -1;
+  pointer-events: none;
+  border-radius: 50%;
 }
 
 /* Dim the actual canvas pixels behind the title text area.
    backdrop-filter works through the composited WebGL canvas;
    the blur softens hard geometry edges and brightness dims them.
    Masked to a soft oval so it blends without a visible box edge. */
-.layer-title.visible::after {
+.layer-title::after {
   content: '';
+  position: absolute;
   inset: -40% -30%;
   backdrop-filter: brightness(0.56) blur(4px);
   -webkit-backdrop-filter: brightness(0.56) blur(4px);
+  z-index: -1;
+  pointer-events: none;
+  border-radius: 50%;
   mask-image: radial-gradient(
     ellipse 52% 52% at 50% 50%,
     black 0%, black 40%, transparent 100%
@@ -529,7 +527,7 @@ canvas {
    artifacts with backdrop-filter over WebGL canvases. Use a pure gradient fallback
    on coarse-pointer/mobile contexts to avoid white slab overlays. */
 @media (pointer: coarse), (max-width: 768px) {
-  .layer-title.visible::after {
+  .layer-title::after {
     backdrop-filter: none;
     -webkit-backdrop-filter: none;
     background: radial-gradient(
@@ -903,12 +901,6 @@ canvas {
   line-height: 1.8;
   border-top: 1px solid rgba(160, 145, 175, 0.12);
 }
-.communal-presence em {
-  font-style: italic;
-  color: rgba(215, 200, 155, 0.55);
-  /* The historical names are grey-violet (past). 'you' is warm gold (present).
-     The only living presence in the lineage. */
-}
 
 .teaching-inner p {
   margin-bottom: 0.7rem;
@@ -1145,6 +1137,119 @@ canvas {
   opacity: 0.6;
 }
 
+/* Layer intro — one breath before the blocks */
+.teaching-inner .teaching-layer-lede {
+  font-family: 'Jost', sans-serif;
+  font-size: clamp(0.88rem, 1.55vmin, 1rem);
+  letter-spacing: 0.04em;
+  line-height: 1.55;
+  color: rgba(210, 198, 225, 0.88);
+  margin: 0 0 1rem 0;
+  max-width: 58ch;
+}
+
+.teaching-inner .teaching-block {
+  margin-bottom: 1rem;
+}
+
+.teaching-inner .teaching-block:last-of-type {
+  margin-bottom: 0.35rem;
+}
+
+.teaching-inner .teaching-lede {
+  font-size: clamp(0.92rem, 1.6vmin, 1.05rem);
+  line-height: 1.55;
+  color: rgba(200, 188, 175, 0.92);
+  margin: 0.15rem 0 0.45rem 0;
+  max-width: 58ch;
+}
+
+/* Accordions — collapsed until tap/click; native <details> for touch + a11y */
+.teaching-inner .teaching-details {
+  margin: 0.15rem 0 0.5rem 0;
+  border-radius: 8px;
+  border: 1px solid rgba(150, 135, 170, 0.28);
+  background: rgba(6, 4, 12, 0.45);
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.04) inset;
+}
+
+.teaching-inner .teaching-details__summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  cursor: pointer;
+  list-style: none;
+  margin: 0;
+  padding: 0.55rem 0.7rem;
+  font-family: 'Jost', sans-serif;
+  font-size: clamp(0.68rem, 1.35vmin, 0.78rem);
+  font-weight: 500;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: rgba(215, 195, 155, 0.92);
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.45);
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.teaching-inner .teaching-details__summary::-webkit-details-marker {
+  display: none;
+}
+.teaching-inner .teaching-details__summary::marker {
+  content: '';
+}
+
+.teaching-inner .teaching-details__summary:hover {
+  color: rgba(235, 215, 175, 0.98);
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.teaching-inner .teaching-details__summary:focus-visible {
+  outline: 2px solid rgba(212, 165, 116, 0.55);
+  outline-offset: 2px;
+}
+
+.teaching-inner .teaching-details__chevron {
+  display: inline-block;
+  flex-shrink: 0;
+  width: 0.45em;
+  height: 0.45em;
+  border-right: 2px solid currentColor;
+  border-bottom: 2px solid currentColor;
+  transform: rotate(45deg);
+  opacity: 0.75;
+  margin-top: -0.2em;
+  transition: transform 0.22s ease, opacity 0.2s ease;
+}
+
+.teaching-inner .teaching-details[open] .teaching-details__chevron {
+  transform: rotate(225deg);
+  margin-top: 0.15em;
+  opacity: 0.95;
+}
+
+.teaching-inner .teaching-details[open] > .teaching-details__summary {
+  border-bottom: 1px solid rgba(130, 115, 150, 0.22);
+  background: rgba(0, 0, 0, 0.2);
+}
+
+.teaching-inner .teaching-details__inner {
+  padding: 0.65rem 0.75rem 0.85rem;
+  position: relative;
+  z-index: 0;
+}
+
+.teaching-inner .teaching-block--quotes {
+  margin-top: 1.1rem;
+  padding-top: 0.75rem;
+  border-top: 1px solid rgba(140, 125, 160, 0.15);
+}
+
+.teaching-inner .teaching-block--quotes .quote:first-of-type {
+  margin-top: 0;
+}
+
 /* ═══ NAV SLIDER ═══ */
 /* Persistent layer id — complements the brief center title; always readable at the track */
 .layer-context {
@@ -1324,11 +1429,8 @@ canvas {
   letter-spacing: 0.3em;
   text-transform: uppercase;
   color: var(--lavender);
-  opacity: 0.15;
-  /* 19s cycle: 4s inhale (21%) + 7s hold (37%) + 8s exhale (42%)
-     A real contemplative rhythm, not a decorative sine wave.
-     The form instructs the practice. */
-  animation: breatheText 19s ease-in-out infinite;
+  opacity: 0.3;
+  animation: breatheText 6s cubic-bezier(0.4, 0, 0.2, 1) infinite;
 }
 
 /* Gyro vignette — background-only calm focus */
@@ -1347,13 +1449,8 @@ canvas {
 }
 
 @keyframes breatheText {
-  /* Inhale: 0% → 21% (4s of 19s) — rise */
-  0%   { opacity: 0.12; letter-spacing: 0.28em; }
-  21%  { opacity: 0.48; letter-spacing: 0.52em; }
-  /* Hold: 21% → 58% (7s of 19s) — stillness at peak */
-  58%  { opacity: 0.44; letter-spacing: 0.50em; }
-  /* Exhale: 58% → 100% (8s of 19s) — slow dissolve */
-  100% { opacity: 0.12; letter-spacing: 0.28em; }
+  0%, 100% { opacity: 0.15; letter-spacing: 0.3em; }
+  50%      { opacity: 0.45; letter-spacing: 0.5em; }
 }
 
 /* ═══ BOTTOM HUD ROW (flex: one shared baseline — fixes iOS PWA / standalone mis-alignment) ═══ */

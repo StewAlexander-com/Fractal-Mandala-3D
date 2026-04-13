@@ -1,7 +1,7 @@
 /**
  * GENESIS — bounded initial conditions + one-time applier (variable relation only).
  */
-import { LAYER_COUNT, TAU } from './ontology.js';
+import { LAYER_COUNT, TAU } from './ontology.js?v=deploy-2026-04-13';
 
 // ─── GENESIS (Accipio Ludo in code) — session seed + bounded initial conditions ───
 // Structure accepted whole; freedom = lawful variation of starting coordinates only.
