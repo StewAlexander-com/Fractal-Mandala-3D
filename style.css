@@ -1140,7 +1140,7 @@ canvas {
 /* Layer intro — one breath before the blocks */
 .teaching-inner .teaching-layer-lede {
   font-family: 'Jost', sans-serif;
-  font-size: clamp(0.88rem, 1.55vmin, 1rem);
+  font-size: clamp(0.93rem, 1.72vmin, 1.06rem);
   letter-spacing: 0.04em;
   line-height: 1.55;
   color: rgba(210, 198, 225, 0.88);
@@ -1736,6 +1736,11 @@ canvas {
   .teaching-inner {
     font-size: clamp(1.1rem, 4.6vw, 1.35rem);
   }
+  .teaching-inner .teaching-layer-lede {
+    font-size: clamp(1.04rem, 4.95vw, 1.3rem);
+    line-height: 1.5;
+    letter-spacing: 0.035em;
+  }
   .teaching-inner .key-phrase {
     font-size: 1.14em;
   }
@@ -1864,6 +1869,10 @@ canvas {
   .teaching-inner {
     font-size: clamp(0.85rem, 1.6vmin, 1rem);
     line-height: 1.6;
+  }
+  .teaching-inner .teaching-layer-lede {
+    font-size: clamp(0.96rem, 2.4vmin, 1.1rem);
+    line-height: 1.52;
   }
   .teaching-inner .explain {
     font-size: 1.05em;
