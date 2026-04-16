@@ -9,11 +9,11 @@ const LAYERS = [
     name: 'Meta-Recognition',
     subtitle: 'The Field Clarifying Itself',
     content: `
-      <p class="teaching-layer-lede">Three touches of one field: awareness meeting itself, understanding moving through life, and ease that is never only “mine.”</p>
+      <p class="teaching-layer-lede">Something in you is aware right now. You didn’t start it. You can’t stop it. That’s where we begin.</p>
       <section class="teaching-block">
         <p><span class="key-phrase">The practice IS awareness practicing itself.</span></p>
-        <p class="teaching-lede">Awareness is already here; what we call “practice” is it noticing this moment, in this body.</p>
-        <p class="dim">So it is not quite “you doing practice,” and not quite “practice happening to you.” Kindly: awareness is already awake; what we call practice is it meeting itself in this body, this breath.</p>
+        <p class="teaching-lede">You don’t have to create awareness — it’s already running. Practice is just noticing that it’s here.</p>
+        <p class="dim">You can’t force yourself to fall asleep — you create the conditions and sleep comes. Awareness works the same way.</p>
         <details class="teaching-details">
           <summary class="teaching-details__summary">Additional context <span class="teaching-details__chevron" aria-hidden="true"></span></summary>
           <div class="teaching-details__inner">
@@ -23,8 +23,8 @@ const LAYERS = [
       </section>
       <section class="teaching-block">
         <p><span class="key-phrase">The teaching teaches itself</span></p>
-        <p class="teaching-lede">Truth often ripens through living—questions, mistakes, return—not only through effort in the head.</p>
-        <p class="dim">Dialogue, doubt, and return are not failures; they are how consciousness polishes consciousness, gently, over time.</p>
+        <p class="teaching-lede">Understanding arrives — you don’t fetch it. Like fruit ripening: you can’t rush it, but you can stop blocking the sun.</p>
+        <p class="dim">Getting confused, asking again, starting over — these aren’t failures. They’re how understanding actually grows.</p>
         <details class="teaching-details">
           <summary class="teaching-details__summary">Additional context <span class="teaching-details__chevron" aria-hidden="true"></span></summary>
           <div class="teaching-details__inner">
@@ -34,8 +34,8 @@ const LAYERS = [
       </section>
       <section class="teaching-block">
         <p><span class="key-phrase">Release is communal, not individual</span></p>
-        <p class="teaching-lede">When one heart softens, the room changes; we participate in one field, not sealed jars.</p>
-        <p class="dim">Your ease and my ease are not private trophies. They are ripples in shared life.</p>
+        <p class="teaching-lede">When one person in a room calms down, the whole room shifts. We’re more connected than we think.</p>
+        <p class="dim">Your peace is not private. It ripples outward. This is physics, not poetry.</p>
         <details class="teaching-details">
           <summary class="teaching-details__summary">Additional context <span class="teaching-details__chevron" aria-hidden="true"></span></summary>
           <div class="teaching-details__inner">
@@ -45,7 +45,7 @@ const LAYERS = [
       </section>
       <section class="teaching-block">
         <p>We are <span class="key-phrase">perspectives of unified awareness</span>, <span class="dim">clarifying together.</span></p>
-        <p class="teaching-lede">Many angles, one pattern—each view real, partial, woven into the whole.</p>
+        <p class="teaching-lede">Many eyes, one world. Every viewpoint is real. Every viewpoint is incomplete.</p>
         <details class="teaching-details">
           <summary class="teaching-details__summary">Additional context <span class="teaching-details__chevron" aria-hidden="true"></span></summary>
           <div class="teaching-details__inner">
@@ -71,11 +71,11 @@ const LAYERS = [
     name: 'Structural Insights',
     subtitle: 'The Architecture of Being',
     content: `
-      <p class="teaching-layer-lede">What seems solid is mostly pattern; what seems separate still shares a world.</p>
+      <p class="teaching-layer-lede">What looks solid is mostly movement. What looks separate is mostly connected.</p>
       <section class="teaching-block">
         <p><span class="key-phrase">Process, not substance</span></p>
-        <p class="teaching-lede">You are less like a statue and more like a river—always moving, still rightly named.</p>
-        <p class="dim">Ship of Theseus: the boards are replaced; the voyage continues. You are less like a fixed object and more like a living verb.</p>
+        <p class="teaching-lede">A river isn’t the water — it’s the flowing. You aren’t your atoms — you’re what they’re doing right now.</p>
+        <p class="dim">Every cell in your body replaces itself. The “you” from seven years ago is physically gone. And yet — here you are.</p>
         <details class="teaching-details">
           <summary class="teaching-details__summary">Additional context <span class="teaching-details__chevron" aria-hidden="true"></span></summary>
           <div class="teaching-details__inner">
@@ -85,8 +85,8 @@ const LAYERS = [
       </section>
       <section class="teaching-block">
         <p><span class="key-phrase">Multiple perspectives, unified substrate</span></p>
-        <p class="teaching-lede">Honest people can disagree; one reality may wear many true faces.</p>
-        <p class="dim">A prism does not invent colors; it reveals them. Your view and mine can both be honest and still incomplete.</p>
+        <p class="teaching-lede">Three people touch an elephant in the dark. They each describe something different. They’re all right. They’re all incomplete.</p>
+        <p class="dim">Your view and my view can both be honest and both be partial. That’s not a problem — that’s how reality is shaped.</p>
         <details class="teaching-details">
           <summary class="teaching-details__summary">Additional context <span class="teaching-details__chevron" aria-hidden="true"></span></summary>
           <div class="teaching-details__inner">
@@ -96,8 +96,8 @@ const LAYERS = [
       </section>
       <section class="teaching-block">
         <p><span class="key-phrase">Qualia unique, stuff shared</span></p>
-        <p class="teaching-lede">Your feeling is privately worn; the light and matter we meet are shared.</p>
-        <p class="dim">So: intimacy without fusion. You are not me, and we are not separate in the deepest sense.</p>
+        <p class="teaching-lede">Your experience is uniquely yours. And it’s made of the same stuff as everyone else’s.</p>
+        <p class="dim">Your red and my red might look different inside our heads. But the light that makes them is the same light.</p>
         <details class="teaching-details">
           <summary class="teaching-details__summary">Additional context <span class="teaching-details__chevron" aria-hidden="true"></span></summary>
           <div class="teaching-details__inner">
@@ -123,10 +123,10 @@ const LAYERS = [
     name: 'Key Distinctions',
     subtitle: 'Seeing Through the Pairs',
     content: `
-      <p class="teaching-layer-lede">Four distinctions—each is a small kindness to your own mind: they loosen confusion without blaming you for having felt it.</p>
+      <p class="teaching-layer-lede">Four gentle untanglings. None of them asks you to feel bad for being confused — they just help you see more clearly.</p>
       <section class="teaching-block">
         <div class="distinction"><span class="symbol">≠</span><span><span class="key-phrase">Service ≠ Servitude</span><br><span class="dim">Service flows from gratitude ("get to"). Servitude flows from obligation ("have to").</span></span></div>
-        <p class="teaching-lede">Same hands, different weather: offering versus fear.</p>
+        <p class="teaching-lede">“Get to” feels completely different from “have to” — even when the action is the same.</p>
         <details class="teaching-details">
           <summary class="teaching-details__summary">Additional context <span class="teaching-details__chevron" aria-hidden="true"></span></summary>
           <div class="teaching-details__inner">
@@ -136,7 +136,7 @@ const LAYERS = [
       </section>
       <section class="teaching-block">
         <div class="distinction"><span class="symbol">≠</span><span><span class="key-phrase">Consciousness ≠ Continuity</span><br><span class="math">Awareness = dx/dt</span> <span class="dim">(this moment)</span><br><span class="math">Identity = ∫</span> <span class="dim">(accumulated story)</span></span></div>
-        <p class="teaching-lede">The living instant and the long story both matter—confusing them costs peace.</p>
+        <p class="teaching-lede">Awareness is what’s happening right now. Identity is the story about all your nows. The story is useful — but it isn’t you.</p>
         <details class="teaching-details">
           <summary class="teaching-details__summary">Additional context <span class="teaching-details__chevron" aria-hidden="true"></span></summary>
           <div class="teaching-details__inner">
@@ -146,7 +146,7 @@ const LAYERS = [
       </section>
       <section class="teaching-block">
         <div class="distinction"><span class="symbol">⇌</span><span><span class="key-phrase">Imagination: double-edged</span><br><span class="dim">Creates art and beauty. Creates worry and ego. Same tool, different application.</span></span></div>
-        <p class="teaching-lede">The mind that paints can also frighten; the tool is not the trouble—how we meet it is.</p>
+        <p class="teaching-lede">The same brain that composes music also rehearses catastrophe at 3 a.m. The tool is neutral — what matters is how you hold it.</p>
         <details class="teaching-details">
           <summary class="teaching-details__summary">Additional context <span class="teaching-details__chevron" aria-hidden="true"></span></summary>
           <div class="teaching-details__inner">
@@ -156,7 +156,7 @@ const LAYERS = [
       </section>
       <section class="teaching-block">
         <div class="distinction"><span class="symbol">◇</span><span><span class="key-phrase">Ego = filter</span><br><span class="dim">Not enemy to destroy. Not self to cling to. Transparent pattern to see through.</span></span></div>
-        <p class="teaching-lede">A sorting layer—useful, not identical with awareness itself.</p>
+        <p class="teaching-lede">A lens focuses light but isn’t the light. See through it, don’t fight it.</p>
         <details class="teaching-details">
           <summary class="teaching-details__summary">Additional context <span class="teaching-details__chevron" aria-hidden="true"></span></summary>
           <div class="teaching-details__inner">
@@ -182,10 +182,10 @@ const LAYERS = [
     name: 'Three Acceptances',
     subtitle: 'Accipio — I Accept',
     content: `
-      <p class="teaching-layer-lede">Three Latin phrases—three widening circles of “yes.” None of them asks you to like harm or to give up discernment; they invite a softening of the war with reality itself.</p>
+      <p class="teaching-layer-lede">Three ways of saying “yes” to life. Not yes to harm — yes to reality. The difference between giving up and letting go.</p>
       <section class="teaching-block">
         <div class="distinction"><span class="symbol">◯</span><span><span class="latin">Accipio Toto</span><br><span class="dim">I accept the whole. Everything, including this.</span></span></div>
-        <p class="teaching-lede">The widest ring: stop wrestling the entire script; meet the weather of a life as it is.</p>
+        <p class="teaching-lede">Not just the parts you like. All of it — including this moment, exactly as it is.</p>
         <details class="teaching-details">
           <summary class="teaching-details__summary">Additional context <span class="teaching-details__chevron" aria-hidden="true"></span></summary>
           <div class="teaching-details__inner">
@@ -195,7 +195,7 @@ const LAYERS = [
       </section>
       <section class="teaching-block">
         <div class="distinction"><span class="symbol">◎</span><span><span class="latin">Accipio Praesentia</span><br><span class="dim">I accept presence. Now, not past or future.</span></span></div>
-        <p class="teaching-lede">The body only breathes now; memory and plan are servants, not a substitute home.</p>
+        <p class="teaching-lede">The past is memory. The future is imagination. Now is the only place anything actually happens.</p>
         <details class="teaching-details">
           <summary class="teaching-details__summary">Additional context <span class="teaching-details__chevron" aria-hidden="true"></span></summary>
           <div class="teaching-details__inner">
@@ -205,7 +205,7 @@ const LAYERS = [
       </section>
       <section class="teaching-block">
         <div class="distinction"><span class="symbol">◉</span><span><span class="latin">Accipio Ludo</span><br><span class="dim">I accept play. Engagement without grasping.</span></span></div>
-        <p class="teaching-lede">Seriousness and joy can share one life when grasp loosens.</p>
+        <p class="teaching-lede">Life gets lighter when you stop treating it as a problem to solve and start treating it as something to participate in.</p>
         <details class="teaching-details">
           <summary class="teaching-details__summary">Additional context <span class="teaching-details__chevron" aria-hidden="true"></span></summary>
           <div class="teaching-details__inner">
@@ -215,7 +215,7 @@ const LAYERS = [
       </section>
       <section class="teaching-block">
         <p style="margin-top:0.15rem;margin-bottom:0.35rem">Three concentric acceptances:<br><span class="dim">The whole contains the now. The now contains the play. The play contains the whole.</span></p>
-        <p class="teaching-lede">They nest inside each other like rings or dolls—turn one, you touch the shape of all.</p>
+        <p class="teaching-lede">These three nest like rings in a tree. The whole holds the now. The now holds the play. The play holds the whole.</p>
         <details class="teaching-details">
           <summary class="teaching-details__summary">Additional context <span class="teaching-details__chevron" aria-hidden="true"></span></summary>
           <div class="teaching-details__inner">
@@ -241,15 +241,15 @@ const LAYERS = [
     name: 'The Practice',
     subtitle: 'The Fractal Cycle',
     content: `
-      <p class="teaching-layer-lede">Five movements—not a ladder you finish once, but a spiral you walk with kindness whenever you forget and remember.</p>
+      <p class="teaching-layer-lede">Five movements that renew themselves. Not a checklist — a cycle you walk kindly, every time you forget and remember.</p>
       <section class="teaching-block">
         <p>Five movements:</p>
         <ul>
-          <li><span class="key-phrase">Meditate</span> — settle into what is here; let the body and heart open without demand.</li>
-          <li><span class="key-phrase">Let revelation emerge</span> — insight rarely arrives on schedule; make room instead of grabbing.</li>
-          <li><span class="key-phrase">Ask questions</span> — stay curious; let “I don’t know yet” be an honest friend.</li>
-          <li><span class="key-phrase">Release second arrows</span> — notice the extra stories piled on pain; practice putting them down, again and again.</li>
-          <li><span class="key-phrase">Return</span> — you will wander; coming back is the practice, not the failure.</li>
+          <li><span class="key-phrase">Meditate</span> — just be present, nothing to fix.</li>
+          <li><span class="key-phrase">Let revelation emerge</span> — don’t force; make room.</li>
+          <li><span class="key-phrase">Get curious</span> — “I don’t know yet” is an honest and brave thing to say.</li>
+          <li><span class="key-phrase">Release second arrows</span> — the stories, the worry — put them down gently.</li>
+          <li><span class="key-phrase">Return</span> — wandering is human; returning is the practice.</li>
         </ul>
         <details class="teaching-details">
           <summary class="teaching-details__summary">Additional context — why cycles work <span class="teaching-details__chevron" aria-hidden="true"></span></summary>
@@ -259,9 +259,9 @@ const LAYERS = [
         </details>
       </section>
       <section class="teaching-block">
-        <p class="teaching-lede">Breath and fractals: the same pattern, many scales.</p>
+        <p class="teaching-lede">Every path that actually works is a circle, not a line.</p>
         <p class="dim">Each cycle breathes: <span class="latin">Inspiration</span> → <span class="latin">Relaxation</span> → <span class="latin">Awareness</span></p>
-        <p class="dim">Fractal simply means: the same shape at many sizes—one breath, one day, one life—each echoing the others without copying them perfectly.</p>
+        <p class="dim">This pattern repeats at every scale. One breath. One conversation. One lifetime.</p>
         <details class="teaching-details">
           <summary class="teaching-details__summary">Additional context <span class="teaching-details__chevron" aria-hidden="true"></span></summary>
           <div class="teaching-details__inner">
@@ -286,12 +286,12 @@ const LAYERS = [
   },
   {
     name: 'The Second Arrow',
-    subtitle: 'First Arrow / Second Arrow',
+    subtitle: 'What You Add to What Happens',
     content: `
-      <p class="teaching-layer-lede">A classic Buddhist image—simple once you see it, freeing once you feel it. There is no blame here: we all shoot the second arrow sometimes; the invitation is to notice with mercy.</p>
+      <p class="teaching-layer-lede">A simple idea that changes everything — once you see it, you can’t unsee it. And there’s no blame here.</p>
       <section class="teaching-block">
         <div class="distinction"><span class="symbol">↣</span><span><span class="key-phrase">First arrow</span> = discomfort<br><span class="dim">Unavoidable. Natural. Informational.</span></span></div>
-        <p class="teaching-lede">What life delivers—pain, loss, words—often hurts without being a verdict on your worth.</p>
+        <p class="teaching-lede">You stubbed your toe. That hurts. That’s real.</p>
         <details class="teaching-details">
           <summary class="teaching-details__summary">Additional context <span class="teaching-details__chevron" aria-hidden="true"></span></summary>
           <div class="teaching-details__inner">
@@ -301,7 +301,7 @@ const LAYERS = [
       </section>
       <section class="teaching-block">
         <div class="distinction"><span class="symbol">↣↣</span><span><span class="key-phrase">Second arrow</span> = suffering<br><span class="dim">Ego's addition. Optional. Constructed.</span></span></div>
-        <p class="teaching-lede">The extra layer we add—stories, shame, rehearsal—real in experience, workable over time.</p>
+        <p class="teaching-lede">“Why does this always happen to me?” “I’m so clumsy.” That part — you added that.</p>
         <details class="teaching-details">
           <summary class="teaching-details__summary">Additional context <span class="teaching-details__chevron" aria-hidden="true"></span></summary>
           <div class="teaching-details__inner">
@@ -311,7 +311,7 @@ const LAYERS = [
       </section>
       <section class="teaching-block">
         <p><span class="key-phrase">Liberation</span> = seeing and releasing second arrows, continuously.</p>
-        <p class="teaching-lede">Not escaping pain once—befriending truth, again and again.</p>
+        <p class="teaching-lede">The first arrow is life. The second arrow is the commentary. Most of our suffering lives in the commentary.</p>
         <p class="dim">Discomfort is reality (first arrow). Suffering is story (second arrow).</p>
         <p>The practice is not removing arrows. It is <span class="key-phrase">seeing which ones you shot at yourself</span>.</p>
         <details class="teaching-details">
@@ -338,12 +338,12 @@ const LAYERS = [
   },
   {
     name: 'Core Awareness',
-    subtitle: 'dx/dt — This Moment',
+    subtitle: 'This Moment, Complete',
     content: `
-      <p class="teaching-layer-lede">The center is not a stone in your hand—it is a pulse: happening, not stored.</p>
+      <p class="teaching-layer-lede">The center of everything isn’t a thing. It’s a happening.</p>
       <section class="teaching-block">
         <p>The irreducible point. Not a thing — a <span class="key-phrase">process</span>.</p>
-        <p class="teaching-lede">Reality’s smallest coin is an event—a flicker of change—not a lump on a shelf.</p>
+        <p class="teaching-lede">Right now, you are aware. That’s it. That’s the whole miracle.</p>
         <details class="teaching-details">
           <summary class="teaching-details__summary">Additional context <span class="teaching-details__chevron" aria-hidden="true"></span></summary>
           <div class="teaching-details__inner">
@@ -353,8 +353,8 @@ const LAYERS = [
       </section>
       <section class="teaching-block">
         <p class="math">Awareness = dx/dt</p>
-        <p class="teaching-lede">If the symbols feel rusty, read them as: “the living edge of change, right now.”</p>
-        <p class="dim">So this moment can be whole without borrowing legitimacy from yesterday or tomorrow.</p>
+        <p class="teaching-lede">Not awareness of something — just the fact of being aware at all.</p>
+        <p class="dim">This moment is complete. It doesn’t need yesterday’s approval or tomorrow’s permission.</p>
         <details class="teaching-details">
           <summary class="teaching-details__summary">Additional context <span class="teaching-details__chevron" aria-hidden="true"></span></summary>
           <div class="teaching-details__inner">
@@ -364,8 +364,8 @@ const LAYERS = [
       </section>
       <section class="teaching-block">
         <p>You are not a noun. You are <span class="key-phrase">verb-ing</span>.</p>
-        <p class="teaching-lede">Depth lives in the living, not in a fixed label on a box.</p>
-        <p class="dim">Again, the ship is the voyage; the planks are guests.</p>
+        <p class="teaching-lede">Not a fixed self moving through time — a process, renewing itself each moment. Like a flame that persists by constantly changing.</p>
+        <p class="dim">You are not a frozen snapshot. You are the river itself.</p>
         <details class="teaching-details">
           <summary class="teaching-details__summary">Additional context <span class="teaching-details__chevron" aria-hidden="true"></span></summary>
           <div class="teaching-details__inner">
@@ -375,7 +375,7 @@ const LAYERS = [
       </section>
       <section class="teaching-block">
         <p>"This too shall pass" = liberation, not pessimism.<br><span class="dim">Wave-form temporary, sea-stuff eternal.</span></p>
-        <p class="teaching-lede">Change makes room for what has not arrived yet—not a dismissal of love or grief.</p>
+        <p class="teaching-lede">“This too shall pass” isn’t sad. It’s the most liberating sentence in any language.</p>
         <details class="teaching-details">
           <summary class="teaching-details__summary">Additional context <span class="teaching-details__chevron" aria-hidden="true"></span></summary>
           <div class="teaching-details__inner">
