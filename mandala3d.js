@@ -26,12 +26,12 @@ import {
   LAYER_TILTS,
   LINEAGE,
   TAU,
-} from './ontology.js?v=6d91a3d';
+} from './ontology.js?v=b60ee2c';
 import {
   INITIAL_CONDITIONS,
   applyInitialConditions,
-} from './genesis.js?v=6d91a3d';
-import { createGyroParallaxSubsystem } from './gyroParallaxSubsystem.js?v=6d91a3d';
+} from './genesis.js?v=b60ee2c';
+import { createGyroParallaxSubsystem } from './gyroParallaxSubsystem.js?v=b60ee2c';
 
 // ═══ Primitives ═══════════════════════════════════════════════════════════════
 // Minimal rules from which repeated patterns generate. z → z² + c:
@@ -3014,6 +3014,12 @@ function hideMicModal() {
 
 async function enableMic() {
   hideMicModal();
+  // Idempotency: prevent concurrent/rapid re-entry during the async
+  // getUserMedia permission prompt. Without this, two taps spawn two
+  // streams, two analysers, two sources — leaking resources and
+  // producing inconsistent state.
+  if (micActive || enableMic._pending) return;
+  enableMic._pending = true;
   try {
     // Guard: getUserMedia requires secure context + API support
     if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
@@ -3153,6 +3159,9 @@ async function enableMic() {
     const reason = err.name || err.message || 'unknown';
     console.warn('Mic enable failed (' + reason + '):', err.message || '');
     disableMic();
+  } finally {
+    // Always clear the re-entry guard so future taps can succeed
+    enableMic._pending = false;
   }
 }
 
@@ -3293,6 +3302,10 @@ function updatePanelOpacity(layerIndex) {
 // Enter button
 function handleEnter(e) {
   if (e) e.preventDefault();
+  // Idempotency: handleEnter is bound to both 'click' and 'touchend'.
+  // On mobile, touchend fires first then the synthetic click fires
+  // — both would call this handler. The 'entered' flag makes it safe.
+  if (entered) return;
   entered = true;
   if (welcome) welcome.classList.add('hidden');
   if (exitBtn) exitBtn.classList.add('visible');
