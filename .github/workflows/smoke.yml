@@ -1,0 +1,50 @@
+name: Smoke Test
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install Playwright
+        run: |
+          npm init -y
+          npm install --silent playwright@1.47.0
+          npx playwright install --with-deps chromium
+
+      - name: Start static server
+        run: |
+          npx --yes serve@14 . -l 5000 --no-clipboard --single &
+          # Wait for server
+          for i in {1..20}; do
+            if curl -sf http://127.0.0.1:5000/ > /dev/null; then
+              echo "Server up"; break
+            fi
+            sleep 0.5
+          done
+
+      - name: Run smoke test
+        run: node tests/smoke.mjs
+
+      - name: Upload screenshots on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: smoke-screenshots
+          path: tests/output/
+          retention-days: 7

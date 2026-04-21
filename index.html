@@ -35,8 +35,8 @@
 <link rel="manifest" href="manifest.json">
 <link rel="icon" href="favicon.svg" type="image/svg+xml">
 <link rel="icon" href="icon-192.png" type="image/png" sizes="192x192">
-<link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png?v=b60ee2c">
-<link rel="apple-touch-icon-precomposed" sizes="180x180" href="apple-touch-icon.png?v=b60ee2c">
+<link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png?v=7b152ff">
+<link rel="apple-touch-icon-precomposed" sizes="180x180" href="apple-touch-icon.png?v=7b152ff">
 
 <title>The Fractal Mandala — Seven Layers of Sacred Geometry</title>
 <meta name="description" content="Free interactive 3D sacred geometry in your browser. Seven quantum orbital layers of mindfulness—WebGL mandala, ambient sound, scroll or swipe. Desktop and mobile.">
@@ -145,7 +145,7 @@
 <!-- Preconnect: CDN + fonts for faster first paint -->
 <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
 <!-- Modulepreload Three.js core — overlaps fetch with font/CSS loading -->
-<link rel="modulepreload" href="https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js">
+<link rel="modulepreload" href="https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js" integrity="sha384-GY5FqjttLCFRt/McQbyaVdCk2O1IQtOeX8Py6NfD89BIAsIyJFRl4UgSXrk2vXAk" crossorigin="anonymous">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <!-- Fonts: display=swap ensures text is visible immediately with system fallback
@@ -154,7 +154,7 @@
 <!-- Preload audio hint — browser can start fetching before user enters -->
 <link rel="preload" href="ambient-meditation.mp3" as="audio" crossorigin type="audio/mpeg">
 <link rel="preload" href="ambient-ocean-wave.mp3" as="audio" crossorigin type="audio/mpeg">
-<link rel="stylesheet" href="style.css?v=b60ee2c">
+<link rel="stylesheet" href="style.css?v=7b152ff">
 </head>
 <body>
 
@@ -328,7 +328,7 @@
 </main>
 
 <!-- Import maps polyfill: bare "three" + addons resolve in Arc (Gecko), older Safari, etc. -->
-<script src="https://cdn.jsdelivr.net/npm/es-module-shims@2.8.0/dist/es-module-shims.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/es-module-shims@2.8.0/dist/es-module-shims.js" integrity="sha384-bu2JOhhs+024VlJUbPyr/5SY9ReRMZ1BTeZylHd9WKeTFKd2EK1bFTfOMrYe5NPo" crossorigin="anonymous"></script>
 <!-- Three.js — primary CDN with preconnect warming -->
 <script type="importmap">
 {
@@ -434,7 +434,7 @@
   </div>
 </noscript>
 <!-- Runtime: ontology.js (data) · genesis.js (initial relation) · mandala3d.js (dynamics + UI) -->
-<script type="module" src="mandala3d.js?v=b60ee2c"></script>
+<script type="module" src="mandala3d.js?v=7b152ff"></script>
 <script>
 // Register service worker for cache management + offline PWA.
 // skipWaiting + clients.claim ensures new versions activate immediately.

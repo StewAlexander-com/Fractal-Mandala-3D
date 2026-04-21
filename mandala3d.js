@@ -26,12 +26,12 @@ import {
   LAYER_TILTS,
   LINEAGE,
   TAU,
-} from './ontology.js?v=b60ee2c';
+} from './ontology.js?v=7b152ff';
 import {
   INITIAL_CONDITIONS,
   applyInitialConditions,
-} from './genesis.js?v=b60ee2c';
-import { createGyroParallaxSubsystem } from './gyroParallaxSubsystem.js?v=b60ee2c';
+} from './genesis.js?v=7b152ff';
+import { createGyroParallaxSubsystem } from './gyroParallaxSubsystem.js?v=7b152ff';
 
 // ═══ Primitives ═══════════════════════════════════════════════════════════════
 // Minimal rules from which repeated patterns generate. z → z² + c:
@@ -2326,6 +2326,30 @@ const AUDIO_VOLUME = 0.33;
 const OCEAN_TO_MUSIC_GAIN = 0.2;
 const oceanTargetGain = () => AUDIO_VOLUME * OCEAN_TO_MUSIC_GAIN;
 
+// ═══ AUDIO SUBSYSTEM ══════════════════════════════════════════════════════════════════
+// A self-contained unit (marked here for future extraction into audioSubsystem.js).
+//
+// Responsibilities:
+//   • Web Audio graph: meditation + ocean → gain → stereo panner → destination
+//   • Two-stream playback with independent gains and HTML5 fallbacks
+//   • Ambient intro fade (5s) + long-period LFO (~4.3min) volume sway
+//   • Mic capture + breath-specific spectral energy extraction
+//   • Breath guide (4-7-8 rhythm) blended with user's actual breath signal
+//   • Wave proximity → gain mapping (tidal approach/recede)
+//   • Haptic + exhale cues synced to the breath cycle
+//
+// Public surface actually touched outside this block:
+//   • initAudio()          — called from handleEnter (user gesture)
+//   • updateAudioBreath()  — called every frame from animate()
+//   • audioBreath (global) — read by animate() for visual coupling
+//   • handleAudioToggle    — click handler for the mute button
+//   • enableMic/disableMic — called from mic button + modal
+//
+// Everything else is internal. This section ends at the "END AUDIO SUBSYSTEM" banner
+// near the animation loop. When extracting to a module, move everything between
+// the banners and expose the public surface above.
+// ═════════════════════════════════════════════════════════════════════════════
+
 // Slow volume swell — calm breath-like rise/fall (both beds track together)
 // Longer period + slightly deeper trough yields a more perceptible, soothing "breath"
 // without ever pumping or drawing attention.
@@ -3228,6 +3252,8 @@ document.addEventListener('visibilitychange', () => {
     disableMic();
   }
 });
+
+// ═══ END AUDIO SUBSYSTEM ══════════════════════════════════════════════════════════════════
 
 // ─── FULLSCREEN TOGGLE ───
 // Uses the Fullscreen API (desktop) and falls back gracefully.
